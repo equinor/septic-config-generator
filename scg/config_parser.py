@@ -22,9 +22,10 @@ schema_template = Map({
 })
 
 schema_templategenerator = Map({
-    "masterpath": Seq(Str()),
+    "masterpath": Str(),
     "outputdir": Str(),
-    "replacements": Seq(MapPattern(Str(), Str()))
+    "master": Str(),
+    Optional("includeonly"): Seq(Str())
 })
 
 schema = Map({
