@@ -11,7 +11,7 @@ schema_sources = Seq(schema_source)
 
 schema_path = Map({
     "root": Str(),
-    "templatepaths": Seq(Str())
+    "templatepath": Str()
 })
 
 schema_template = Map({
@@ -21,11 +21,18 @@ schema_template = Map({
     Optional("exclude"): Seq(Str()),
 })
 
+schema_templategenerator = Map({
+    "masterpath": Seq(Str()),
+    "outputdir": Str(),
+    "replacements": Seq(MapPattern(Str(), Str()))
+})
+
 schema = Map({
     "output": Str(),
     "path": schema_path,
     "sources": Seq(schema_source),
-    "layout": Seq(schema_template)
+    "layout": Seq(schema_template),
+    Optional("templategenerator"): schema_templategenerator
 })
 
 
