@@ -5,7 +5,7 @@ import os
 from openpyxl import load_workbook
 
 def read_source(source, root):
-    wb = load_workbook(os.path.join(root, source['filename']), True)
+    wb = load_workbook(os.path.join(root, source['filename']), read_only=True, data_only=True)
     sheet = wb[source['sheet']]
     rows = sheet.max_row
     cols = sheet.max_column
@@ -14,7 +14,7 @@ def read_source(source, root):
     for i in range(2, rows + 1):
         temp = dict()
         for j in range(2, cols + 1):
-            temp[sheet.cell(row=1, column=j).value] = sheet.cell(row=i, column=j).value
+            temp[sheet.cell(row=1, column=j).value] = str(sheet.cell(row=i, column=j).value)
             ret[sheet.cell(row=i, column=1).value] = temp
     return ret
     #def item(i, j):
@@ -38,7 +38,6 @@ def main(config):
             if not 'source' in template:
                 print(temp.render({}))
                 continue
-            items = []
             if 'include' in template:
                 items = template['include']
             else:
