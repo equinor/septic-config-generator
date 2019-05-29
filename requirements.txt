@@ -1,0 +1,3 @@
+openpyxl
+strictyaml
+jinja2
