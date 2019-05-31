@@ -16,7 +16,7 @@ def main():
 
 @main.command()
 @click.option('--output', help='name of output file (overrides config option)')
-@click.option('--check/--no-check', default=True, help='whether to verify output file before overwriting original.')
+@click.option('--no-check', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
 @click.argument('config_file')
 def make(config_file, **kwargs):
     file_cfg = parse_config(config_file).data
@@ -48,7 +48,8 @@ def make(config_file, **kwargs):
                     f.write(temp.render(values))
 
     if os.path.exists(original_cnfgfile):
-        if kwargs['check']:
+        backup_cnfgfile = original_cnfgfile + '.bak'
+        if cfg['check']:
             diff = diff_cnfgs(original_cnfgfile, new_cnfgfile)
             txt = [line for line in diff]
             if len(txt) > 0:
@@ -65,11 +66,15 @@ def make(config_file, **kwargs):
             else:
                 print("No change. Keeping original config.")
                 os.remove(new_cnfgfile)
+        else:
+            shutil.move(original_cnfgfile, backup_cnfgfile)
+            shutil.move(new_cnfgfile, original_cnfgfile)
     else:
         shutil.move(new_cnfgfile, original_cnfgfile)
 
 @main.command()
 @click.argument('config_file')
+
 def revert(config_file):
     cfg = parse_config(config_file).data
 

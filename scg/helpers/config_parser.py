@@ -23,7 +23,7 @@ schema_template = Map({
     "name": Str(),
     Optional("source"): Str(),
     Optional("include"): Seq(Str()),
-    Optional("exclude"): Seq(Str()),
+    Optional("exclude"): Seq(Str())
 })
 
 schema_templategenerator = Map({
@@ -38,7 +38,8 @@ schema = Map({
     "path": schema_path,
     "sources": Seq(schema_source),
     "layout": Seq(schema_template),
-    Optional("templategenerator"): schema_templategenerator
+    Optional("templategenerator"): schema_templategenerator,
+    Optional("check", default=True): Bool()
 })
 
 
@@ -58,7 +59,8 @@ def parse_config(filename):
         sys.exit()
 
 def patch_config(cfg, overrides):
-    if 'output' in overrides and overrides['output'] is not None:
-        cfg['output']= overrides['output']
-
+    if overrides['output'] is not None:
+        cfg['output'] = overrides['output']
+    if overrides['no_check']:
+        cfg['check'] = False
     return cfg
