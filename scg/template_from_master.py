@@ -1,7 +1,7 @@
-from scg.config_parser import parse_config
-from scg.scg import read_source
 import os
 import re
+from helpers.config_parser import parse_config
+from helpers.helpers import read_source
 
 def main():
     cfg = parse_config('johan_sverdrup.yaml').data
