@@ -39,8 +39,18 @@ schema = Map({
 
 def parse_config(filename):
     try:
-        with open(filename, 'r') as f:
-            cfg = load(f.read(), schema, label=filename)
+        f = open(filename, 'r')
     except:
         raise FileNotFoundError
+
+    try:
+        cfg = load(f.read(), schema, label=filename)
+    except:
+        print("Parsing error")
+    return cfg
+
+def patch_config(cfg, overrides):
+    if 'output' in overrides and overrides['output'] is not None:
+        cfg['output']= overrides['output']
+
     return cfg

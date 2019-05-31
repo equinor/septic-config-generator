@@ -19,3 +19,9 @@ def read_source(source, root):
     #return (dict(item(i, j) for j in range(1, cols + 1 )) for i in range(2, rows + 1))
 
 
+def get_all_sources(sources, path):
+    res = dict()
+    for source in sources:
+        s = read_source(source, path)
+        res[source['id']] = s
+    return res

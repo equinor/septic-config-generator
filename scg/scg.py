@@ -1,26 +1,28 @@
 import os
+import sys
 import click
 from jinja2 import Environment, FileSystemLoader
-from helpers.config_parser import parse_config
-from helpers.helpers import read_source
+from helpers.config_parser import parse_config, patch_config
+from helpers.helpers import get_all_sources
 from helpers.version import __version__
 
 @click.group()
+@click.version_option(version=__version__)
 def main():
     pass
 
 @main.command()
+@click.option('--output', help='name of output file (overrides config option)')
 @click.argument('config_file')
-def make(config_file):
-    cfg = parse_config(config_file).data
+def make(config_file, **kwargs):
+    file_cfg = parse_config(config_file).data
+    cfg = patch_config(file_cfg, kwargs)
+
+    sources = get_all_sources(cfg['sources'], cfg['path']['root'])
 
     env = Environment(
         loader=FileSystemLoader(searchpath=os.path.join(cfg['path']['root'], cfg['path']['templatepath']))
     )
-    sources = dict()
-    for source in cfg['sources']:
-        s = read_source(source, cfg['path']['root'])
-        sources[source['id']] = s
 
     with open(cfg['output'], 'w') as f:
         for template in cfg['layout']:
@@ -44,10 +46,8 @@ def make(config_file):
 @click.argument('config_file')
 def revert(config_file):
     cfg = parse_config(config_file).data
-    sources = dict()
-    for source in cfg['sources']:
-        s = read_source(source, cfg['path']['root'])
-        sources[source['id']] = s
+
+    sources = get_all_sources(cfg['sources'], cfg['path']['root'])
 
     master_path = os.path.join(cfg['path']['root'], cfg['templategenerator']['masterpath'])
     masters = [f for f in os.listdir(master_path) if os.path.isfile(os.path.join(master_path, f))]
