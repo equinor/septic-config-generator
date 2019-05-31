@@ -1,10 +1,15 @@
+import sys
+import logging
 from strictyaml import Map, Decimal, Str, Seq, MapPattern, CommaSeparated, Optional, load, Int, Bool
+
+logger = logging.getLogger('scg.'+__name__)
 
 schema_source = Map({
     "id": Str(),
     "filename": Str(),
     "sheet": Str(),
-    Optional("type"): Str()
+    Optional("type"): Str(),
+    Optional("safe_reverse"): Seq(Str())
 })
 
 schema_sources = Seq(schema_source)
@@ -38,16 +43,19 @@ schema = Map({
 
 
 def parse_config(filename):
+    if not filename.lower().endswith('.yaml'):
+        filename = filename + '.yaml'
     try:
         f = open(filename, 'r')
     except:
-        raise FileNotFoundError
-
+        logger.error(f"File not found: '{filename}'.\n Config files need to be on the format 'filename.yaml'.")
+        sys.exit(1)
     try:
         cfg = load(f.read(), schema, label=filename)
-    except:
-        print("Parsing error")
-    return cfg
+        return cfg
+    except Exception as e:
+        logger.error(f"{e}",)
+        sys.exit()
 
 def patch_config(cfg, overrides):
     if 'output' in overrides and overrides['output'] is not None:

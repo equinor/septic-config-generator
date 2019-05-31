@@ -1,5 +1,6 @@
 import os
 import sys
+import logging
 import click
 from jinja2 import Environment, FileSystemLoader
 from helpers.config_parser import parse_config, patch_config
@@ -83,4 +84,10 @@ def revert(config_file):
         #f.close()
 
 if __name__ == '__main__':
+    logger = logging.getLogger('scg')
+    ch = logging.StreamHandler()
+    cf = logging.Formatter("%(levelname)s [%(name)s] - %(message)s ")
+    ch.setFormatter(cf)
+    logger.addHandler(ch)
+    #logging.basicConfig(format="%(levelname)s - %(message)s")
     main()

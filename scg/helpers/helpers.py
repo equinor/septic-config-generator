@@ -1,7 +1,23 @@
 import os
+import sys
 from openpyxl import load_workbook
+import logging
+
+logger = logging.getLogger('scg.'+__name__)
 
 def read_source(source, root):
+    if not source['filename'].endswith('.xlsx'):
+        logging.error(f"Source files need to be xlsx.")
+        sys.exit()
+    filename = source['filename']
+    try:
+        wb = load_workbook(os.path.join(root, filename), read_only=True, data_only=True)
+    except:
+        msg = [f"Unable to open file: {'filename'}\n"]
+        msg.append(f" Source files need to exist in the root directory ({root}) and must have an extension '.xlsx'")
+        logging.error(''.join(msg))
+        sys.exit(1)
+
     wb = load_workbook(os.path.join(root, source['filename']), read_only=True, data_only=True)
     sheet = wb[source['sheet']]
     rows = sheet.max_row
