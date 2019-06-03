@@ -18,10 +18,13 @@ def main():
 @main.command()
 @click.option('--output', help='name of output file (overrides config option)')
 @click.option('--no-check', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
+@click.option('--silent', is_flag=True, default=False, help='only output warnings or errors.')
 @click.argument('config_file')
 def make(config_file, **kwargs):
     file_cfg = parse_config(config_file).data
     cfg = patch_config(file_cfg, kwargs)
+    if kwargs['silent']:
+        logger.setLevel(logging.WARNING)
 
     sources = get_all_source_data(cfg['sources'], cfg['path']['root'])
 
@@ -76,8 +79,11 @@ def make(config_file, **kwargs):
 @main.command()
 @click.argument('config_file')
 @click.option('--template', default='all', help='name of template file to revert. Default: all.')
+@click.option('--silent', is_flag=True, default=False, help='only output warnings or errors.')
 def revert(config_file, **kwargs):
     cfg = parse_config(config_file).data
+    if kwargs['silent']:
+        logger.setLevel(logging.WARNING)
 
     all_source_data = get_all_source_data(cfg['sources'], cfg['path']['root'])
 
@@ -95,6 +101,9 @@ def revert(config_file, **kwargs):
         if filename not in [x['name'] for x in cfg['layout']]:  # TODO: Check extension!
             logger.error(f"Template file '{kwargs['template']}' is not defined in config file. Don't know what to do with it.")
             continue
+
+        original_template = os.path.join(template_path, filename)
+        new_template = os.path.join(template_path, filename+'.new')
 
         for layout_item in cfg['layout']:
             if layout_item['name'] == filename:
@@ -133,11 +142,8 @@ def revert(config_file, **kwargs):
             for key in used_keys:
                 logger.info(f"'{key[0]}' -> '{key[1]}'")
 
-        f = open(os.path.join(master_path, filename), 'r')
-
-        txt = f.read()
-        f.close()
-        #print(txt)
+        f = open(new_template, 'w')
+        f.write(txt)
 
 
         #f = open(os.path.join(template_path, filename), 'w')
