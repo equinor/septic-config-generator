@@ -9,7 +9,7 @@ schema_source = Map({
     "filename": Str(),
     "sheet": Str(),
     Optional("type"): Str(),
-    Optional("safe_reverse"): Seq(Str())
+    Optional("safereverse"): Seq(Str())
 })
 
 schema_sources = Seq(schema_source)
@@ -22,6 +22,7 @@ schema_path = Map({
 schema_template = Map({
     "name": Str(),
     Optional("source"): Str(),
+    Optional("masterkey"): Str(),
     Optional("include"): Seq(Str()),
     Optional("exclude"): Seq(Str())
 })
@@ -29,7 +30,7 @@ schema_template = Map({
 schema_templategenerator = Map({
     "masterpath": Str(),
     "outputdir": Str(),
-    "master": Str(),
+    "masterkey": Str(),
     Optional("includeonly"): Seq(Str())
 })
 

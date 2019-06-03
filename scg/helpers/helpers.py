@@ -35,9 +35,17 @@ def read_source(source, root):
     #return (dict(item(i, j) for j in range(1, cols + 1 )) for i in range(2, rows + 1))
 
 
-def get_all_sources(sources, path):
+def get_all_source_data(sources, path):
     res = dict()
     for source in sources:
         s = read_source(source, path)
         res[source['id']] = s
     return res
+
+# def get_safe_reverse_from_sourceid(id, sources):
+#     safe_reverse = {}
+#     for source in sources:
+#         if source['id'] == id:
+#             safe_reverse = source['safe_reverse']
+#             break
+#     return safe_reverse

@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 import logging
 import click
@@ -6,7 +7,7 @@ import difflib
 import shutil
 from jinja2 import Environment, FileSystemLoader
 from helpers.config_parser import parse_config, patch_config
-from helpers.helpers import get_all_sources
+from helpers.helpers import get_all_source_data
 from helpers.version import __version__
 
 @click.group()
@@ -22,7 +23,7 @@ def make(config_file, **kwargs):
     file_cfg = parse_config(config_file).data
     cfg = patch_config(file_cfg, kwargs)
 
-    sources = get_all_sources(cfg['sources'], cfg['path']['root'])
+    sources = get_all_source_data(cfg['sources'], cfg['path']['root'])
 
     env = Environment(
         loader=FileSystemLoader(searchpath=os.path.join(cfg['path']['root'], cfg['path']['templatepath']))
@@ -74,34 +75,64 @@ def make(config_file, **kwargs):
 
 @main.command()
 @click.argument('config_file')
-
-def revert(config_file):
+@click.option('--template', default='all', help='name of template file to revert. Default: all.')
+def revert(config_file, **kwargs):
     cfg = parse_config(config_file).data
 
-    sources = get_all_sources(cfg['sources'], cfg['path']['root'])
+    all_source_data = get_all_source_data(cfg['sources'], cfg['path']['root'])
 
     master_path = os.path.join(cfg['path']['root'], cfg['templategenerator']['masterpath'])
     masters = [f for f in os.listdir(master_path) if os.path.isfile(os.path.join(master_path, f))]
     template_path = os.path.join(cfg['path']['root'], cfg['path']['templatepath'])
 
+    if kwargs['template'] != 'all' and kwargs['template'] not in masters:
+        logger.error(f"Unable to locate '{kwargs['template']}' in {master_path}")
+
     for filename in masters:
-        if 'includeonly' in cfg['templategenerator'] and filename not in cfg['templategenerator']['includeonly']:
+        if kwargs['template'] != 'all' and filename != kwargs['template']:  # TODO: Check extension!
             continue
-        not_found = True
-        for item in cfg['layout']:
-            if filename == item['name']:
-                not_found = False
+
+        if filename not in [x['name'] for x in cfg['layout']]:  # TODO: Check extension!
+            logger.error(f"Template file '{kwargs['template']}' is not defined in config file. Don't know what to do with it.")
+            continue
+
+        for layout_item in cfg['layout']:
+            if layout_item['name'] == filename:
                 break
-        source = sources[item['source']]
-        source = source[cfg['templategenerator']['master']]
+
+        source_data = all_source_data[layout_item['source']]
+        # Extract the data row to be used for reverse substitution.
+        # Masterkey can be overridden per layout item.
+        if 'masterkey' in layout_item:
+            masterkey = layout_item['masterkey']
+        elif 'masterkey' in cfg['templategenerator']:
+            masterkey = cfg['templategenerator']['masterkey']
+        else:
+            logger.error(f"No master defined in config file. No idea which row to use for reverse substitution. Exiting")
+            sys.exit(1)
+
+        if masterkey in source_data:
+            source_data = source_data[masterkey]
+        else:
+            logger.error(f"Unknown master '{masterkey}'. Exiting.")
+            sys.exit(1)
 
         f = open(os.path.join(master_path, filename), 'r')
         txt = f.read()
 
-        for key, value in source.items():
+        used_keys = []
+        for key, value in source_data.items():
             key = '{{ '+key+' }}'
-            txt = re.sub(value, key, txt)
-        #print(txt)
+            txt, num = re.subn(value, key, txt)
+            if num > 0:
+                used_keys.append((value, key))
+        if len(used_keys) == 0:
+            logger.info(f"No substitutions performed in {filename}")
+        else:
+            logger.info(f"Substitutions in {filename}:")
+            for key in used_keys:
+                logger.info(f"'{key[0]}' -> '{key[1]}'")
+
         f = open(os.path.join(master_path, filename), 'r')
 
         txt = f.read()
@@ -121,11 +152,25 @@ def diff_cnfgs(original_config, new_config):
     new = open(new_config).readlines()
     return difflib.unified_diff(orig, new, fromfile=original_config, tofile=new_config)
 
+class logFormatter(logging.Formatter):
+
+    FORMATS = {
+        logging.INFO: "%(msg)s",
+        "DEFAULT": "%(levelname)s [%(name)s] - %(msg)s"
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno, self.FORMATS['DEFAULT'])
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
 if __name__ == '__main__':
     logger = logging.getLogger('scg')
     ch = logging.StreamHandler()
-    cf = logging.Formatter("%(levelname)s [%(name)s] - %(message)s ")
+    cf = logging.Formatter("%(levelname)s [%(name)s] - %(msg)s ")
+    cf = logFormatter()
     ch.setFormatter(cf)
     logger.addHandler(ch)
+    logger.setLevel(logging.INFO)
 
     main()
