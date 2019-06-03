@@ -100,13 +100,13 @@ Here is an example of a dynamic template file:
          Text1=  "D{{ Id }}: Bottom hole pressure"
          Text2=  ""
         CvrTag=  "D{{ Id }}Pbh "
-       MeasTag=  "MOD.D-13UIC0904/PBH_YX/PRIM"
+       MeasTag=  "MOD.D-13UIC{{ Id }}04/PBH_YX/PRIM"
          IdTag=  ""
-         SpTag=  "MOD.D-13UIC0904/PBH_YR/PRIM"
+         SpTag=  "MOD.D-13UIC{{ Id }}04/PBH_YR/PRIM"
 
 ```
 We want the contents of this file to be copied into the final configuration file three
-times, one for each of the wells. The value `{{ Id }}` will be substituted with the 
+times, one for each of the wells. The value `{{ Id }}` will be substituted by the 
 corresponding values from the Excel table.
  
 
