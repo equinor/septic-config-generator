@@ -1,3 +1,4 @@
 openpyxl
 strictyaml
 jinja2
+pyinstaller
