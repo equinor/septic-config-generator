@@ -1,9 +1,43 @@
 import os
 import sys
+import shutil
 from openpyxl import load_workbook
 import logging
+import difflib
 
 logger = logging.getLogger('scg.'+__name__)
+
+def diff_cnfgs(original_config, new_config):
+    orig = open(original_config).readlines()
+    new = open(new_config).readlines()
+    return difflib.unified_diff(orig, new, fromfile=original_config, tofile=new_config)
+
+def diff_backup_and_replace(original, new, check=True):
+    if os.path.exists(original):
+        backup = original + '.bak'
+        if check:
+            origtxt = open(original).readlines()
+            newtxt = open(new).readlines()
+            diff = difflib.unified_diff(origtxt, newtxt, fromfile=original, tofile=new)
+            txt = [line for line in diff]
+            if len(txt) > 0:
+                print(''.join(txt))
+                q = input("Replace original? [Y]es or [N]o: ")
+                if len(q) > 0 and q[0].lower() == 'y':
+                    if os.path.isfile(backup):
+                        os.remove(backup)
+                    shutil.move(original, backup)
+                    shutil.move(new, original)
+                else:
+                    os.remove(new)
+            else:
+                logger.info("No change. Keeping original.")
+                os.remove(new)
+        else:
+            shutil.move(original, backup)
+            shutil.move(new, original)
+    else:
+        shutil.move(new, original)
 
 def read_source(source, root):
     if not source['filename'].endswith('.xlsx'):

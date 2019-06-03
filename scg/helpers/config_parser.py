@@ -1,6 +1,6 @@
 import sys
 import logging
-from strictyaml import Map, Decimal, Str, Seq, MapPattern, CommaSeparated, Optional, load, Int, Bool
+from strictyaml import Map, Str, Seq, Optional, load, Bool
 
 logger = logging.getLogger('scg.'+__name__)
 
@@ -60,8 +60,8 @@ def parse_config(filename):
         sys.exit()
 
 def patch_config(cfg, overrides):
-    if overrides['output'] is not None:
+    if 'output' in overrides and overrides['output'] is not None:
         cfg['output'] = overrides['output']
-    if overrides['no_check']:
+    if 'no_check' in overrides and overrides['no_check']:
         cfg['check'] = False
     return cfg

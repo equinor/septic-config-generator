@@ -4,10 +4,9 @@ import sys
 import logging
 import click
 import difflib
-import shutil
 from jinja2 import Environment, FileSystemLoader
 from helpers.config_parser import parse_config, patch_config
-from helpers.helpers import get_all_source_data
+from helpers.helpers import get_all_source_data, diff_backup_and_replace
 from helpers.version import __version__
 
 @click.group()
@@ -51,37 +50,17 @@ def make(config_file, **kwargs):
                 if row in items:
                     f.write(temp.render(values))
 
-    if os.path.exists(original_cnfgfile):
-        backup_cnfgfile = original_cnfgfile + '.bak'
-        if cfg['check']:
-            diff = diff_cnfgs(original_cnfgfile, new_cnfgfile)
-            txt = [line for line in diff]
-            if len(txt) > 0:
-                print(''.join(txt))
-                q = input("Replace original? [Y]es or [N]o: ")
-                if len(q) > 0 and q[0].lower() == 'y':
-                    backup_cnfgfile = original_cnfgfile+'.bak'
-                    if os.path.isfile(backup_cnfgfile):
-                        os.remove(backup_cnfgfile)
-                    shutil.move(original_cnfgfile, backup_cnfgfile)
-                    shutil.move(new_cnfgfile, original_cnfgfile)
-                else:
-                    os.remove(new_cnfgfile)
-            else:
-                print("No change. Keeping original config.")
-                os.remove(new_cnfgfile)
-        else:
-            shutil.move(original_cnfgfile, backup_cnfgfile)
-            shutil.move(new_cnfgfile, original_cnfgfile)
-    else:
-        shutil.move(new_cnfgfile, original_cnfgfile)
+    diff_backup_and_replace(original_template, new_template, cfg['check'])
 
 @main.command()
 @click.argument('config_file')
 @click.option('--template', default='all', help='name of template file to revert. Default: all.')
+@click.option('--no-check', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
 @click.option('--silent', is_flag=True, default=False, help='only output warnings or errors.')
 def revert(config_file, **kwargs):
-    cfg = parse_config(config_file).data
+    file_cfg = parse_config(config_file).data
+    cfg = patch_config(file_cfg, kwargs)
+
     if kwargs['silent']:
         logger.setLevel(logging.WARNING)
 
@@ -128,6 +107,7 @@ def revert(config_file, **kwargs):
 
         f = open(os.path.join(master_path, filename), 'r')
         txt = f.read()
+        f.close()
 
         used_keys = []
         for key, value in source_data.items():
@@ -144,19 +124,20 @@ def revert(config_file, **kwargs):
 
         f = open(new_template, 'w')
         f.write(txt)
+        f.close()
 
+        diff_backup_and_replace(original_template, new_template, cfg['check'])
 
-        #f = open(os.path.join(template_path, filename), 'w')
-        #f.write(txt)
-        #f.close()
-
-#@main.command()
-#@click.argument('original_config')
-#@click.argument('new_config')
-def diff_cnfgs(original_config, new_config):
-    orig = open(original_config).readlines()
-    new = open(new_config).readlines()
-    return difflib.unified_diff(orig, new, fromfile=original_config, tofile=new_config)
+@main.command()
+@click.argument('originalfile')
+@click.argument('newfile')
+def diff(originalfile, newfile):
+    orig = open(originalfile).readlines()
+    new = open(newfile).readlines()
+    diff = difflib.unified_diff(orig, new, fromfile=originalfile, tofile=newfile)
+    txt = [line for line in diff]
+    if len(txt) > 0:
+        print(''.join(txt))
 
 class logFormatter(logging.Formatter):
 
