@@ -75,12 +75,12 @@ def revert(config_file, **kwargs):
         logger.error(f"Unable to locate '{kwargs['template']}' in {master_path}")
 
     for filename in masters:
-        if kwargs['template'] != 'all' and filename != kwargs['template']:  # TODO: Check extension!
-            continue
-
-        if filename not in [x['name'] for x in cfg['layout']]:  # TODO: Check extension!
-            logger.error(f"Template file '{kwargs['template']}' is not defined in config file. Don't know what to do with it.")
-            continue
+        if kwargs['template'] != 'all':
+            if filename != kwargs['template']:
+                continue
+            if filename not in [x['name'] for x in cfg['layout']]:
+                logger.error(f"Template file '{kwargs['template']}' is not defined in config file. Don't know what to do with it.")
+                continue
 
         original_template = os.path.join(template_path, filename)
         new_template = os.path.join(template_path, filename+'.new')
