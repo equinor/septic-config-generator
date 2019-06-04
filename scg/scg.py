@@ -39,6 +39,8 @@ def make(config_file, **kwargs):
             temp = env.get_template(template['name'])
             if not 'source' in template:
                 f.write(temp.render({}))
+                if str(temp.module)[-1] != '\n':
+                    f.write('\n')
                 continue
             if 'include' in template:
                 items = template['include']
@@ -50,6 +52,8 @@ def make(config_file, **kwargs):
             for row, values in sources[template['source']].items():
                 if row in items:
                     f.write(temp.render(values))
+                    if str(temp.module)[-1] != '\n':
+                        f.write('\n')
 
     diff_backup_and_replace(original_cnfgfile, new_cnfgfile, cfg['check'])
 
