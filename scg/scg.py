@@ -28,7 +28,8 @@ def make(config_file, **kwargs):
     sources = get_all_source_data(cfg['sources'], cfg['path']['root'])
 
     env = Environment(
-        loader=FileSystemLoader(searchpath=os.path.join(cfg['path']['root'], cfg['path']['templatepath']))
+        loader=FileSystemLoader(searchpath=os.path.join(cfg['path']['root'], cfg['path']['templatepath'])),
+        keep_trailing_newline=True
     )
 
     original_cnfgfile = cfg['output']
@@ -37,7 +38,7 @@ def make(config_file, **kwargs):
         for template in cfg['layout']:
             temp = env.get_template(template['name'])
             if not 'source' in template:
-                f.write(print(temp.render({})))
+                f.write(temp.render({}))
                 continue
             if 'include' in template:
                 items = template['include']
@@ -50,7 +51,7 @@ def make(config_file, **kwargs):
                 if row in items:
                     f.write(temp.render(values))
 
-    diff_backup_and_replace(original_template, new_template, cfg['check'])
+    diff_backup_and_replace(original_cnfgfile, new_cnfgfile, cfg['check'])
 
 @main.command()
 @click.argument('config_file')
