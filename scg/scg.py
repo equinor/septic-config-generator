@@ -4,7 +4,7 @@ import sys
 import logging
 import click
 import difflib
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from helpers.config_parser import parse_config, patch_config
 from helpers.helpers import get_all_source_data, diff_backup_and_replace
 from helpers.version import __version__
@@ -34,7 +34,8 @@ def make(config_file, **kwargs):
         loader=FileSystemLoader(searchpath=os.path.join(root_path,
                                                         cfg['templatepath']),
                                 encoding='cp1252'),
-        keep_trailing_newline=True
+        keep_trailing_newline=True,
+        undefined=StrictUndefined
     )
 
     original_cnfgfile = os.path.join(root_path, cfg['outputfile'])
@@ -44,9 +45,10 @@ def make(config_file, **kwargs):
         for template in cfg['layout']:
             temp = env.get_template(template['name'])
             if not 'source' in template:
-                f.write(temp.render({}))
-                if str(temp.module)[-1] != '\n':
-                    f.write('\n')
+                rendered = temp.render({})
+                if rendered[-1] != '\n':
+                    rendered += '\n'
+                f.write(rendered)
                 continue
             if 'include' in template:
                 items = template['include']
@@ -57,9 +59,10 @@ def make(config_file, **kwargs):
 
             for row, values in all_source_data[template['source']].items():
                 if row in items:
-                    f.write(temp.render(values))
-                    if str(temp.module)[-1] != '\n':
-                        f.write('\n')
+                    rendered = temp.render(values)
+                    if rendered[-1] != '\n':
+                        rendered += '\n'
+                    f.write(rendered)
 
     diff_backup_and_replace(original_cnfgfile, new_cnfgfile, cfg['verifycontent'])
 
