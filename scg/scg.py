@@ -28,7 +28,9 @@ def make(config_file, **kwargs):
     sources = get_all_source_data(cfg['sources'], cfg['path']['root'])
 
     env = Environment(
-        loader=FileSystemLoader(searchpath=os.path.join(cfg['path']['root'], cfg['path']['templatepath'])),
+        loader=FileSystemLoader(searchpath=os.path.join(cfg['path']['root'],
+                                                        cfg['path']['templatepath']),
+                                encoding='cp1252'),
         keep_trailing_newline=True
     )
 
