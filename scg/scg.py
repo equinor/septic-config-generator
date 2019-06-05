@@ -160,7 +160,7 @@ class logFormatter(logging.Formatter):
 
     FORMATS = {
         logging.INFO: "%(msg)s",
-        "DEFAULT": "%(levelname)s [%(name)s] - %(msg)s"
+        "DEFAULT": "%(levelname)s - %(msg)s"
     }
 
     def format(self, record):
@@ -171,7 +171,7 @@ class logFormatter(logging.Formatter):
 if __name__ == '__main__':
     logger = logging.getLogger('scg')
     ch = logging.StreamHandler()
-    cf = logging.Formatter("%(levelname)s [%(name)s] - %(msg)s ")
+    cf = logging.Formatter("%(levelname)s - %(msg)s ")
     cf = logFormatter()
     ch.setFormatter(cf)
     logger.addHandler(ch)
