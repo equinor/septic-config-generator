@@ -15,7 +15,7 @@ def main():
     pass
 
 @main.command()
-@click.option('--output', help='name of output file (overrides config option)')
+@click.option('--output', help='name of output file (overrides config option "outputfile")')
 @click.option('--no-verify', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
 @click.option('--silent', is_flag=True, default=False, help='only output warnings or errors.')
 @click.argument('config_file')
@@ -32,7 +32,7 @@ def make(config_file, **kwargs):
 
     env = Environment(
         loader=FileSystemLoader(searchpath=os.path.join(root_path,
-                                                        cfg['paths']['templatepath']),
+                                                        cfg['templatepath']),
                                 encoding='cp1252'),
         keep_trailing_newline=True
     )
@@ -79,19 +79,20 @@ def revert(config_file, **kwargs):
 
     all_source_data = get_all_source_data(cfg['sources'], root_path)
 
-    master_path = os.path.join(root_path, cfg['paths']['masterpath'])
+    master_path = os.path.join(root_path, cfg['masterpath'])
     masters = [f for f in os.listdir(master_path) if os.path.isfile(os.path.join(master_path, f))]
-    template_path = os.path.join(root_path, cfg['paths']['templatepath'])
+    template_path = os.path.join(root_path, cfg['templatepath'])
 
     if kwargs['template'] != 'all' and kwargs['template'] not in masters:
-        logger.error(f"Unable to locate '{kwargs['template']}' in {master_path}")
+        logger.error(f"Unable to locate '{kwargs['template']}' in {master_path}. Exiting.")
+        sys.exit(1)
 
     for filename in masters:
         if kwargs['template'] != 'all':
             if filename != kwargs['template']:
                 continue
             if filename not in [x['name'] for x in cfg['layout']]:
-                logger.error(f"Template '{kwargs['template']}' is not defined in config file. Ignoring.")
+                logger.warning(f"Template '{kwargs['template']}' is not defined in config file. Ignoring.")
                 continue
 
         original_template = os.path.join(template_path, filename)
@@ -102,24 +103,20 @@ def revert(config_file, **kwargs):
                 break
 
         if not 'source' in layout_item:
-            logger.warning(f"No source defined for {layout_item['name']}. Move this master to templates-dir.")
+            logger.warning(f"No source defined for {layout_item['name']}. Move this file to templates-dir instead.")
             continue
 
         source_data = all_source_data[layout_item['source']]
         # Extract the data row to be used for reverse substitution.
         # Masterkey can be overridden per layout item.
-        if 'masterkey' in layout_item:
-            masterkey = layout_item['masterkey']
-        elif 'masterkey' in cfg['templategenerator']:
-            masterkey = cfg['templategenerator']['masterkey']
-        else:
-            logger.error(f"No master defined in config file. No idea which row to use for reverse substitution. Exiting")
+        masterkey = layout_item.get('masterkey', cfg.get('masterkey', None))
+        if not masterkey:
+            logger.error(f"No masterkey defined in config file. No idea which row to use for reverse substitution. Exiting")
             sys.exit(1)
 
-        if masterkey in source_data:
-            source_data = source_data[masterkey]
-        else:
-            logger.error(f"Unknown master '{masterkey}'. Exiting.")
+        source_data = source_data.get(masterkey, None)
+        if not source_data:
+            logger.error(f"Specified masterkey '{masterkey}' not found in source '{layout_item['source']}'. Exiting.")
             sys.exit(1)
 
         f = open(os.path.join(master_path, filename), 'r')

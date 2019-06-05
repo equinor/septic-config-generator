@@ -41,15 +41,13 @@ def diff_backup_and_replace(original, new, verify=True):
 
 def read_source(source, root):
     if not source['filename'].endswith('.xlsx'):
-        logging.error(f"Source files need to be xlsx.")
+        logger.error(f"Source files need to be xlsx. Please check source '{source['id']}'")
         sys.exit()
     filename = source['filename']
     try:
         wb = load_workbook(os.path.join(root, filename), read_only=True, data_only=True)
     except:
-        msg = [f"Unable to open file: '{filename}'\n"]
-        msg.append(f" Source files need to exist in the root directory ({root}) and must have an extension '.xlsx'")
-        logging.error(''.join(msg))
+        logger.error(f"Unable to read '{source['filename']}' which belongs to source '{source['id']}'")
         sys.exit(1)
 
     wb = load_workbook(os.path.join(root, source['filename']), read_only=True, data_only=True)

@@ -11,13 +11,6 @@ schema_source = Map({
     Optional("type"): Str(),
 })
 
-schema_sources = Seq(schema_source)
-
-schema_paths = Map({
-    "templatepath": Str(),
-    "masterpath": Str()
-})
-
 schema_template = Map({
     "name": Str(),
     Optional("source"): Str(),
@@ -26,16 +19,13 @@ schema_template = Map({
     Optional("exclude"): Seq(Str())
 })
 
-schema_templategenerator = Map({
-    "masterkey": Str(),
-})
-
 schema = Map({
     "outputfile": Str(),
-    "paths": schema_paths,
+    "templatepath": Str(),
+    "masterpath": Str(),
+    Optional("masterkey"): Str(),
     "sources": Seq(schema_source),
     "layout": Seq(schema_template),
-    Optional("templategenerator"): schema_templategenerator,
     Optional("verifycontent", default=True): Bool()
 })
 
@@ -53,11 +43,11 @@ def parse_config(filename):
         return cfg
     except Exception as e:
         logger.error(f"{e}",)
-        sys.exit()
+        sys.exit(1)
 
 def patch_config(cfg, overrides):
     if 'output' in overrides and overrides['output'] is not None:
-        cfg['output'] = overrides['output']
+        cfg['outputfile'] = overrides['outputfile']
     if 'no_verify' in overrides and overrides['no_verify']:
         cfg['verifycontent'] = False
     return cfg
