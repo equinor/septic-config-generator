@@ -12,10 +12,10 @@ def diff_cnfgs(original_config, new_config):
     new = open(new_config).readlines()
     return difflib.unified_diff(orig, new, fromfile=original_config, tofile=new_config)
 
-def diff_backup_and_replace(original, new, check=True):
+def diff_backup_and_replace(original, new, verify=True):
     if os.path.exists(original):
         backup = original + '.bak'
-        if check:
+        if verify:
             origtxt = open(original).readlines()
             newtxt = open(new).readlines()
             diff = difflib.unified_diff(origtxt, newtxt, fromfile=original, tofile=new)
@@ -75,11 +75,3 @@ def get_all_source_data(sources, path):
         s = read_source(source, path)
         res[source['id']] = s
     return res
-
-# def get_safe_reverse_from_sourceid(id, sources):
-#     safe_reverse = {}
-#     for source in sources:
-#         if source['id'] == id:
-#             safe_reverse = source['safe_reverse']
-#             break
-#     return safe_reverse

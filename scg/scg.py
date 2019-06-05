@@ -14,29 +14,18 @@ from helpers.version import __version__
 def main():
     pass
 
-def get_root_path(cfgdir, root):
-    p = os.path.join(cfgdir, root)
-    if not p:
-        p = '.'
-    if os.path.isdir(p):
-        return(p)
-    else:
-        logger.error(f"Path '{p}' is not a directory. Please fix root parameter in your yaml config.")
-        sys.exit(1)
-
 @main.command()
 @click.option('--output', help='name of output file (overrides config option)')
-@click.option('--no-check', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
+@click.option('--no-verify', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
 @click.option('--silent', is_flag=True, default=False, help='only output warnings or errors.')
 @click.argument('config_file')
 def make(config_file, **kwargs):
     file_cfg = parse_config(config_file).data
     cfg = patch_config(file_cfg, kwargs)
+
     if kwargs['silent']:
         logger.setLevel(logging.WARNING)
 
-#    cfg_dir = os.path.dirname(config_file)
-#    root_path = get_root_path(cfg_dir, cfg['path']['root'])
     root_path = os.path.dirname(config_file)
 
     all_source_data = get_all_source_data(cfg['sources'], root_path)
@@ -72,21 +61,20 @@ def make(config_file, **kwargs):
                     if str(temp.module)[-1] != '\n':
                         f.write('\n')
 
-    diff_backup_and_replace(original_cnfgfile, new_cnfgfile, cfg['check'])
+    diff_backup_and_replace(original_cnfgfile, new_cnfgfile, cfg['verifycontent'])
 
 @main.command()
 @click.argument('config_file')
 @click.option('--template', default='all', help='name of template file to revert. Default: all.')
-@click.option('--no-check', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
+@click.option('--no-verify', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
 @click.option('--silent', is_flag=True, default=False, help='only output warnings or errors.')
 def revert(config_file, **kwargs):
     file_cfg = parse_config(config_file).data
     cfg = patch_config(file_cfg, kwargs)
+
     if kwargs['silent']:
         logger.setLevel(logging.WARNING)
 
-#    cfg_dir = os.path.dirname(config_file)
-#    root_path = get_root_path(cfg_dir, cfg['path']['root'])
     root_path = os.path.dirname(config_file)
 
     all_source_data = get_all_source_data(cfg['sources'], root_path)
@@ -155,7 +143,7 @@ def revert(config_file, **kwargs):
         f.write(txt)
         f.close()
 
-        diff_backup_and_replace(original_template, new_template, cfg['check'])
+        diff_backup_and_replace(original_template, new_template, cfg['verifycontent'])
 
 @main.command()
 @click.argument('originalfile')

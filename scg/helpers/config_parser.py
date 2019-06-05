@@ -9,7 +9,6 @@ schema_source = Map({
     "filename": Str(),
     "sheet": Str(),
     Optional("type"): Str(),
-    Optional("safereverse"): Seq(Str())
 })
 
 schema_sources = Seq(schema_source)
@@ -37,7 +36,7 @@ schema = Map({
     "sources": Seq(schema_source),
     "layout": Seq(schema_template),
     Optional("templategenerator"): schema_templategenerator,
-    Optional("check", default=True): Bool()
+    Optional("verifycontent", default=True): Bool()
 })
 
 
@@ -59,6 +58,6 @@ def parse_config(filename):
 def patch_config(cfg, overrides):
     if 'output' in overrides and overrides['output'] is not None:
         cfg['output'] = overrides['output']
-    if 'no_check' in overrides and overrides['no_check']:
-        cfg['check'] = False
+    if 'no_verify' in overrides and overrides['no_verify']:
+        cfg['verifycontent'] = False
     return cfg
