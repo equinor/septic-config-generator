@@ -14,6 +14,16 @@ from helpers.version import __version__
 def main():
     pass
 
+def get_root_path(cfgdir, root):
+    p = os.path.join(cfgdir, root)
+    if not p:
+        p = '.'
+    if os.path.isdir(p):
+        return(p)
+    else:
+        logger.error(f"Path '{p}' is not a directory. Please fix root parameter in your yaml config.")
+        sys.exit(1)
+
 @main.command()
 @click.option('--output', help='name of output file (overrides config option)')
 @click.option('--no-check', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
@@ -25,17 +35,22 @@ def make(config_file, **kwargs):
     if kwargs['silent']:
         logger.setLevel(logging.WARNING)
 
-    sources = get_all_source_data(cfg['sources'], cfg['path']['root'])
+#    cfg_dir = os.path.dirname(config_file)
+#    root_path = get_root_path(cfg_dir, cfg['path']['root'])
+    root_path = os.path.dirname(config_file)
+
+    all_source_data = get_all_source_data(cfg['sources'], root_path)
 
     env = Environment(
-        loader=FileSystemLoader(searchpath=os.path.join(cfg['path']['root'],
-                                                        cfg['path']['templatepath']),
+        loader=FileSystemLoader(searchpath=os.path.join(root_path,
+                                                        cfg['paths']['templatepath']),
                                 encoding='cp1252'),
         keep_trailing_newline=True
     )
 
-    original_cnfgfile = cfg['output']
+    original_cnfgfile = os.path.join(root_path, cfg['outputfile'])
     new_cnfgfile = original_cnfgfile+'.new'
+
     with open(new_cnfgfile, 'w') as f:
         for template in cfg['layout']:
             temp = env.get_template(template['name'])
@@ -47,11 +62,11 @@ def make(config_file, **kwargs):
             if 'include' in template:
                 items = template['include']
             else:
-                items = list(sources[template['source']].keys())
+                items = list(all_source_data[template['source']].keys())
                 if 'exclude' in template:
                     items = [x for x in items if x not in template['exclude']]
 
-            for row, values in sources[template['source']].items():
+            for row, values in all_source_data[template['source']].items():
                 if row in items:
                     f.write(temp.render(values))
                     if str(temp.module)[-1] != '\n':
@@ -67,15 +82,18 @@ def make(config_file, **kwargs):
 def revert(config_file, **kwargs):
     file_cfg = parse_config(config_file).data
     cfg = patch_config(file_cfg, kwargs)
-
     if kwargs['silent']:
         logger.setLevel(logging.WARNING)
 
-    all_source_data = get_all_source_data(cfg['sources'], cfg['path']['root'])
+#    cfg_dir = os.path.dirname(config_file)
+#    root_path = get_root_path(cfg_dir, cfg['path']['root'])
+    root_path = os.path.dirname(config_file)
 
-    master_path = os.path.join(cfg['path']['root'], cfg['templategenerator']['masterpath'])
+    all_source_data = get_all_source_data(cfg['sources'], root_path)
+
+    master_path = os.path.join(root_path, cfg['paths']['masterpath'])
     masters = [f for f in os.listdir(master_path) if os.path.isfile(os.path.join(master_path, f))]
-    template_path = os.path.join(cfg['path']['root'], cfg['path']['templatepath'])
+    template_path = os.path.join(root_path, cfg['paths']['templatepath'])
 
     if kwargs['template'] != 'all' and kwargs['template'] not in masters:
         logger.error(f"Unable to locate '{kwargs['template']}' in {master_path}")
@@ -85,15 +103,19 @@ def revert(config_file, **kwargs):
             if filename != kwargs['template']:
                 continue
             if filename not in [x['name'] for x in cfg['layout']]:
-                logger.error(f"Template file '{kwargs['template']}' is not defined in config file. Don't know what to do with it.")
+                logger.error(f"Template '{kwargs['template']}' is not defined in config file. Ignoring.")
                 continue
 
         original_template = os.path.join(template_path, filename)
-        new_template = os.path.join(template_path, filename+'.new')
+        new_template = original_template + '.new'
 
         for layout_item in cfg['layout']:
             if layout_item['name'] == filename:
                 break
+
+        if not 'source' in layout_item:
+            logger.warning(f"No source defined for {layout_item['name']}. Move this master to templates-dir.")
+            continue
 
         source_data = all_source_data[layout_item['source']]
         # Extract the data row to be used for reverse substitution.
@@ -123,9 +145,9 @@ def revert(config_file, **kwargs):
             if num > 0:
                 used_keys.append((value, key))
         if len(used_keys) == 0:
-            logger.info(f"No substitutions performed in {filename}")
+            logger.info(f"{filename} substitutions: None")
         else:
-            logger.info(f"Substitutions in {filename}:")
+            logger.info(f"{filename} substitutions:")
             for key in used_keys:
                 logger.info(f"'{key[0]}' -> '{key[1]}'")
 

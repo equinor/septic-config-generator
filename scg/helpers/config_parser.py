@@ -14,9 +14,9 @@ schema_source = Map({
 
 schema_sources = Seq(schema_source)
 
-schema_path = Map({
-    "root": Str(),
-    "templatepath": Str()
+schema_paths = Map({
+    "templatepath": Str(),
+    "masterpath": Str()
 })
 
 schema_template = Map({
@@ -28,15 +28,12 @@ schema_template = Map({
 })
 
 schema_templategenerator = Map({
-    "masterpath": Str(),
-    "outputdir": Str(),
     "masterkey": Str(),
-    Optional("includeonly"): Seq(Str())
 })
 
 schema = Map({
-    "output": Str(),
-    "path": schema_path,
+    "outputfile": Str(),
+    "paths": schema_paths,
     "sources": Seq(schema_source),
     "layout": Seq(schema_template),
     Optional("templategenerator"): schema_templategenerator,
@@ -50,7 +47,7 @@ def parse_config(filename):
     try:
         f = open(filename, 'r')
     except:
-        logger.error(f"File not found: '{filename}'.\n Config files need to be on the format 'filename.yaml'.")
+        logger.error(f"Config file not found: '{filename}'.")
         sys.exit(1)
     try:
         cfg = load(f.read(), schema, label=filename)

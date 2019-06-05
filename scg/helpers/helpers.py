@@ -47,7 +47,7 @@ def read_source(source, root):
     try:
         wb = load_workbook(os.path.join(root, filename), read_only=True, data_only=True)
     except:
-        msg = [f"Unable to open file: {'filename'}\n"]
+        msg = [f"Unable to open file: '{filename}'\n"]
         msg.append(f" Source files need to exist in the root directory ({root}) and must have an extension '.xlsx'")
         logging.error(''.join(msg))
         sys.exit(1)
