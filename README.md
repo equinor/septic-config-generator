@@ -1,15 +1,35 @@
 # SEPTIC config generator
 
-SEPTIC config generator (scg) is a tool to generate SEPTIC configs based on one or more templates,
-one or more Excel-tables containing substitution values, and a config file that defines how the templates
-should be combined.
+SEPTIC config generator (scg) is a tool to generate SEPTIC configs based on one or more 
+templates files, one or more Excel-tables containing substitution values, and a config 
+file that defines how the templates should be combined by inserting values from the
+Excel tables in uniquely identified locations.
 
+The tool is ready for use, but should be used with care. Ensure you do not overwrite
+the only copy of your perfectly working config.
+ 
 ## Introduction
 
-The tool has three modes of operation:
- - make: Generate complete config file based on templates
- - revert: Regenerate one or more template files based on parts of config files.
- - diff: Simply utility to show difference between two files.  
+Upon inspecting a SEPTIC configuration file, you will find that it can be segmented into 
+segments where some segments are static while others are repeated for several wells 
+(or some other entity) with only minor modifications.
+
+For example: The initial `System` section of the SEPTIC config is a static part that only
+occurs once. The following `SopcProc` section usually contains a static header followed 
+by the definition of a number of `SopcXvr`. The latter part usually consists of many 
+repeating values for all wells. Following this, you will normally have one or more 
+`DmmyAppl` sections that contain a mixture of common elements and per-well elements, and
+similarly for other sections. 
+
+By extracting these segments and placing them into separate template files, where the
+repeating parts are replaced by identifier tags, this tool can recombine the templates
+into a fully working SEPTIC config. Some key advantages are:
+- Changes made to one well can be quickly propagated  to other wells.
+- Adding wells to an existing config is as simple as specifying some key information 
+for the new wells and re-running tool. 
+- Ensuring that a few templates and a table are correct is much easier than ensuring that
+all wells are perfectly specified with the correct tags in the final config. This reduces 
+the risk of faulty configs which can lead to faulty operation.
 
 ## Installation 
 
@@ -18,17 +38,30 @@ download a precompiled executable from [\\\\statoil.net\dfs\common\TPD\RD_Data\P
 on G-disk. Place scg.exe somewhere in your path, preferably in the directory where you place all your SEPTIC configs.
 In the following, this directory is assumed to be `C:\Appl\SEPTIC`.
 
+## Basic usage
+
+The tool has three commands (or modes of operation):
+ - make: Generate complete config file based on templates
+ - revert: Regenerate one or more template files based on parts of config files.
+ - diff: Simply utility to show difference between two files.  
+
+Type `scg.exe --help` to get basic help information for the tool. You can also get help
+for each command, e.g. `scg.exe make --help`.
+
 ## Preparation
 
 It is easiest to explain how to use the tool by example. In the file-set you will find a 
-directory called `basic example`. This directory contains the following directories and files:
+directory called `basic example`. This directory contains the following directories and 
+files:
 - templates: A directory containing the templates that make up a SEPTIC config file.
-- example.yaml: Defines how the template files should be combined to create example_final.conf
+- example.yaml: Defines how the template files should be combined to create 
+example_final.conf
 - example.xlsx: An Excel file that contains data to insert into the templates.
-- masters: A directory containing segments of the SEPTIC config file that can be reverted into templates.
+- masters: A directory containing segments of the SEPTIC config file that can be reverted 
+into templates.
 - example.cnfg The resulting SEPTIC config file. 
  
-Download and copy the entire directory called `basic example` to `C:\Appl\SEPTIC`  
+Download and copy the entire directory called `basic example` to `C:\Appl\SEPTIC`.  
 
 ## The template files
 
@@ -36,7 +69,8 @@ Take a look in the templates directory. You will find a number of template files
 can be combined to create a final `example.cnfg`.  
 
 Upon inspecting the files, you will see that some of them contain text within double 
-curly braces, e.g. `{{ Id }}`. These are the parts that will be replaced.
+curly braces, e.g. `{{ Id }}`. These are identifier tags for the parts that will be 
+replaced.
 
 The files that do not contain tags are static, and will normally be used only once in 
 the final config. The files that contain tags are dynamic and will by default be replicated
@@ -44,32 +78,33 @@ once for each row that is defined in the Excel file.
 
 Regarding file naming:
 - It is not necessary to enumerate the files as is done here, but it may make it easier
-to stay on top of the layout of the final config file.
-- It is also a good idea to indicate in the file names which of the files contain 
-parameters for substitution. In the example, those files end with `_well`. This is 
-of course not required.
+to understand the layout of the final config file.
+- It is also a good idea, although not required, to indicate in the file names which 
+of the files contain parameters for substitution. In the example, those files end 
+with `_well`. 
   
 ## The Excel file
 
 The file `example.xlsx` contains a single worksheet with a simple table. This is the file
-from which we will pick values to insert into the templates. 
+from which we will fetch values to insert into the templates. 
 
-The first row contains the substitution tags. These tags correspond to the tags you saw
-in curly braces in the template files. Please note that the are case sensitive.
+The first row contains the identifier tags. These tags correspond to the tags you saw
+in curly braces in the template files. The tags are case sensitive.
 
-Each item, in this case well, is listed in the following rows. The value in the first
-column is a unique identifier for the item, and is not available for substitution. The
-following columns contain the values that will be substituted for the item into the
-tags that correspond with the values in the first row. 
+Each item, in this case each well, is listed in the following rows. The value in the 
+first column is a unique identifier for the item, and is not available for substitution 
+in the template. The following columns contain the values that will be substituted for 
+the item into the tags that correspond with the values in the first row. 
 
 Please note:
 - As mentioned, the tag names (first row) are case sensitive. You must ensure that these
-are exactly the same as the tags defined in the templates. However, any typo here will
-result in an error message upon config generation.
+are exactly the same as the tags defined in the templates. Any typo will result in an 
+error message upon config generation, so no need to worry about broken configs. 
 - All values must be formatted exactly the way you want them to appear in the final config.
 In most cases, this means you have to ensure the values are strings, not numbers. In Excel,
 this is done by prepending numbers with `'`. So if you want `D{{ Id }}` to become 
-`D01` instead of `D1`, you should input `'01` instead of `1` in the Id field.     
+`D01` instead of `D1`, you should input `'01` instead of `1` in the Id field.
+- The use of formulas and any kind of text formatting is allowed.     
 
 ## The config file
 
@@ -89,10 +124,12 @@ All paths are relative to the directory in which `example.yaml` is found.
 Ignore `masterkey` for now.
 
 When generating a config file, the default behaviour is to present any difference
-between a previously generated config file and the new config before asking whether 
+between a previously generated config file and the new config as a 
+[unified diff](https://en.wikipedia.org/wiki/Diff#Unified_format) before asking whether 
 it is ok to replace the original. The original config will be renamed with the extension 
 '.bak' before being replaced. If, for any reason, you don't want to be bothered with this
-question, you can set `verifycontent` to `no`. 
+question, you can set `verifycontent` to `no` or override by adding the option 
+`--no-verify` on the command line. 
   
 The next section defines an Excel file that should be used to substitute values in the
 template files:
@@ -106,10 +143,14 @@ The source references a worksheet called `Sheet1` in the Excel file `example.xls
 is given a unique id `main`. The path to the file is relative to the directory containing 
 `example.yaml`.
 
-If there are more groups of elements that you wish to create templates and substitutions 
+If there are other groups of elements that you wish to create templates and substitutions 
 for, e.g. two separator trains, or to distinguish between non-similar groups of well such 
 as production wells and injection wells, simply create another sheet (in the same or
 a new Excel sheet) and define the new source similarly with a unique id.
+
+A template file can only use one source, so in some cases it may be necessary to repeat
+information on two or more sheets. To ensure consistency, it may be a good idea to maintain
+one set of values in one sheet and reference the corresponding cells from the other sheets.  
 
 Finally we have the layout definition:
 ```yaml
@@ -129,72 +170,111 @@ layout:
       - D02
 ```
 This defines how the sections of the final config are created from the templates. The list
-of templates is processed in sequence. Each template reference requires at least a filename 
-`name`. If nothing more is specified, the template is a simply inserted into the config file.
+of templates is processed and output in the specified sequence. Each template reference 
+requires at least a filename `name`. If nothing more is specified, the template is assumed
+to be static, and simply inserted into the config file.
 
-If a `source` is defined, then the source is used as a look-up table for substitions
+If a `source` is defined, then the source is used as a look-up table for substitutions
 into the config file. By default, the template is generated once per row in the source. 
-So the template `03_SopcProc_well.cnfg` will be replicated three times, one for each well 
-`D01`, `D02` and `D03`.
-It is possible to specify which rows to include. An example of this is shown for `07_DspGroupTables_well.cnfg`
-which will only be generated for `D01` and `D03`. It is also possible to use the keyword
-`exclude` to skip specific rows from the source.
+So the template `03_SopcProc_well.cnfg` will be replicated three times, once for each 
+of the rows `D01`, `D02` and `D03` that are specified in the source.
+
+It is possible to specify exactly which rows to include. An example of this is shown for 
+`07_DspGroupTables_well.cnfg` which will only be generated for `D01` and `D03`. It is 
+also possible to use the keyword `exclude` in the same way to skip specific rows from 
+the source.
 
 ## Reverting templates
 
-What do you do if you have made a modification to the final config on the server, and wish
-to update your templates to reflect the modifications so that you can continue to use
-this tool? In some cases it may be easiest to perform the same modifications to the 
-templates as what was done on the server, but this method requires meticulous care to ensure
-that each modification is copied perfectly over.
+What do you do if you have made a modification to the final config on the server, and 
+wish to update your templates to reflect the modifications so that you can continue to 
+use this tool? In some cases it can be easiest to manually repeat the same modifications 
+to the affected templates as what was done on the server, but this method requires 
+meticulous care to ensure that each modification is copied perfectly over. This may
+be assisted by modifying templates, running the tool, comparing the output with the
+modified config and repeating this process until it matches. 
 
-There is another method that may be handy in many cases: Reverting a segment back into a
-template. *Todo: Describe* 
+This tool has another command called `revert` that can be used as an alternative to 
+manual patching. It is based on regenerating each affected template based on its 
+corresponding segment from the modified config file. 
 
+For static templates, you should simply copy the entire corresponding content over from
+the modified config file to the template. 
  
+For dynamic templates, it is possible to revert a segment of the modified config file 
+back into a template. In this method we search for the field values from one specific 
+row in the source file, and replace the values with the corresponding identifier tags. 
 
-## * * * Scratch * * *
+This is done as follows:
+- Identify a template which covers the modifications performed on the full config. Copy
+a segment from the full config covering the entire template just once into a file in the 
+masters directory. This is called the master file. The filename should be the same as 
+that of the corresponding template.  If one template doesn't cover all modifications, 
+repeat for other templates until all modifications are covered. 
+- Inspect the source file used for the template, and find a row that contains values
+that only exist in places where you wish to have a tag in the template file.
+- Declare `masterkey` in the yaml config to identify the row you found in the previous
+point. In many cases this can be done globally for all templates by declaring `masterkey`
+as shown in the example.yaml file. However, if necessary then you can also declare 
+`masterkey` per template to override the global masterkey.
+- Run scp with the `revert` command (see `scp.exe revert --help`)
+- The template(s) will be regenerated in the templates directory. If `verifycontent` is set
+to `yes`, you will be presented with the unified diff between the old and the new template
+file and asked whether you wish to overwrite or keep the old version. A backup will be
+made if you choose to overwrite.
 
-The template files will be combined according to a rule-set to generate the completed config.
-Each template file can either contain place-holders for inserting values from the table in the previous step, or it can be a static file.
-- Static templates will normally be included only once per complete config file
-- Dynamic templates (templates containing place-holders) will normally be generated once per well with the place-holders filled inn accordingly. 
+This method requires that the values to be searched for and replaced with identifier tags 
+exist only in places in the config file where we wish to have those tags. For example: 
+If we wish to regenerate the template file `05_ExprModl_well.cnfg`, then we cannot 
+copy-paste the corresponding segment from the config file that was generated for 'D01'. 
+Reverting such a master with `masterkey: D01` will replace all occurrences of '01' with
+'{{ Id }}', including parts of the strings for `GrpType`, `fulfRescale`, `MeasHighLimit` 
+and `MeasLowLimit`. If, on the other hand, we copy-paste the segment that corresponds to
+'D02', we see that the string '02' only exist in those places where we wish to insert
+'{{ Id }}'. Performing the same consideration for the other identifier tags (`TagId` 
+and `GroupMask`), we see that the same is true for those, and it is therefore safe 
+to specify `masterkey: D02` in the yaml file. At least for this template - other 
+templates may require another masterkey to ensure safe reverting.
 
-Upon inspecting a complete Septic configuration, you will find that it can be segmented into parts where some parts are static while others are repeated for several wells (or some other entity) with only minor modifications.
-
-For example: The initial `System` section of the Septic config is a static part, and should be separated into one template file.
-The following `SopcProc` section usually contains a static header followed by the definition of a number of `SopcXvr`. The static header should be placed in one template, while the rest should be made into a dynamic template.
-Following this, you will normally have one or more `DmmyAppl` sections that contain a mixture of common elements and per-well elements. These should be separated similarly to the `SopcProc` section.
-
-If you already have a Septic configuration that you wish to convert into templates to be used with this tool, you should begin by restructuring the file so that static and dynamic parts are clearly and logically separated.
- 
-Place all template files into the templates-directory. Make sure they have the regular SEPTIC config file extension `.cnfg`.
-
-Wherever you want to insert a value for substitution, enter the column name from the substitution table in double curly braces, e.g. ```{{ Id }}```. These identifiers are case-sensitive, so make sure you use the exact same label as in the table.
-
-Here is an example of a dynamic template file:
+In some cases you may be unable to find a candidate since each row has at least one value
+that exists in places where it shouldn't. This can be circumvented by changing the value
+so it includes more of the line where it is used. For instance: It is clearly not safe
+to substitute '3' with '{{ Group }}' in the following:
 ```
-  SopcMvr:       D{{ Id }} Zpc
-         Text1=  "D{{ Id }}: Production choke"
-         Text2=  ""
-        MvrTag=  "D{{ Id }}Zpc"
-       MeasTag=  "MOD.D-13UIC{{ Id }}01/ZPC_YXSP/PRIM"
-         PVTag=  "MOD.D-13UIC{{ Id }}01/ZPC_YX/PRIM"
-
-  SopcCvr:       D{{ Id }}Pbh
-         Text1=  "D{{ Id }}: Bottom hole pressure"
-         Text2=  ""
-        CvrTag=  "D{{ Id }}Pbh "
-       MeasTag=  "MOD.D-13UIC{{ Id }}04/PBH_YX/PRIM"
-         IdTag=  ""
-         SpTag=  "MOD.D-13UIC{{ Id }}04/PBH_YR/PRIM"
-
+  DisplayGroup:  D03Calcs
+       GroupNo=  3
+      HistSize=  360
 ```
-We want the contents of this file to be copied into the final configuration file three
-times, one for each of the wells. The value `{{ Id }}` will be substituted by the 
-corresponding values from the Excel table.
- 
+since that will result in 
+```
+  DisplayGroup:  D0{{ Group }}Calcs
+       GroupNo=  {{ Group }}
+      HistSize=  {{ Group }}60
+```
+The trick is to change the values in the source file from '1', '2', '3', etc, to include 
+more of the surrounding text to make them unique. For instance, we can use can use 
+'GroupNo=  1', 'GroupNo=  2' and 'GroupNo=  3'. When performing a revert with these
+values, you will get
+```
+  DisplayGroup:  D03Calcs
+       {{ Group }}
+      HistSize=  360
+```
+Or, if "=  3" doesn't occur anywhere else in the master file, we could instead have
+chosen "=  1", "=  2" and "=  3", which would have resulted in
+```
+  DisplayGroup:  D03Calcs
+       GroupNo{{ GroupNo }}
+      HistSize=  360
+```
 
+While the reverting method may seem daunting and scary, it is perfectly safe to play 
+around with it as long as you have `verifycontent: yes` in your yaml file.
 
+## The template engine
 
-
+The parameter replacement performed by the `make` command uses the 
+[Jinja2](http://jinja.pocoo.org/) Python module. Jinja2 is a very powerful templating
+engine that can do lots more than what scg currently makes use of, such as performing
+calculations and inheriting templates. If someone comes up with good use cases, then 
+please let me know so that we can consider expanding scg with more functionality.
