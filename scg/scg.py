@@ -16,7 +16,7 @@ def main():
 
 @main.command()
 @click.option('--output', help='name of output file (overrides config option "outputfile")')
-@click.option('--no-verify', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
+@click.option('--no-verify', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original (overrides config option).')
 @click.option('--silent', is_flag=True, default=False, help='only output warnings or errors.')
 @click.argument('config_file')
 def make(config_file, **kwargs):
@@ -69,7 +69,7 @@ def make(config_file, **kwargs):
 @main.command()
 @click.argument('config_file')
 @click.option('--template', default='all', help='name of template file to revert. Default: all.')
-@click.option('--no-verify', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original.')
+@click.option('--no-verify', is_flag=True, default=False, help='do not prompt for verification of output file before overwriting original (overrides config option).')
 @click.option('--silent', is_flag=True, default=False, help='only output warnings or errors.')
 def revert(config_file, **kwargs):
     file_cfg = parse_config(config_file).data
