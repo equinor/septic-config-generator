@@ -129,15 +129,15 @@ def revert(config_file, **kwargs):
         used_keys = []
         for key, value in source_data.items():
             key = '{{ '+key+' }}'
-            txt, num = re.subn(value, key, txt)
+            txt, num = re.subn(re.escape(value), key, txt)
             if num > 0:
-                used_keys.append((value, key))
+                used_keys.append((value, key, num))
         if len(used_keys) == 0:
             logger.info(f"{filename} substitutions: None")
         else:
             logger.info(f"{filename} substitutions:")
             for key in used_keys:
-                logger.info(f"'{key[0]}' -> '{key[1]}'")
+                logger.info(f"'{key[0]}' -> '{key[1]}' {key[2]} times")
 
         f = open(new_template, 'w')
         f.write(txt)
