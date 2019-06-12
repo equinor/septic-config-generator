@@ -136,8 +136,9 @@ def revert(config_file, **kwargs):
             logger.info(f"{filename} substitutions: None")
         else:
             logger.info(f"{filename} substitutions:")
+            maxlen = max([(len(x[0]), len(x[1])) for x in [key[0:2] for key in used_keys]])
             for key in used_keys:
-                logger.info(f"'{key[0]}' -> '{key[1]}' {key[2]} times")
+                logger.info(f"{key[0]:{maxlen[0]}s} -> {key[1]:{maxlen[1]}s} {'['+str(key[2]):>3s}x]")
 
         f = open(new_template, 'w')
         f.write(txt)
