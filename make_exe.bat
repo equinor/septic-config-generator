@@ -1,1 +1,4 @@
-cmd /k "venv\Scripts\activate.bat & pyinstaller scg/scg.py & deactivate & pause & exit"
+venv\Scripts\pyinstaller.exe ^
+  --onefile ^
+  scg\scg.py
+pause
