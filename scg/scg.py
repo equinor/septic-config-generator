@@ -46,6 +46,8 @@ def make(config_file, **kwargs):
             temp = env.get_template(template['name'])
             if not 'source' in template:
                 rendered = temp.render({})
+                if len(rendered) == 0:
+                    continue
                 if rendered[-1] != '\n':
                     rendered += '\n'
                 f.write(rendered)
