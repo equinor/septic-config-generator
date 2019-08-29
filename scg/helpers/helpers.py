@@ -60,6 +60,7 @@ def read_source(source, root):
             break
         temp = dict()
         for j in range(2, cols + 1):
+            if sheet.cell(row=1, column=j).value is None: break
             temp[sheet.cell(row=1, column=j).value] = str(sheet.cell(row=rownum, column=j).value)
             ret[sheet.cell(row=rownum, column=1).value] = temp
     return ret
