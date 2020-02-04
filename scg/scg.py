@@ -5,6 +5,8 @@ import logging
 import click
 import difflib
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
+import jinja2_git
+import jinja2_time
 from helpers.config_parser import parse_config, patch_config
 from helpers.helpers import get_all_source_data, diff_backup_and_replace
 from helpers.version import __version__
@@ -35,7 +37,11 @@ def make(config_file, **kwargs):
                                                         cfg['templatepath']),
                                 encoding='cp1252'),
         keep_trailing_newline=True,
-        undefined=StrictUndefined
+        undefined=StrictUndefined,
+        extensions=[
+            'jinja2_git.GitExtension',    # Allows {% gitcommit %}
+            'jinja2_time.TimeExtension'  # Allows {% now %}
+        ]
     )
 
     original_cnfgfile = os.path.join(root_path, cfg['outputfile'])

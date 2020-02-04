@@ -275,10 +275,21 @@ chosen "=  1", "=  2" and "=  3", which would have resulted in
 While the reverting method may seem daunting and scary, it is perfectly safe to play 
 around with it as long as you have `verifycontent: yes` in your yaml file.
 
-## The template engine
+## Special keywords
+The following two keywords are available:
+ - ```now```: Inserts a datestamp. For info on formatting, see [Jinja2-time](https://pypi.org/project/jinja2-time/)
+ - ```gitcommit```: Inserts the GIT commit hash. More info at [Jinja2-git](https://github.com/sobolevn/jinja2-git)
 
+By placing the line at the top of the first template file, a nice time-stamp is generated
+at the top of the generated config:
+```
+// Generated on {% now 'local', '%a %d %b %Y %H:%M:%S' %}
+```
+
+## The template engine
 The parameter replacement performed by the `make` command uses the 
 [Jinja2](http://jinja.pocoo.org/) Python module. Jinja2 is a very powerful templating
 engine that can do lots more than what scg currently makes use of, such as performing
 calculations and inheriting templates. If someone comes up with good use cases, then 
 please let me know so that we can consider expanding scg with more functionality.
+
