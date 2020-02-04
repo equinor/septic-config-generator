@@ -280,8 +280,8 @@ The following two keywords are available:
  - ```now```: Inserts a datestamp. For info on formatting, see [Jinja2-time](https://pypi.org/project/jinja2-time/)
  - ```gitcommit```: Inserts the GIT commit hash. More info at [Jinja2-git](https://github.com/sobolevn/jinja2-git)
 
-By placing the line at the top of the first template file, a nice time-stamp is generated
-at the top of the generated config:
+By placing the following line at the top of the first template file, a nicely 
+formatted timestamp is inserted at the top of the generated config:
 ```
 // Generated on {% now 'local', '%a %d %b %Y %H:%M:%S' %}
 ```
