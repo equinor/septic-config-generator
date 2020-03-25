@@ -59,9 +59,9 @@ example_final.conf
 - example.xlsx: An Excel file that contains data to insert into the templates.
 - masters: A directory containing segments of the SEPTIC config file that can be reverted 
 into templates.
-- example.cnfg The resulting SEPTIC config file. 
+- example.cnfg: The resulting SEPTIC config file. 
  
-Download and copy the entire directory called `basic example` to `C:\Appl\SEPTIC`.  
+Download and copy the entire directory called `basic example` to `C:\Appl\SEPTIC`. 
 
 ## The template files
 
@@ -100,17 +100,17 @@ Please note:
 - As mentioned, the tag names (first row) are case sensitive. You must ensure that these
 are exactly the same as the tags defined in the templates. Any typo will result in an 
 error message upon config generation, so no need to worry about broken configs. 
-- All values must be formatted exactly the way you want them to appear in the final config.
-In most cases, this means you have to ensure the values are strings, not numbers. In Excel,
-this is done by prepending numbers with `'`. So if you want `D{{ Id }}` to become 
-`D01` instead of `D1`, you should input `'01` instead of `1` in the Id field.
-- The use of formulas and any kind of text formatting is allowed.     
+- In order to ensure that id numbers such as '1' and '21' both are displayed with two
+digits in the resulting configuration, you should use strings and not numbers in Excel. 
+Simply prepend the numbers with by prepending numbers with `'`. So if you want `D{{ Id }}` 
+to become `D01` instead of `D1`, you should input `'01` instead of `1` in the Id field.
+- The use of formulas and any kind of text formatting is allowed.
 
 ## The config file
 
 Inspect the config file `example.yaml`. It starts out by defining a number of paths:
 ```yaml
-outputfile: example.cnfg
+outputfile: example_original.cnfg
 
 templatepath: templates
 masterpath: masters
@@ -187,6 +187,30 @@ It is possible to specify exactly which rows to include. An example of this is s
 also possible to use the keyword `exclude` in the same way to skip specific rows from 
 the source.
 
+## Generate a config
+
+Now that you know how the files are used, let's try to generate a config. Start by making a 
+copy of `example.cnfg`. Rename the copy to `example_original.cnfg`. Copy scg.exe into your
+`Basic Example` directory, open a command line and change directory to `C:\appl\SEPTIC\Basic Example`.
+
+To generate example.cnfg, type:
+```
+scg.exe make example.yaml
+```
+You can also type simply
+```
+scg.exe make example
+```
+Verify that the generated `example.cnfg` corresponds with the layout defined in yaml and
+the rows in the Excel sheet. E.g. you should have SopcCvrs and SopcMvrs defined for all 
+three wells, but MPCTable should only list D01 and D02.
+
+Try to make a change to one of the template files and regenerate the config. `Scg` will 
+detect that there is already a file called `example.cnfg` and will ask whether you want
+to replace it. Changes are shown as unified diff between the two files.  
+
+Type `scg.exe make --help` for more options to the `make` command.
+
 ## Reverting templates
 
 What do you do if you have made a modification to the final config on the server, and 
@@ -200,6 +224,11 @@ modified config and repeating this process until it matches.
 This tool has another command called `revert` that can be used as an alternative to 
 manual patching. It is based on regenerating each affected template based on its 
 corresponding segment from the modified config file. 
+
+*Please note that reverting can only convert static values in the master file to corresponding 
+identifier tags found in the source file. This means that it is not possible to combine
+reverting with more advanced [Jinja2 functionality](#the-template-engine) such as if/then/else, 
+calculations etc.* 
 
 For static templates, you should simply copy the entire corresponding content over from
 the modified config file to the template. 
@@ -221,11 +250,11 @@ that only exist in places where you wish to have a tag in the template file.
 point. In many cases this can be done globally for all templates by declaring `masterkey`
 as shown in the example.yaml file. However, if necessary then you can also declare 
 `masterkey` per template to override the global masterkey.
-- Run scp with the `revert` command (see `scp.exe revert --help`)
+- Run scg with the `revert` command (see `scg.exe revert --help`)
 - The template(s) will be regenerated in the templates directory. If `verifycontent` is set
-to `yes`, you will be presented with the unified diff between the old and the new template
-file and asked whether you wish to overwrite or keep the old version. A backup will be
-made if you choose to overwrite.
+to `yes` in the yaml file, you will be presented with the unified diff between the old and 
+the new template file and asked whether you wish to overwrite or keep the old version. A 
+backup will be made if you choose to overwrite.
 
 This method requires that the values to be searched for and replaced with identifier tags 
 exist only in places in the config file where we wish to have those tags. For example: 
@@ -237,8 +266,7 @@ and `MeasLowLimit`. If, on the other hand, we copy-paste the segment that corres
 'D02', we see that the string '02' only exist in those places where we wish to insert
 '{{ Id }}'. Performing the same consideration for the other identifier tags (`TagId` 
 and `GroupMask`), we see that the same is true for those, and it is therefore safe 
-to specify `masterkey: D02` in the yaml file. At least for this template - other 
-templates may require another masterkey to ensure safe reverting.
+to specify `masterkey: D02` in the yaml file.
 
 In some cases you may be unable to find a candidate since each row has at least one value
 that exists in places where it shouldn't. This can be circumvented by changing the value
@@ -256,7 +284,7 @@ since that will result in
       HistSize=  {{ Group }}60
 ```
 The trick is to change the values in the source file from '1', '2', '3', etc, to include 
-more of the surrounding text to make them unique. For instance, we can use can use 
+more of the surrounding text to make them unique. For instance, we can use
 'GroupNo=  1', 'GroupNo=  2' and 'GroupNo=  3'. When performing a revert with these
 values, you will get
 ```
@@ -288,8 +316,11 @@ formatted timestamp is inserted at the top of the generated config:
 
 ## The template engine
 The parameter replacement performed by the `make` command uses the 
-[Jinja2](http://jinja.pocoo.org/) Python module. Jinja2 is a very powerful templating
-engine that can do lots more than what scg currently makes use of, such as performing
-calculations and inheriting templates. If someone comes up with good use cases, then 
-please let me know so that we can consider expanding scg with more functionality.
+[Jinja2](https://jinja.palletsprojects.com/) Python module. Jinja2 is a very powerful templating
+engine that can do lots more than what has been described above, such as expressions
+(e.g. calculate offsets for placing display elements based on well id number), statements
+for inheriting or including other template files, conditionals and loops etc. This 
+makes it possible to use scg even for SEPTIC configs with non-similar wells, for example. 
+For further information, please take a look at the 
+[Jinja2 Template Designer Documentation](https://jinja.palletsprojects.com/en/2.11.x/templates/)
 
