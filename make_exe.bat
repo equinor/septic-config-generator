@@ -4,5 +4,6 @@ venv\Scripts\pyinstaller.exe ^
   --hiddenimport jinja2_git ^
   --hiddenimport jinja2_time ^
   --onefile ^
-  scg\scg.py
+  --name scg.exe ^
+  cli.py
 pause
