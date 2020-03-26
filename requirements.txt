@@ -4,3 +4,4 @@ jinja2
 jinja2-git
 jinja2-time
 pyinstaller
+click
