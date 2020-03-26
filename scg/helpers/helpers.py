@@ -70,12 +70,14 @@ def read_source(source, root):
             if sheet.cell(row=1, column=j).value is None:
                 break
             # Read non-numeric values as string
-            if sheet.cell(row=rownum, column=j).data_type != 'n':
+            if sheet.cell(row=rownum, column=j).data_type != "n":
                 temp[sheet.cell(row=1, column=j).value] = str(
                     sheet.cell(row=rownum, column=j).value
                 )
             else:
-                temp[sheet.cell(row=1, column=j).value] = sheet.cell(row=rownum, column=j).value
+                temp[sheet.cell(row=1, column=j).value] = sheet.cell(
+                    row=rownum, column=j
+                ).value
 
             ret[sheet.cell(row=rownum, column=1).value] = temp
     return ret

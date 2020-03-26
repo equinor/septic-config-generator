@@ -2,6 +2,7 @@
 
 from setuptools import setup, find_packages
 
+
 def parse_requirements(filename):
     """Load requirements from a pip requirements file"""
     try:
@@ -10,14 +11,16 @@ def parse_requirements(filename):
     except IOError:
         return []
 
-setup(name='scg',
-      description="Utility for generating SEPTIC config files based on templates. Don't install, instead download or generate exe file.",
-      author='Einar S. Idso',
-      author_email="eiids@equinor.com",
-      packages=['scg', 'scg.helpers'],
-      platforms=['Windows'],
-      python_requires='~=3.6',
-      setup_requires=['setuptools_scm'],
-      use_scm_version={'write_to': 'scg/version.py'},
-      install_requires=parse_requirements('requirements.txt')
-      )
+
+setup(
+    name="scg",
+    description="Utility for generating SEPTIC config files based on templates. Don't install, instead download or generate exe file.",
+    author="Einar S. Idso",
+    author_email="eiids@equinor.com",
+    packages=["scg", "scg.helpers"],
+    platforms=["Windows"],
+    python_requires="~=3.6",
+    setup_requires=["setuptools_scm"],
+    use_scm_version={"write_to": "scg/version.py"},
+    install_requires=parse_requirements("requirements.txt"),
+)
