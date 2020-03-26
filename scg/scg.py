@@ -7,7 +7,7 @@ import difflib
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from helpers.config_parser import parse_config, patch_config
 from helpers.helpers import get_all_source_data, diff_backup_and_replace
-from helpers.version import __version__
+from version import version as __version__
 
 
 @click.group()
