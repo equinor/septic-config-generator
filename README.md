@@ -1,3 +1,5 @@
+![Build](https://github.com/equinor/septic-config-generator/workflows/Build/badge.svg)
+
 # SEPTIC config generator
 
 SEPTIC config generator (scg) is a tool to generate SEPTIC configs based on one or more 
