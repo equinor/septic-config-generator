@@ -1,22 +1,22 @@
 # This workflow will install Python dependencies, run tests and lint with a single version of Python
 # For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
 
-name: Python application
+name: Lint and build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, github-actions ]
   pull_request:
     branches: [ master ]
 
 jobs:
   build:
-    name: Lint with ${{python-version}}
-    runs-on: windows-latest
+    name: Lint
+    runs-on: windows-latest 
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python ${{python-version}}
+    - name: Set up Python
       uses: actions/setup-python@v1
       with:
         python-version: 3.6
@@ -35,3 +35,6 @@ jobs:
 #      run: |
 #        pip install pytest
 #        pytest
+    - name: Build with pyinstaller
+      run: |
+        pyinstaller --hiddenimport jinja2_git --hiddenimport jinja2_time --onefile --name scg.exe cli.py
