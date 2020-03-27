@@ -3,7 +3,7 @@ from scg.helpers.helpers import *
 
 
 source = {"filename": "example.xlsx", "id": "main", "sheet": "Sheet1"}
-root_path = "..\\basic example"
+root_path = "basic example"
 
 
 @pytest.mark.skip()

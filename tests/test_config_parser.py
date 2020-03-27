@@ -3,7 +3,7 @@ from scg.helpers.config_parser import *
 import strictyaml
 
 
-config_file = '..\\basic example\\example.yaml'
+config_file = 'basic example\\example.yaml'
 
 
 def test_parse_config():
