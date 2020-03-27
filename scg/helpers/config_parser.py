@@ -49,7 +49,7 @@ def parse_config(filename):
 
 def patch_config(cfg, overrides):
     if "output" in overrides and overrides["output"] is not None:
-        cfg["outputfile"] = overrides["outputfile"]
+        cfg["outputfile"] = overrides["output"]
     if "no_verify" in overrides and overrides["no_verify"]:
         cfg["verifycontent"] = False
     return cfg
