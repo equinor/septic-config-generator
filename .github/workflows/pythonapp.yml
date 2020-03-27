@@ -37,4 +37,4 @@ jobs:
 #        pytest
     - name: Build with pyinstaller
       run: |
-        make_exe.bat
+        pyinstaller --hiddenimport jinja2_git --hiddenimport jinja2_time --onefile --name scg.exe cli.py
