@@ -36,9 +36,9 @@ the risk of faulty configs which can lead to faulty operation.
 ## Installation 
 
 Although some may prefer to run the Python script directly, it is highly recommended to
-download a precompiled executable from [\\\\statoil.net\dfs\common\TPD\RD_Data\Process Control\Software Tools\SepticConfigGenerator](file://statoil.net/dfs/common/TPD/RD_Data/Process%20Control/Software%20Tools/SepticConfigGenerator)
-on G-disk. Place scg.exe somewhere in your path, preferably in the directory where you place all your SEPTIC configs.
-In the following, this directory is assumed to be `C:\Appl\SEPTIC`.
+download the last released precompiled executable. Place scg.exe somewhere in your path,
+preferably in the directory where you place all your SEPTIC configs. In the following, 
+this directory is assumed to be `C:\Appl\SEPTIC`.
 
 ## Basic usage
 
