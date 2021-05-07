@@ -77,6 +77,8 @@ def make(config_file, **kwargs):
             for row, values in all_source_data[template["source"]].items():
                 if row in items:
                     rendered = temp.render(values)
+                    if len(rendered) == 0:
+                        continue
                     if rendered[-1] != "\n":
                         rendered += "\n"
                     f.write(rendered)
