@@ -6,7 +6,7 @@ import click
 import difflib
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from .helpers.config_parser import parse_config, patch_config
-from .helpers.helpers import get_all_source_data, diff_backup_and_replace
+from .helpers.helpers import get_all_source_data, diff_backup_and_replace, get_global_variables
 from .version import version as __version__
 
 
@@ -29,17 +29,21 @@ def main():
 @click.option(
     "--silent", is_flag=True, default=False, help="only output warnings or errors."
 )
+@click.option(
+    "--var", type=(str, str), multiple=True, help="global variable to use for all templates, also those without specified source. Can be repeated. Global variables overwrite other variables with same name."
+)
 @click.argument("config_file")
 def make(config_file, **kwargs):
     file_cfg = parse_config(config_file).data
     cfg = patch_config(file_cfg, kwargs)
-
     if kwargs["silent"]:
         logger.setLevel(logging.WARNING)
 
     root_path = os.path.dirname(config_file)
 
     all_source_data = get_all_source_data(cfg["sources"], root_path)
+
+    global_variables = get_global_variables(kwargs["var"])
 
     env = Environment(
         loader=FileSystemLoader(
@@ -60,7 +64,7 @@ def make(config_file, **kwargs):
         for template in cfg["layout"]:
             temp = env.get_template(template["name"])
             if not "source" in template:
-                rendered = temp.render({})
+                rendered = temp.render(global_variables)
                 if len(rendered) == 0:
                     continue
                 if rendered[-1] != "\n":
@@ -75,6 +79,7 @@ def make(config_file, **kwargs):
                     items = [x for x in items if x not in template["exclude"]]
 
             for row, values in all_source_data[template["source"]].items():
+                values.update(global_variables)
                 if row in items:
                     rendered = temp.render(values)
                     if len(rendered) == 0:

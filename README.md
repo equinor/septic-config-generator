@@ -12,7 +12,7 @@ the only copy of your perfectly working config.
  
 ## Introduction
 
-Upon inspecting a SEPTIC configuration file, you will find that it can be segmented into 
+Upon inspecting a SEPTIC configuration file, you will find that it can be divided into 
 segments where some segments are static while others are repeated for several wells 
 (or some other entity) with only minor modifications.
 
@@ -212,6 +212,24 @@ detect that there is already a file called `example.cnfg` and will ask whether y
 to replace it. Changes are shown as unified diff between the two files.  
 
 Type `scg.exe make --help` for more options to the `make` command.
+
+### Global variables
+
+Since version 1.0.0, it is possible to define global replacement variables on the command
+line using the `--var` option. The option takes two arguments: Name and value. The name 
+can be used in any template file, also files without a defined source, using the same 
+format as for variables defined in the Excel sheet (in fact, global variables are simply 
+added to set of variables (tags) defined in the source, which may be empty/non-existent.
+and replace them if they have the same name). `scg` will try to convert value to boolean, 
+integer or float with string as default type.
+
+Example: 
+```
+scg.exe make --var simulation true --var size 2.3 --var version 1.2.3 example.yaml
+```
+Here `{{ simulation }}`, `{{ size }}` and `{{ version }}` will be available for use in 
+all template files. The value of `simulation` is boolean `True`, `size` is a float with
+value `2.3` while `version` is a string with value `1.2.3`.
 
 ## Reverting templates
 

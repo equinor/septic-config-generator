@@ -89,3 +89,19 @@ def get_all_source_data(sources, path):
         s = read_source(source, path)
         res[source["id"]] = s
     return res
+
+def get_global_variables(data):
+    global_variables = {}
+    for var in data:
+        if var[1].isdigit():
+            val = int(var[1])
+        elif var[1].replace(".", "", 1).isdigit():
+            val = float(var[1])
+        elif var[1].lower() == "true":
+            val = True
+        elif var[1].lower() == "false":
+            val = False
+        else:
+            val = var[1]
+        global_variables[var[0]] = val
+    return global_variables
