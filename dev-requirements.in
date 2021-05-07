@@ -1,0 +1,4 @@
+pyinstaller
+pip-tools
+setuptools_scm
+-r requirements.in
