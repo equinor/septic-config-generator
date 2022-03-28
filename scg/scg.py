@@ -1,12 +1,18 @@
+import difflib
+import logging
 import os
 import re
 import sys
-import logging
+
 import click
-import difflib
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
 from .helpers.config_parser import parse_config, patch_config
-from .helpers.helpers import get_all_source_data, diff_backup_and_replace, get_global_variables
+from .helpers.helpers import (
+    diff_backup_and_replace,
+    get_all_source_data,
+    get_global_variables,
+)
 from .version import version as __version__
 
 
@@ -30,7 +36,10 @@ def main():
     "--silent", is_flag=True, default=False, help="only output warnings or errors."
 )
 @click.option(
-    "--var", type=(str, str), multiple=True, help="global variable to use for all templates, also those without specified source. Can be repeated. Global variables overwrite other variables with same name."
+    "--var",
+    type=(str, str),
+    multiple=True,
+    help="global variable to use for all templates, also those without specified source. Can be repeated. Global variables overwrite other variables with same name.",
 )
 @click.argument("config_file")
 def make(config_file, **kwargs):
@@ -63,7 +72,7 @@ def make(config_file, **kwargs):
     with open(new_cnfgfile, "w") as f:
         for template in cfg["layout"]:
             temp = env.get_template(template["name"])
-            if not "source" in template:
+            if "source" not in template:
                 rendered = temp.render(global_variables)
                 if len(rendered) == 0:
                     continue
@@ -147,7 +156,7 @@ def revert(config_file, **kwargs):
             if layout_item["name"] == filename:
                 break
 
-        if not "source" in layout_item:
+        if "source" not in layout_item:
             logger.warning(
                 f"No source defined for {layout_item['name']}. Move this file to templates-dir instead."
             )
@@ -159,7 +168,7 @@ def revert(config_file, **kwargs):
         masterkey = layout_item.get("masterkey", cfg.get("masterkey", None))
         if not masterkey:
             logger.error(
-                f"No masterkey defined in config file. No idea which row to use for reverse substitution. Exiting"
+                "No masterkey defined in config file. No idea which row to use for reverse substitution. Exiting"
             )
             sys.exit(1)
 

@@ -1,11 +1,17 @@
-import sys
 import logging
-from strictyaml import Map, Str, Seq, Optional, load, Bool
+import sys
+
+from strictyaml import Bool, Map, Optional, Seq, Str, load
 
 logger = logging.getLogger("scg." + __name__)
 
 schema_source = Map(
-    {"id": Str(), "filename": Str(), "sheet": Str(), Optional("type"): Str(),}
+    {
+        "id": Str(),
+        "filename": Str(),
+        "sheet": Str(),
+        Optional("type"): Str(),
+    }
 )
 
 schema_template = Map(
@@ -36,14 +42,16 @@ def parse_config(filename):
         filename = filename + ".yaml"
     try:
         f = open(filename, "r")
-    except:
+    except Exception:
         logger.error(f"Config file not found: '{filename}'.")
         sys.exit(1)
     try:
         cfg = load(f.read(), schema, label=filename)
         return cfg
     except Exception as e:
-        logger.error(f"{e}",)
+        logger.error(
+            f"{e}",
+        )
         sys.exit(1)
 
 

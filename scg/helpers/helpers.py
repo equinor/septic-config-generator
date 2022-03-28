@@ -1,9 +1,10 @@
-import os
-import sys
-import shutil
-from openpyxl import load_workbook
-import logging
 import difflib
+import logging
+import os
+import shutil
+import sys
+
+from openpyxl import load_workbook
 
 logger = logging.getLogger("scg." + __name__)
 
@@ -51,7 +52,7 @@ def read_source(source, root):
     filename = source["filename"]
     try:
         wb = load_workbook(os.path.join(root, filename), read_only=True, data_only=True)
-    except:
+    except Exception:
         logger.error(
             f"Unable to read '{source['filename']}' which belongs to source '{source['id']}'"
         )
@@ -89,6 +90,7 @@ def get_all_source_data(sources, path):
         s = read_source(source, path)
         res[source["id"]] = s
     return res
+
 
 def get_global_variables(data):
     global_variables = {}
