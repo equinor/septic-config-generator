@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 
 def parse_requirements(filename):
@@ -22,5 +22,6 @@ setup(
     python_requires="~=3.6",
     setup_requires=["setuptools_scm"],
     use_scm_version={"write_to": "scg/version.py"},
+    entry_points={"console_scripts": ["scg=scg.scg:main"]},
     install_requires=parse_requirements("requirements.txt"),
 )

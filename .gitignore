@@ -136,3 +136,5 @@ scg/version.py
 
 # vscode
 .vscode
+
+cli.build/
