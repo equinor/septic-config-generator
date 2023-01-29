@@ -2,8 +2,7 @@ use calamine::{open_workbook, Reader, Xlsx};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
-use std::fs::File;
-use std::io::prelude::*;
+use std::fs;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
@@ -31,37 +30,62 @@ struct Layout {
 }
 
 fn read_config(file_path: &str) -> Result<Config, Box<dyn Error>> {
-    let mut file = File::open(file_path)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
+    let content = fs::read_to_string(file_path)?;
     let cfg: Config = serde_yaml::from_str(&content)?;
     Ok(cfg)
 }
 
-fn read_source(source: &Source) -> Result<Vec<HashMap<String, String>>, calamine::Error> {
+fn read_source(source: &Source) -> Result<Vec<HashMap<String, String>>, Box<dyn Error>> {
     let path = format!("basic example/{}", source.filename);
     let mut workbook: Xlsx<_> = open_workbook(path)?;
-    let range = workbook
-        .worksheet_range(&source.sheet)
-        .ok_or(calamine::Error::Msg("Cannot find sheet"))??;
+    let range = workbook.worksheet_range(&source.sheet).ok_or_else(|| {
+        format!(
+            "Cannot find sheet '{}' in file '{}'",
+            source.sheet, source.filename
+        )
+    })??; // Rewrite to handle instead of panic on unknown sheet
 
     let row_headers = range.rows().next().unwrap();
-    let mut data = vec![];
-    for row in range.rows().skip(1) {
-        let mut row_data = HashMap::new();
-        for (header, cell) in row_headers.iter().zip(row.iter()) {
-            row_data.insert(
-                String::from(header.get_string().unwrap()),
-                String::from(cell.get_string().unwrap()),
-            );
-        }
-        data.push(row_data);
-    }
+    let data = range
+        .rows()
+        .skip(1)
+        .map(|row| {
+            row_headers
+                .iter()
+                .zip(row.iter())
+                .map(|(header, cell)| {
+                    (
+                        header.get_string().unwrap().to_string(),
+                        cell.get_string().unwrap().to_string(),
+                    )
+                })
+                .collect::<HashMap<String, String>>()
+        })
+        .collect::<Vec<HashMap<String, String>>>();
     Ok(data)
 }
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let cfg = read_config("basic example/example.yaml")?;
+fn main() {
+    let cfg = read_config("basic example/example.yaml");
+    let cfg = match cfg {
+        Ok(config) => config,
+        Err(e) => match e.downcast::<std::io::Error>() {
+            Ok(io_error) => {
+                println!("Unable to open SCG config file: {}", io_error);
+                std::process::exit(1);
+            }
+            Err(e) => match e.downcast::<serde_yaml::Error>() {
+                Ok(yaml_error) => {
+                    println!("YAML error: {}", yaml_error);
+                    std::process::exit(1);
+                }
+                Err(e) => {
+                    println!("Unknown error: {}", e);
+                    std::process::exit(1);
+                }
+            },
+        },
+    };
 
     let mut all_source_data: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
 
@@ -72,5 +96,4 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     // println!("{:?}", config);
     println!("{:?}", all_source_data);
-    Ok(())
 }
