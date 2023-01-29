@@ -1,6 +1,9 @@
-use calamine::{open_workbook, Error, Reader, Xlsx};
+use calamine::{open_workbook, Reader, Xlsx};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::error::Error;
+use std::fs::File;
+use std::io::prelude::*;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
@@ -27,12 +30,20 @@ struct Layout {
     include: Option<Vec<String>>,
 }
 
-fn read_source(source: &Source) -> Result<Vec<HashMap<String, String>>, Error> {
+fn read_config(file_path: &str) -> Result<Config, Box<dyn Error>> {
+    let mut file = File::open(file_path)?;
+    let mut content = String::new();
+    file.read_to_string(&mut content)?;
+    let cfg: Config = serde_yaml::from_str(&content)?;
+    Ok(cfg)
+}
+
+fn read_source(source: &Source) -> Result<Vec<HashMap<String, String>>, calamine::Error> {
     let path = format!("basic example/{}", source.filename);
     let mut workbook: Xlsx<_> = open_workbook(path)?;
     let range = workbook
         .worksheet_range(&source.sheet)
-        .ok_or(Error::Msg("Cannot find sheet"))??;
+        .ok_or(calamine::Error::Msg("Cannot find sheet"))??;
 
     let row_headers = range.rows().next().unwrap();
     let mut data = vec![];
@@ -49,8 +60,9 @@ fn read_source(source: &Source) -> Result<Vec<HashMap<String, String>>, Error> {
     Ok(data)
 }
 
-fn main() {
-    let cfg: Config = serde_yaml::from_str(include_str!("../basic example/example.yaml")).unwrap();
+fn main() -> Result<(), Box<dyn Error>> {
+    let cfg = read_config("basic example/example.yaml")?;
+
     let mut all_source_data: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
 
     for source in &cfg.sources {
@@ -60,4 +72,5 @@ fn main() {
 
     // println!("{:?}", config);
     println!("{:?}", all_source_data);
+    Ok(())
 }
