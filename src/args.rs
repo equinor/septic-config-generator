@@ -29,7 +29,7 @@ pub struct MakeArgs {
     /// Only output warnings or errors
     #[arg(short, long)]
     pub silent: bool,
-    /// Gllobal variable to use for all templates, also those without specified source. Can be repeated. Global variables overwrite other variables with same name
-    #[arg(short, long)]
+    /// Global variable to use for all templates, also those without specified source. Can be repeated. Global variables overwrite other variables with same name
+    #[arg(short, long, value_names = ["name", "value"])]
     pub var: Option<Vec<String>>,
 }

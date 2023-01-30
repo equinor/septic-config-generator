@@ -6,8 +6,16 @@ use std::process;
 
 fn main() {
     let args = args::Cli::parse();
+
     match args.command {
         args::Commands::Make(make_args) => {
+            let var_list = make_args.var.unwrap_or_default();
+
+            let var_map = var_list
+                .chunks(2)
+                .map(|chunk| (chunk[0].to_string(), chunk[1].to_string()))
+                .collect::<HashMap<String, String>>();
+
             let filename = make_args.config_file;
 
             let cfg = Config::new(&filename).unwrap_or_else(|e| {
@@ -28,6 +36,7 @@ fn main() {
 
             // println!("{:?}", config);
             println!("{:?}", all_source_data);
+            println!("{:?}", var_map);
         }
         args::Commands::Diff => todo!(),
     }
