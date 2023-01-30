@@ -1,3 +1,3 @@
-pub mod argparser;
-pub mod excelsource;
-pub mod yamlconfig;
+pub mod args;
+pub mod config;
+pub mod datasource;
