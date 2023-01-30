@@ -1,17 +1,16 @@
 use clap::Parser;
 use log::error;
-use septic_config_generator::{read_source, Cli, Commands, Config};
+use septic_config_generator::{argparser, excelsource, yamlconfig};
 use std::collections::HashMap;
-
 use std::process;
 
 fn main() {
-    let args = Cli::parse();
+    let args = argparser::Cli::parse();
     match args.command {
-        Commands::Make(make_args) => {
+        argparser::Commands::Make(make_args) => {
             let filename = make_args.config_file;
 
-            let cfg = Config::new(&filename).unwrap_or_else(|e| {
+            let cfg = yamlconfig::Config::new(&filename).unwrap_or_else(|e| {
                 error!("Problem reading '{}': {}", &filename.display(), e);
                 process::exit(1)
             });
@@ -19,7 +18,7 @@ fn main() {
             let mut all_source_data: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
 
             for source in &cfg.sources {
-                let source_data = read_source(source).unwrap_or_else(|e| {
+                let source_data = excelsource::read(source).unwrap_or_else(|e| {
                     error!("Problem reading source file '{}': {}", source.filename, e);
                     process::exit(1);
                 });
@@ -29,6 +28,6 @@ fn main() {
             // println!("{:?}", config);
             println!("{:?}", all_source_data);
         }
-        Commands::Diff => todo!(),
+        argparser::Commands::Diff => todo!(),
     }
 }
