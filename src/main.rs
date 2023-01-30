@@ -1,42 +1,8 @@
 use calamine::{open_workbook, Reader, Xlsx};
-use serde::{Deserialize, Serialize};
+use septic_config_generator::{Config, Source};
 use std::collections::HashMap;
 use std::error::Error;
-use std::fs;
 use std::process;
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Config {
-    outputfile: String,
-    templatepath: String,
-    masterpath: String,
-    masterkey: String,
-    verifycontent: String,
-    sources: Vec<Source>,
-    layout: Vec<Layout>,
-}
-
-impl Config {
-    fn new(filename: &String) -> Result<Config, Box<dyn Error>> {
-        let content = fs::read_to_string(filename)?;
-        let cfg: Config = serde_yaml::from_str(&content)?;
-        Ok(cfg)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Source {
-    filename: String,
-    id: String,
-    sheet: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Layout {
-    name: String,
-    source: Option<String>,
-    include: Option<Vec<String>>,
-}
 
 fn read_source(source: &Source) -> Result<Vec<HashMap<String, String>>, Box<dyn Error>> {
     let path = format!("basic example/{}", source.filename);
