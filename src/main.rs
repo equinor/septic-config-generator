@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
+use std::process;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Config {
@@ -13,6 +14,14 @@ struct Config {
     verifycontent: String,
     sources: Vec<Source>,
     layout: Vec<Layout>,
+}
+
+impl Config {
+    fn new(filename: &String) -> Result<Config, Box<dyn Error>> {
+        let content = fs::read_to_string(filename)?;
+        let cfg: Config = serde_yaml::from_str(&content)?;
+        Ok(cfg)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -27,12 +36,6 @@ struct Layout {
     name: String,
     source: Option<String>,
     include: Option<Vec<String>>,
-}
-
-fn read_config(file_path: &str) -> Result<Config, Box<dyn Error>> {
-    let content = fs::read_to_string(file_path)?;
-    let cfg: Config = serde_yaml::from_str(&content)?;
-    Ok(cfg)
 }
 
 fn read_source(source: &Source) -> Result<Vec<HashMap<String, String>>, Box<dyn Error>> {
@@ -66,26 +69,12 @@ fn read_source(source: &Source) -> Result<Vec<HashMap<String, String>>, Box<dyn 
 }
 
 fn main() {
-    let cfg = read_config("basic example/example.yaml");
-    let cfg = match cfg {
-        Ok(config) => config,
-        Err(e) => match e.downcast::<std::io::Error>() {
-            Ok(io_error) => {
-                println!("Unable to open SCG config file: {}", io_error);
-                std::process::exit(1);
-            }
-            Err(e) => match e.downcast::<serde_yaml::Error>() {
-                Ok(yaml_error) => {
-                    println!("YAML error: {}", yaml_error);
-                    std::process::exit(1);
-                }
-                Err(e) => {
-                    println!("Unknown error: {}", e);
-                    std::process::exit(1);
-                }
-            },
-        },
-    };
+    let filename = String::from("basic example/example.yaml");
+
+    let cfg = Config::new(&filename).unwrap_or_else(|e| {
+        println!("Problem reading {filename}: {}", e);
+        process::exit(1)
+    });
 
     let mut all_source_data: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
 
