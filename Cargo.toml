@@ -2,7 +2,13 @@
 name = "septic-config-generator"
 version = "0.1.0"
 edition = "2021"
+description = "A tool to generate SEPTIC config file from template files"
+license = "MIT"
+publish = false
 
+[[bin]]
+name = "scg"
+path = "src/main.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
