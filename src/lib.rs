@@ -16,7 +16,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(filename: &String) -> Result<Config, Box<dyn Error>> {
+    pub fn new(filename: &std::path::PathBuf) -> Result<Config, Box<dyn Error>> {
         let content = fs::read_to_string(filename)?;
         let cfg: Config = serde_yaml::from_str(&content)?;
         Ok(cfg)
