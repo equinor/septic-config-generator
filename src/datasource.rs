@@ -1,11 +1,11 @@
-use calamine::{open_workbook, Reader, Xlsx};
+use calamine::{open_workbook, DataType, Reader, Xlsx};
 use std::collections::HashMap;
 use std::error::Error;
 
 pub fn read(
     filename: &String,
     sheet: &String,
-) -> Result<HashMap<String, HashMap<String, String>>, Box<dyn Error>> {
+) -> Result<HashMap<String, HashMap<String, DataType>>, Box<dyn Error>> {
     let path = format!("basic example/{}", filename);
     let mut workbook: Xlsx<_> = open_workbook(path)?;
     let range = workbook
@@ -21,16 +21,11 @@ pub fn read(
             let values = row_headers
                 .iter()
                 .zip(row.iter())
-                .map(|(header, cell)| {
-                    (
-                        header.get_string().unwrap().to_string(),
-                        cell.get_string().unwrap().to_string(),
-                    )
-                })
-                .collect::<HashMap<String, String>>();
+                .map(|(header, cell)| (header.get_string().unwrap().to_string(), cell.to_owned()))
+                .collect::<HashMap<String, DataType>>();
             (key, values)
         })
-        .collect::<HashMap<String, HashMap<String, String>>>();
+        .collect::<HashMap<String, HashMap<String, DataType>>>();
 
     Ok(data)
 }

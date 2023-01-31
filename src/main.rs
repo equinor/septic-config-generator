@@ -1,3 +1,4 @@
+use calamine::DataType;
 use clap::Parser;
 use septic_config_generator::{args, config::Config, datasource};
 use std::collections::HashMap;
@@ -12,7 +13,7 @@ fn add_missing_yaml_extension(filename: &PathBuf) -> PathBuf {
     file
 }
 
-fn merge_maps(
+fn _merge_maps(
     map1: &HashMap<String, String>,
     map2: &HashMap<String, String>,
 ) -> HashMap<String, String> {
@@ -40,7 +41,7 @@ fn main() {
                 process::exit(1)
             });
             // let mut all_source_data: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
-            let mut all_source_data: HashMap<String, HashMap<String, HashMap<String, String>>> =
+            let mut all_source_data: HashMap<String, HashMap<String, HashMap<String, DataType>>> =
                 HashMap::new();
 
             for source in &cfg.sources {
@@ -54,11 +55,12 @@ fn main() {
 
             // println!("{:?}", config);
             println!("{:?}", all_source_data);
-            // println!("{:?}", all_source_data["main"][0]);
-            println!(
-                "{:?}",
-                merge_maps(&all_source_data["main"]["D02"], &var_map)
-            );
+            println!("{:?}", all_source_data["main"]["D02"]);
+            println!("{:?}", var_map);
+            // println!(
+            //     "{:?}",
+            //     merge_maps(&all_source_data["main"]["D02"], &var_map)
+            // );
         }
         args::Commands::Diff => todo!(),
     }
