@@ -1,7 +1,16 @@
 use clap::Parser;
 use septic_config_generator::{args, config::Config, datasource};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::process;
+
+fn add_missing_yaml_extension(filename: &PathBuf) -> PathBuf {
+    let mut file = filename.clone();
+    if file.extension().is_none() {
+        file.set_extension("yaml");
+    }
+    file
+}
 
 fn main() {
     let args = args::Cli::parse();
@@ -15,7 +24,7 @@ fn main() {
                 .map(|chunk| (chunk[0].to_string(), chunk[1].to_string()))
                 .collect::<HashMap<String, String>>();
 
-            let filename = make_args.config_file;
+            let filename = add_missing_yaml_extension(&make_args.config_file);
 
             let cfg = Config::new(&filename).unwrap_or_else(|e| {
                 eprintln!("Problem reading '{}': {}", &filename.display(), e);
