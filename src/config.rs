@@ -8,10 +8,15 @@ pub struct Config {
     pub outputfile: String,
     pub templatepath: String,
     pub masterpath: String,
-    pub masterkey: String,
-    pub verifycontent: String,
+    pub masterkey: Option<String>,
+    #[serde(default = "_default_true")]
+    pub verifycontent: bool,
     pub sources: Vec<Source>,
-    pub layout: Vec<Layout>,
+    pub layout: Vec<Template>,
+}
+
+const fn _default_true() -> bool {
+    true
 }
 
 impl Config {
@@ -30,8 +35,9 @@ pub struct Source {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Layout {
+pub struct Template {
     pub name: String,
     pub source: Option<String>,
     pub include: Option<Vec<String>>,
+    pub exclude: Option<Vec<String>>,
 }
