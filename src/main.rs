@@ -12,6 +12,15 @@ fn add_missing_yaml_extension(filename: &PathBuf) -> PathBuf {
     file
 }
 
+fn merge_maps(
+    map1: &HashMap<String, String>,
+    map2: &HashMap<String, String>,
+) -> HashMap<String, String> {
+    let mut merged = map1.clone();
+    merged.extend(map2.iter().map(|(k, v)| (k.to_string(), v.to_string())));
+    merged
+}
+
 fn main() {
     let args = args::Cli::parse();
 
@@ -30,7 +39,9 @@ fn main() {
                 eprintln!("Problem reading '{}': {}", &filename.display(), e);
                 process::exit(1)
             });
-            let mut all_source_data: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
+            // let mut all_source_data: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
+            let mut all_source_data: HashMap<String, HashMap<String, HashMap<String, String>>> =
+                HashMap::new();
 
             for source in &cfg.sources {
                 let source_data =
@@ -43,7 +54,11 @@ fn main() {
 
             // println!("{:?}", config);
             println!("{:?}", all_source_data);
-            println!("{:?}", var_map);
+            // println!("{:?}", all_source_data["main"][0]);
+            println!(
+                "{:?}",
+                merge_maps(&all_source_data["main"]["D02"], &var_map)
+            );
         }
         args::Commands::Diff => todo!(),
     }

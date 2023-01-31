@@ -5,7 +5,7 @@ use std::error::Error;
 pub fn read(
     filename: &String,
     sheet: &String,
-) -> Result<Vec<HashMap<String, String>>, Box<dyn Error>> {
+) -> Result<HashMap<String, HashMap<String, String>>, Box<dyn Error>> {
     let path = format!("basic example/{}", filename);
     let mut workbook: Xlsx<_> = open_workbook(path)?;
     let range = workbook
@@ -17,7 +17,8 @@ pub fn read(
         .rows()
         .skip(1)
         .map(|row| {
-            row_headers
+            let key = row[0].get_string().unwrap().to_string();
+            let values = row_headers
                 .iter()
                 .zip(row.iter())
                 .map(|(header, cell)| {
@@ -26,8 +27,10 @@ pub fn read(
                         cell.get_string().unwrap().to_string(),
                     )
                 })
-                .collect::<HashMap<String, String>>()
+                .collect::<HashMap<String, String>>();
+            (key, values)
         })
-        .collect::<Vec<HashMap<String, String>>>();
+        .collect::<HashMap<String, HashMap<String, String>>>();
+
     Ok(data)
 }
