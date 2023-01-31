@@ -1,13 +1,13 @@
 use calamine::{open_workbook, DataType, Reader, Xlsx};
 use std::collections::HashMap;
 use std::error::Error;
+use std::path::PathBuf;
 
 pub fn read(
-    filename: &String,
+    file: &PathBuf,
     sheet: &String,
 ) -> Result<HashMap<String, HashMap<String, DataType>>, Box<dyn Error>> {
-    let path = format!("basic example/{}", filename);
-    let mut workbook: Xlsx<_> = open_workbook(path)?;
+    let mut workbook: Xlsx<_> = open_workbook(file)?;
     let range = workbook
         .worksheet_range(&sheet)
         .ok_or_else(|| format!("Cannot find sheet '{}'", sheet))??;

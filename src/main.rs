@@ -34,22 +34,24 @@ fn main() {
                 .map(|chunk| (chunk[0].to_string(), chunk[1].to_string()))
                 .collect::<HashMap<String, String>>();
 
-            let filename = add_missing_yaml_extension(&make_args.config_file);
+            let cfg_file = add_missing_yaml_extension(&make_args.config_file);
 
-            let cfg = Config::new(&filename).unwrap_or_else(|e| {
-                eprintln!("Problem reading '{}': {}", &filename.display(), e);
+            let cfg = Config::new(&cfg_file).unwrap_or_else(|e| {
+                eprintln!("Problem reading '{}': {}", &cfg_file.display(), e);
                 process::exit(1)
             });
-            // let mut all_source_data: HashMap<String, Vec<HashMap<String, String>>> = HashMap::new();
+
             let mut all_source_data: HashMap<String, HashMap<String, HashMap<String, DataType>>> =
                 HashMap::new();
 
             for source in &cfg.sources {
-                let source_data =
-                    datasource::read(&source.filename, &source.sheet).unwrap_or_else(|e| {
-                        eprintln!("Problem reading source file '{}': {}", source.filename, e);
-                        process::exit(1);
-                    });
+                let mut path = PathBuf::from(cfg_file.parent().unwrap());
+                path.push(&source.filename);
+
+                let source_data = datasource::read(&path, &source.sheet).unwrap_or_else(|e| {
+                    eprintln!("Problem reading source file '{}': {}", path.display(), e);
+                    process::exit(1);
+                });
                 all_source_data.insert(source.id.to_string(), source_data);
             }
 
