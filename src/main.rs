@@ -1,5 +1,6 @@
 use calamine::DataType;
 use clap::Parser;
+use minijinja::Environment;
 use septic_config_generator::{args, config::Config, datasource};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -22,13 +23,8 @@ fn _merge_maps(
     merged
 }
 
-fn cmd_make(cfg_file: &PathBuf, var_list: &Vec<String>) {
+fn cmd_make(cfg_file: &PathBuf, globals: &Vec<String>) {
     let cfg_file = ensure_has_extension(&cfg_file, "yaml");
-
-    let globals = var_list
-        .chunks(2)
-        .map(|chunk| (chunk[0].to_string(), chunk[1].to_string()))
-        .collect::<HashMap<String, String>>();
 
     let cfg = Config::new(&cfg_file).unwrap_or_else(|e| {
         eprintln!("Problem reading '{}': {}", &cfg_file.display(), e);
@@ -49,9 +45,30 @@ fn cmd_make(cfg_file: &PathBuf, var_list: &Vec<String>) {
         all_source_data.insert(source.id.to_string(), source_data);
     }
 
-    println!("{:?}", all_source_data);
-    println!("{:?}", all_source_data["main"]["D02"]);
-    println!("{:?}", globals);
+    let mut env = Environment::new();
+
+    for chunk in globals.chunks(2) {
+        let (key, val) = (&chunk[0], &chunk[1]);
+
+        match val.as_str() {
+            "true" => env.add_global(key, true),
+            "false" => env.add_global(key, false),
+            _ => match val.parse::<i64>() {
+                Ok(i) => env.add_global(key, i),
+                Err(_) => match val.parse::<f64>() {
+                    Ok(f) => env.add_global(key, f),
+                    Err(_) => env.add_global(key, val.to_owned()),
+                },
+            },
+        }
+    }
+
+    for template in cfg.layout {
+        println!("{}", template.name);
+    }
+    // println!("{:?}", all_source_data);
+    // println!("{:?}", all_source_data["main"]["D02"]);
+    println!("{:?}", env);
 }
 
 fn main() {
