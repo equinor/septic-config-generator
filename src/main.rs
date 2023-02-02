@@ -23,6 +23,23 @@ fn _merge_maps(
     merged
 }
 
+fn add_globals(env: &mut Environment, globals: &Vec<String>) {
+    for chunk in globals.chunks(2) {
+        let (key, val) = (chunk[0].to_string(), chunk[1].to_string());
+        match val.as_str() {
+            "true" => env.add_global(key, true),
+            "false" => env.add_global(key, false),
+            _ => match val.parse::<i64>() {
+                Ok(i) => env.add_global(key, i),
+                Err(_) => match val.parse::<f64>() {
+                    Ok(f) => env.add_global(key, f),
+                    Err(_) => env.add_global(key, val.to_owned()),
+                },
+            },
+        }
+    }
+}
+
 fn cmd_make(cfg_file: &PathBuf, globals: &Vec<String>) {
     let cfg_file = ensure_has_extension(&cfg_file, "yaml");
 
@@ -47,21 +64,7 @@ fn cmd_make(cfg_file: &PathBuf, globals: &Vec<String>) {
 
     let mut env = Environment::new();
 
-    for chunk in globals.chunks(2) {
-        let (key, val) = (&chunk[0], &chunk[1]);
-
-        match val.as_str() {
-            "true" => env.add_global(key, true),
-            "false" => env.add_global(key, false),
-            _ => match val.parse::<i64>() {
-                Ok(i) => env.add_global(key, i),
-                Err(_) => match val.parse::<f64>() {
-                    Ok(f) => env.add_global(key, f),
-                    Err(_) => env.add_global(key, val.to_owned()),
-                },
-            },
-        }
-    }
+    add_globals(&mut env, globals);
 
     for template in cfg.layout {
         println!("{}", template.name);
