@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
@@ -40,4 +41,22 @@ pub struct Template {
     pub source: Option<String>,
     pub include: Option<Vec<String>>,
     pub exclude: Option<Vec<String>>,
+}
+
+impl Template {
+    pub fn include_set(&self) -> HashSet<String> {
+        match &self.include {
+            Some(include) => HashSet::<String>::from_iter(include.iter().cloned()),
+            None => HashSet::new(),
+        }
+    }
+}
+
+impl Template {
+    pub fn exclude_set(&self) -> HashSet<String> {
+        match &self.exclude {
+            Some(exclude) => HashSet::<String>::from_iter(exclude.iter().cloned()),
+            None => HashSet::new(),
+        }
+    }
 }

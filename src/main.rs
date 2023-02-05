@@ -1,7 +1,9 @@
 use clap::Parser;
-use minijinja::{context, Environment, Error, Source};
+use minijinja::{Environment, Error, Source};
+
 use septic_config_generator::{args, config::Config, datasource};
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -76,9 +78,6 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         all_source_data.insert(source.id.to_string(), source_data);
     }
 
-    let mut some_source_data: HashMap<String, datasource::DataTypeSer> = HashMap::new();
-    some_source_data.insert("name".to_string(), datasource::DataTypeSer::Int(2));
-
     let mut env = Environment::new();
 
     add_globals(&mut env, globals);
@@ -106,17 +105,55 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
 
     env.set_formatter(error_formatter);
 
-    for template in &cfg.layout {
-        println!("{}", template.name);
-        let tmpl = env.get_template(&template.name).unwrap();
-        let res = tmpl.render(&all_source_data["main"]["D02"])?;
-        println!("{res}");
-    }
-    // env.set_debug(true);
-    let tmpl = env.get_template("hello.txt")?;
-    let res = tmpl.render(context! {nae => "World"})?;
+    let mut rendered = "".to_string();
 
-    println!("{res}");
+    for template in &cfg.layout {
+        let tmpl = env.get_template(&template.name).unwrap_or_else(|e| {
+            eprintln!("Problem reading template file: {e}");
+            process::exit(1);
+        });
+
+        if template.source.is_none() {
+            rendered.push_str(&tmpl.render({})?);
+        } else {
+            let src_name = &template.source.clone().unwrap();
+
+            let mut items: HashSet<String> = all_source_data[src_name].keys().cloned().collect();
+
+            if template.include.is_some() {
+                items = items
+                    .intersection(&template.include_set())
+                    .cloned()
+                    .collect();
+            }
+
+            items = items.difference(&template.exclude_set()).cloned().collect();
+
+            for key in all_source_data[src_name].keys() {
+                if items.contains(key) {
+                    println!("{key}");
+                    let ctx = &all_source_data[src_name][key];
+                    let tmpl_rend = tmpl.render(ctx)?;
+                    rendered.push_str(&tmpl_rend);
+                }
+            }
+
+            // TODO: all_source_data[src] is not sorted.
+            // Consider using Vec<(String, DataTypeSer)> or crate linked_hash_map
+            // let filtered = all_source_data.iter().filter(|(key, _)| key == &target_string);
+            // let result = filtered.next();
+            //
+            // let result = all_source_data.iter().find(|(key, _value)| key == &target);
+        }
+        // let res = tmpl.render(ctx)?;
+        println!("{rendered}");
+    }
+
+    // env.set_debug(true);
+    // let tmpl = env.get_template("hello.txt")?;
+    // let res = tmpl.render(context! {nae => "World"})?;
+
+    // println!("{res}");
     // println!("{:?}", env.source().unwrap());
     // println!("{:?}", all_source_data);
     // println!("{:?}", all_source_data["main"]["D02"]);
