@@ -1,8 +1,9 @@
 use calamine::DataType;
 use clap::Parser;
-use minijinja::Environment;
+use minijinja::{context, Environment, Error, Source};
 use septic_config_generator::{args, config::Config, datasource};
 use std::collections::HashMap;
+use std::fs;
 use std::path::PathBuf;
 use std::process;
 
@@ -40,7 +41,19 @@ fn add_globals(env: &mut Environment, globals: &Vec<String>) {
     }
 }
 
-fn cmd_make(cfg_file: &PathBuf, globals: &Vec<String>) {
+fn error_formatter(
+    out: &mut minijinja::Output,
+    state: &minijinja::State,
+    value: &minijinja::value::Value,
+) -> Result<(), Error> {
+    // A crude way to stop execution when a variable is undefined.
+    if let true = value.is_undefined() {
+        return Err(Error::from(minijinja::ErrorKind::UndefinedError));
+    }
+    minijinja::escape_formatter(out, state, &value)
+}
+
+fn cmd_make(cfg_file: &PathBuf, globals: &Vec<String>) -> Result<(), Error> {
     let cfg_file = ensure_has_extension(&cfg_file, "yaml");
 
     let cfg = Config::new(&cfg_file).unwrap_or_else(|e| {
@@ -66,12 +79,50 @@ fn cmd_make(cfg_file: &PathBuf, globals: &Vec<String>) {
 
     add_globals(&mut env, globals);
 
-    for template in cfg.layout {
-        println!("{}", template.name);
-    }
+    let template_path = PathBuf::from(cfg_file.parent().unwrap());
+    env.set_source(Source::with_loader(move |name| {
+        let mut path = template_path.clone();
+        path.push(&cfg.templatepath);
+        path.push(name);
+        match fs::read_to_string(path) {
+            Ok(result) => Ok(Some(result)),
+            Err(err) => {
+                if err.kind() == std::io::ErrorKind::NotFound {
+                    Ok(None)
+                } else {
+                    Err(Error::new(
+                        minijinja::ErrorKind::TemplateNotFound,
+                        "failed to load template",
+                    )
+                    .with_source(err))
+                }
+            }
+        }
+    }));
+
+    env.set_formatter(|out, state, value| error_formatter(out, state, value));
+
+    // for template in &cfg.layout {
+    //     println!("{}", template.name);
+    //     let tmpl = env.get_template(&template.name).unwrap();
+    //     println!("{}", tmpl.render(context! {name => "World"}).unwrap());
+    // }
+    // env.set_debug(true);
+    let tmpl = env.get_template("hello.txt")?;
+    let res = tmpl.render(context! {name => "World"})?;
+    println!("{}", res);
+    // println!("{:?}", env.source().unwrap());
     // println!("{:?}", all_source_data);
     // println!("{:?}", all_source_data["main"]["D02"]);
-    println!("{:?}", env);
+    // println!("{:?}", env);
+
+    // Load templates from file:
+    // https://github.com/mitsuhiko/minijinja/blob/main/examples/render-template/src/main.rs Ownership issues?
+    // https://github.com/mitsuhiko/minijinja/blob/main/examples/loader/src/main.rs
+    // https://github.com/mitsuhiko/minijinja/blob/main/examples/source/src/main.rs
+    // Create context:
+    // https://github.com/mitsuhiko/minijinja/blob/main/examples/dynamic-context/src/main.rs
+    Ok(())
 }
 
 fn main() {
@@ -79,7 +130,7 @@ fn main() {
 
     match args.command {
         args::Commands::Make(make_args) => {
-            cmd_make(&make_args.config_file, &make_args.var.unwrap_or_default());
+            cmd_make(&make_args.config_file, &make_args.var.unwrap_or_default()).unwrap();
         }
         args::Commands::Diff => todo!(),
     }

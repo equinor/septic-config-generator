@@ -15,6 +15,6 @@ path = "src/main.rs"
 calamine = "0.19.1"
 clap = { version = "4.1.4", features = ["derive"] }
 log = "0.4.17"
-minijinja = "0.30.2"
-serde = {version= "1.0.152", features=["derive"]}
+minijinja = { version="0.30.2", features = ["source"] }
+serde = { version= "1.0.152", features=["derive"] }
 serde_yaml = "0.9.17"
