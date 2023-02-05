@@ -62,10 +62,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         process::exit(1)
     });
 
-    let mut all_source_data: HashMap<
-        String,
-        HashMap<String, HashMap<String, datasource::DataTypeSer>>,
-    > = HashMap::new();
+    let mut all_source_data: HashMap<String, datasource::RowItem> = HashMap::new();
 
     for source in &cfg.sources {
         let mut path = PathBuf::from(cfg_file.parent().unwrap());
@@ -118,53 +115,35 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         } else {
             let src_name = &template.source.clone().unwrap();
 
-            let mut items: HashSet<String> = all_source_data[src_name].keys().cloned().collect();
+            let keys: Vec<String> = all_source_data[src_name]
+                .iter()
+                .map(|(key, _row)| key.clone())
+                .collect();
+
+            let mut items_set: HashSet<String> = keys.iter().cloned().collect();
 
             if template.include.is_some() {
-                items = items
+                items_set = items_set
                     .intersection(&template.include_set())
                     .cloned()
                     .collect();
             }
 
-            items = items.difference(&template.exclude_set()).cloned().collect();
+            items_set = items_set
+                .difference(&template.exclude_set())
+                .cloned()
+                .collect();
 
-            for key in all_source_data[src_name].keys() {
-                if items.contains(key) {
-                    println!("{key}");
-                    let ctx = &all_source_data[src_name][key];
-                    let tmpl_rend = tmpl.render(ctx)?;
+            for (key, row) in all_source_data[src_name].iter() {
+                if items_set.contains(key) {
+                    let tmpl_rend = tmpl.render(row)?;
                     rendered.push_str(&tmpl_rend);
                 }
             }
-
-            // TODO: all_source_data[src] is not sorted.
-            // Consider using Vec<(String, DataTypeSer)> or crate linked_hash_map
-            // let filtered = all_source_data.iter().filter(|(key, _)| key == &target_string);
-            // let result = filtered.next();
-            //
-            // let result = all_source_data.iter().find(|(key, _value)| key == &target);
         }
-        // let res = tmpl.render(ctx)?;
         println!("{rendered}");
     }
 
-    // env.set_debug(true);
-    // let tmpl = env.get_template("hello.txt")?;
-    // let res = tmpl.render(context! {nae => "World"})?;
-
-    // println!("{res}");
-    // println!("{:?}", env.source().unwrap());
-    // println!("{:?}", all_source_data);
-    // println!("{:?}", all_source_data["main"]["D02"]);
-    // println!("{:?}", env);
-
-    // Load templates from file:
-    // https://github.com/mitsuhiko/minijinja/blob/main/examples/render-template/src/main.rs Ownership issues?
-    // https://github.com/mitsuhiko/minijinja/blob/main/examples/loader/src/main.rs
-    // https://github.com/mitsuhiko/minijinja/blob/main/examples/source/src/main.rs
-    // Create context:
-    // https://github.com/mitsuhiko/minijinja/blob/main/examples/dynamic-context/src/main.rs
     Ok(())
 }
 

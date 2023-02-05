@@ -48,10 +48,9 @@ impl Serialize for DataTypeSer {
     }
 }
 
-pub fn read(
-    file: &PathBuf,
-    sheet: &String,
-) -> Result<HashMap<String, HashMap<String, DataTypeSer>>, Box<dyn Error>> {
+pub type RowItem = Vec<(String, HashMap<String, DataTypeSer>)>;
+
+pub fn read(file: &PathBuf, sheet: &String) -> Result<RowItem, Box<dyn Error>> {
     let mut workbook: Xlsx<_> = open_workbook(file)?;
     let range = workbook
         .worksheet_range(sheet)
@@ -83,7 +82,7 @@ pub fn read(
                 .collect::<HashMap<String, DataTypeSer>>();
             (key, values)
         })
-        .collect::<HashMap<String, HashMap<String, DataTypeSer>>>();
+        .collect::<RowItem>();
 
     Ok(data)
 }
