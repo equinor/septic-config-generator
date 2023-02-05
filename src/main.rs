@@ -4,11 +4,11 @@ use minijinja::{context, Environment, Error, Source};
 use septic_config_generator::{args, config::Config, datasource};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process;
 
-fn ensure_has_extension(filename: &PathBuf, extension: &str) -> PathBuf {
-    let mut file = filename.clone();
+fn ensure_has_extension(filename: &Path, extension: &str) -> PathBuf {
+    let mut file = filename.to_path_buf();
     if file.extension().is_none() {
         file.set_extension(extension);
     }
@@ -24,7 +24,7 @@ fn _merge_maps(
     merged
 }
 
-fn add_globals(env: &mut Environment, globals: &Vec<String>) {
+fn add_globals(env: &mut Environment, globals: &[String]) {
     for chunk in globals.chunks(2) {
         let (key, val) = (chunk[0].to_string(), chunk[1].to_string());
         match val.as_str() {
@@ -50,11 +50,11 @@ fn error_formatter(
     if let true = value.is_undefined() {
         return Err(Error::from(minijinja::ErrorKind::UndefinedError));
     }
-    minijinja::escape_formatter(out, state, &value)
+    minijinja::escape_formatter(out, state, value)
 }
 
-fn cmd_make(cfg_file: &PathBuf, globals: &Vec<String>) -> Result<(), Error> {
-    let cfg_file = ensure_has_extension(&cfg_file, "yaml");
+fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
+    let cfg_file = ensure_has_extension(cfg_file, "yaml");
 
     let cfg = Config::new(&cfg_file).unwrap_or_else(|e| {
         eprintln!("Problem reading '{}': {}", &cfg_file.display(), e);
@@ -100,7 +100,7 @@ fn cmd_make(cfg_file: &PathBuf, globals: &Vec<String>) -> Result<(), Error> {
         }
     }));
 
-    env.set_formatter(|out, state, value| error_formatter(out, state, value));
+    env.set_formatter(error_formatter);
 
     // for template in &cfg.layout {
     //     println!("{}", template.name);
@@ -110,7 +110,7 @@ fn cmd_make(cfg_file: &PathBuf, globals: &Vec<String>) -> Result<(), Error> {
     // env.set_debug(true);
     let tmpl = env.get_template("hello.txt")?;
     let res = tmpl.render(context! {name => "World"})?;
-    println!("{}", res);
+    println!("{res}");
     // println!("{:?}", env.source().unwrap());
     // println!("{:?}", all_source_data);
     // println!("{:?}", all_source_data["main"]["D02"]);

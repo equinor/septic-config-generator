@@ -9,8 +9,8 @@ pub fn read(
 ) -> Result<HashMap<String, HashMap<String, DataType>>, Box<dyn Error>> {
     let mut workbook: Xlsx<_> = open_workbook(file)?;
     let range = workbook
-        .worksheet_range(&sheet)
-        .ok_or_else(|| format!("Cannot find sheet '{}'", sheet))??;
+        .worksheet_range(sheet)
+        .ok_or_else(|| format!("Cannot find sheet '{sheet}'"))??;
 
     let row_headers = range.rows().next().unwrap();
     let data = range
