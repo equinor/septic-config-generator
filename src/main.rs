@@ -1,4 +1,3 @@
-use calamine::DataType;
 use clap::Parser;
 use minijinja::{context, Environment, Error, Source};
 use septic_config_generator::{args, config::Config, datasource};
@@ -61,8 +60,10 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         process::exit(1)
     });
 
-    let mut all_source_data: HashMap<String, HashMap<String, HashMap<String, DataType>>> =
-        HashMap::new();
+    let mut all_source_data: HashMap<
+        String,
+        HashMap<String, HashMap<String, datasource::DataTypeSer>>,
+    > = HashMap::new();
 
     for source in &cfg.sources {
         let mut path = PathBuf::from(cfg_file.parent().unwrap());
@@ -74,6 +75,9 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         });
         all_source_data.insert(source.id.to_string(), source_data);
     }
+
+    let mut some_source_data: HashMap<String, datasource::DataTypeSer> = HashMap::new();
+    some_source_data.insert("name".to_string(), datasource::DataTypeSer::Int(2));
 
     let mut env = Environment::new();
 
@@ -102,14 +106,16 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
 
     env.set_formatter(error_formatter);
 
-    // for template in &cfg.layout {
-    //     println!("{}", template.name);
-    //     let tmpl = env.get_template(&template.name).unwrap();
-    //     println!("{}", tmpl.render(context! {name => "World"}).unwrap());
-    // }
+    for template in &cfg.layout {
+        println!("{}", template.name);
+        let tmpl = env.get_template(&template.name).unwrap();
+        let res = tmpl.render(&all_source_data["main"]["D02"])?;
+        println!("{res}");
+    }
     // env.set_debug(true);
     let tmpl = env.get_template("hello.txt")?;
-    let res = tmpl.render(context! {name => "World"})?;
+    let res = tmpl.render(context! {nae => "World"})?;
+
     println!("{res}");
     // println!("{:?}", env.source().unwrap());
     // println!("{:?}", all_source_data);
