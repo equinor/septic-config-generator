@@ -1,14 +1,14 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Config {
     pub outputfile: String,
     pub templatepath: String,
-    pub masterpath: String,
+    pub masterpath: Option<String>,
     pub masterkey: Option<String>,
     #[serde(default = "_default_true")]
     pub verifycontent: bool,
@@ -28,14 +28,14 @@ impl Config {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Source {
     pub filename: String,
     pub id: String,
     pub sheet: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Deserialize, Debug)]
 pub struct Template {
     pub name: String,
     pub source: Option<String>,
