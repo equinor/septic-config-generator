@@ -140,8 +140,8 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
                 }
             }
         }
-        println!("{rendered}");
     }
+    println!("{rendered}");
 
     Ok(())
 }
