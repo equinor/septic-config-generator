@@ -1,14 +1,15 @@
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-#[derive(clap::Parser)]
-#[command(version, about, long_about=None)]
+#[derive(Parser)]
+#[command(version, about, long_about=None, disable_colored_help=true)]
 #[command(next_line_help = true)]
 pub struct Cli {
     #[clap(subcommand)]
     pub command: Commands,
 }
 
-#[derive(clap::Subcommand)]
+#[derive(Subcommand)]
 pub enum Commands {
     /// Generate SEPTIC config
     Make(MakeArgs),
@@ -16,7 +17,7 @@ pub enum Commands {
     Diff,
 }
 
-#[derive(clap::Parser)]
+#[derive(Parser)]
 pub struct MakeArgs {
     /// The yaml config file
     pub config_file: PathBuf,
