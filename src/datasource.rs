@@ -1,56 +1,10 @@
+use crate::{CtxDataType, CtxErrorType, DataSourceRow};
 use calamine::{open_workbook, CellErrorType, DataType, Reader, Xlsx};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
 
-#[derive(Serialize, Deserialize)]
-#[serde(remote = "CellErrorType")]
-enum CellErrorTypeDef {
-    Div0,
-    NA,
-    Name,
-    Null,
-    Num,
-    Ref,
-    Value,
-    GettingData,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(remote = "DataType")]
-pub enum DataTypeSer {
-    Int(i64),
-    Float(f64),
-    String(String),
-    Bool(bool),
-    DateTime(f64),
-    #[serde(with = "CellErrorTypeDef")]
-    Error(CellErrorType),
-    Empty,
-}
-
-impl Serialize for DataTypeSer {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            DataTypeSer::Int(value) => serializer.serialize_i64(*value),
-            DataTypeSer::Float(value) => serializer.serialize_f64(*value),
-            DataTypeSer::String(value) => serializer.serialize_str(value),
-            DataTypeSer::Bool(value) => serializer.serialize_bool(*value),
-            DataTypeSer::DateTime(value) => serializer.serialize_f64(*value),
-            DataTypeSer::Error(value) => serializer.serialize_str(&value.to_string()[..]),
-            // DataTypeSer::Error(_) => serializer.serialize_str("Error in cell"), // Do I need to handle this as Err or just return a special value?
-            DataTypeSer::Empty => serializer.serialize_unit(),
-        }
-    }
-}
-
-pub type RowItem = Vec<(String, HashMap<String, DataTypeSer>)>;
-
-pub fn read(file: &PathBuf, sheet: &String) -> Result<RowItem, Box<dyn Error>> {
+pub fn read(file: &PathBuf, sheet: &String) -> Result<DataSourceRow, Box<dyn Error>> {
     let mut workbook: Xlsx<_> = open_workbook(file)?;
     let range = workbook
         .worksheet_range(sheet)
@@ -68,21 +22,31 @@ pub fn read(file: &PathBuf, sheet: &String) -> Result<RowItem, Box<dyn Error>> {
                 .map(|(header, cell)| {
                     let header_str = header.get_string().unwrap().to_string();
                     let value = match cell.to_owned() {
-                        DataType::Int(i) => DataTypeSer::Int(i),
-                        DataType::Float(f) => DataTypeSer::Float(f),
-                        DataType::String(s) => DataTypeSer::String(s),
-                        DataType::Bool(b) => DataTypeSer::Bool(b),
-                        DataType::DateTime(d) => DataTypeSer::DateTime(d),
-                        // DataType::Error(e) => MyDataType::Error(e),
-                        DataType::Empty => DataTypeSer::Empty,
-                        _ => DataTypeSer::String("Her var det en feil".to_string()),
+                        DataType::Int(i) => CtxDataType::Int(i),
+                        DataType::Float(f) => CtxDataType::Float(f),
+                        DataType::String(s) => CtxDataType::String(s),
+                        DataType::Bool(b) => CtxDataType::Bool(b),
+                        DataType::DateTime(d) => CtxDataType::DateTime(d),
+                        DataType::Empty => CtxDataType::Empty,
+                        DataType::Error(e) => match e {
+                            CellErrorType::Div0 => CtxDataType::Error(CtxErrorType::Div0),
+                            CellErrorType::NA => CtxDataType::Error(CtxErrorType::NA),
+                            CellErrorType::Name => CtxDataType::Error(CtxErrorType::Name),
+                            CellErrorType::Null => CtxDataType::Error(CtxErrorType::Null),
+                            CellErrorType::Num => CtxDataType::Error(CtxErrorType::Num),
+                            CellErrorType::Ref => CtxDataType::Error(CtxErrorType::Ref),
+                            CellErrorType::Value => CtxDataType::Error(CtxErrorType::Value),
+                            CellErrorType::GettingData => {
+                                CtxDataType::Error(CtxErrorType::GettingData)
+                            }
+                        },
                     };
                     (header_str, value)
                 })
-                .collect::<HashMap<String, DataTypeSer>>();
+                .collect::<HashMap<String, CtxDataType>>();
             (key, values)
         })
-        .collect::<RowItem>();
+        .collect::<DataSourceRow>();
 
     Ok(data)
 }

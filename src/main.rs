@@ -1,7 +1,6 @@
 use clap::Parser;
 use minijinja::{Environment, Error, Source};
-
-use septic_config_generator::{args, config::Config, datasource};
+use septic_config_generator::{args, config::Config, datasource, DataSourceRow};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
@@ -62,7 +61,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         process::exit(1)
     });
 
-    let mut all_source_data: HashMap<String, datasource::RowItem> = HashMap::new();
+    let mut all_source_data: HashMap<String, DataSourceRow> = HashMap::new();
 
     for source in &cfg.sources {
         let mut path = PathBuf::from(cfg_file.parent().unwrap());

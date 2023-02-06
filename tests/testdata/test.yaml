@@ -1,10 +1,8 @@
-outputfile: example.cnfg
+outputfile: test.cnfg
 
 templatepath: templates
-masterpath: masters
 
-masterkey: D02
-# verifycontent: true
+verifycontent: true
 
 sources:
   - filename: test.xlsx
@@ -18,18 +16,16 @@ sources:
 
 
 layout:
-  - name: 01_System.cnfg
-  - name: 02_SopcProc.cnfg
-  - name: 03_SopcProc_well.cnfg
-    source: main
-  - name: 04_SmpcAppl.cnfg
-  - name: 05_ExprModl_well.cnfg
-    source: main
-  - name: 06_DspGroupTables.cnfg
-  - name: 07_DspGroupTables_well.cnfg
+  - name: 01_normals.cnfg
     source: main
     include:
       - one
       - two
-      - three
-      
+  - name: 01_normals.cnfg
+    source: main
+    exclude:
+      - one
+      - two
+  - name: 02_specials.cnfg
+    source: errors
+    
