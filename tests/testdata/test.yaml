@@ -1,0 +1,35 @@
+outputfile: example.cnfg
+
+templatepath: templates
+masterpath: masters
+
+masterkey: D02
+# verifycontent: true
+
+sources:
+  - filename: test.xlsx
+    id: main
+    sheet: Normals
+    # Col1, Col2_str, Col3_int, Col4_float_whole, Col5_float, Col6_bool
+  - filename: test.xlsx
+    id: errors
+    sheet: Specials
+    # Col1, Col2_empty, Col3_error
+
+
+layout:
+  - name: 01_System.cnfg
+  - name: 02_SopcProc.cnfg
+  - name: 03_SopcProc_well.cnfg
+    source: main
+  - name: 04_SmpcAppl.cnfg
+  - name: 05_ExprModl_well.cnfg
+    source: main
+  - name: 06_DspGroupTables.cnfg
+  - name: 07_DspGroupTables_well.cnfg
+    source: main
+    include:
+      - one
+      - two
+      - three
+      
