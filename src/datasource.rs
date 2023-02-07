@@ -23,7 +23,10 @@ pub fn read(file: &PathBuf, sheet: &String) -> Result<DataSourceRow, Box<dyn Err
                     let header_str = header.get_string().unwrap().to_string();
                     let value = match cell.to_owned() {
                         DataType::Int(i) => CtxDataType::Int(i),
-                        DataType::Float(f) => CtxDataType::Float(f),
+                        DataType::Float(f) => match f == f.floor() {
+                            true => CtxDataType::Int(f as i64),
+                            false => CtxDataType::Float(f),
+                        }, // TODO: This is hacky. Why doesn't Calamine parse ints as Int?
                         DataType::String(s) => CtxDataType::String(s),
                         DataType::Bool(b) => CtxDataType::Bool(b),
                         DataType::DateTime(d) => CtxDataType::DateTime(d),

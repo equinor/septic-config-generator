@@ -28,4 +28,4 @@ layout:
       - two
   - name: 02_specials.cnfg
     source: errors
-    
+  - name: 03_globals.cnfg    
