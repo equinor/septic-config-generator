@@ -3,6 +3,7 @@ use std::collections::HashMap;
 pub mod args;
 pub mod config;
 pub mod datasource;
+pub mod renderer;
 
 pub type DataSourceRow = Vec<(String, HashMap<String, CtxDataType>)>;
 

@@ -1,9 +1,10 @@
 use clap::Parser;
-use minijinja::{Environment, Error, Source};
-use septic_config_generator::{args, config::Config, datasource, DataSourceRow};
+use minijinja::Error;
+use septic_config_generator::config::Config;
+use septic_config_generator::renderer::MiniJinjaRenderer;
+use septic_config_generator::{args, datasource, DataSourceRow};
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -22,35 +23,6 @@ fn _merge_maps(
     let mut merged = map1.clone();
     merged.extend(map2.iter().map(|(k, v)| (k.to_string(), v.to_string())));
     merged
-}
-
-fn add_globals(env: &mut Environment, globals: &[String]) {
-    for chunk in globals.chunks(2) {
-        let (key, val) = (chunk[0].to_string(), chunk[1].to_string());
-        match val.as_str() {
-            "true" => env.add_global(key, true),
-            "false" => env.add_global(key, false),
-            _ => match val.parse::<i64>() {
-                Ok(i) => env.add_global(key, i),
-                Err(_) => match val.parse::<f64>() {
-                    Ok(f) => env.add_global(key, f),
-                    Err(_) => env.add_global(key, val.to_owned()),
-                },
-            },
-        }
-    }
-}
-
-fn error_formatter(
-    out: &mut minijinja::Output,
-    state: &minijinja::State,
-    value: &minijinja::value::Value,
-) -> Result<(), Error> {
-    // A crude way to stop execution when a variable is undefined.
-    if let true = value.is_undefined() {
-        return Err(Error::from(minijinja::ErrorKind::UndefinedError));
-    }
-    minijinja::escape_formatter(out, state, value)
 }
 
 fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
@@ -74,40 +46,22 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         all_source_data.insert(source.id.to_string(), source_data);
     }
 
-    let mut env = Environment::new();
-
-    add_globals(&mut env, globals);
-
     let template_path = PathBuf::from(cfg_file.parent().unwrap());
-    env.set_source(Source::with_loader(move |name| {
-        let mut path = template_path.clone();
-        path.push(&cfg.templatepath);
-        path.push(name);
-        match fs::read_to_string(path) {
-            Ok(result) => Ok(Some(result)),
-            Err(err) => {
-                if err.kind() == std::io::ErrorKind::NotFound {
-                    Ok(None)
-                } else {
-                    Err(Error::new(
-                        minijinja::ErrorKind::TemplateNotFound,
-                        "failed to load template",
-                    )
-                    .with_source(err))
-                }
-            }
-        }
-    }));
+    let mut path = template_path;
+    path.push(&cfg.templatepath);
 
-    env.set_formatter(error_formatter);
+    let renderer = MiniJinjaRenderer::new(globals, &path);
 
     let mut rendered = "".to_string();
 
     for template in &cfg.layout {
-        let tmpl = env.get_template(&template.name).unwrap_or_else(|e| {
-            eprintln!("Problem reading template file: {e}");
-            process::exit(1);
-        });
+        let tmpl = renderer
+            .env
+            .get_template(&template.name)
+            .unwrap_or_else(|e| {
+                eprintln!("Problem reading template file: {e}");
+                process::exit(1);
+            });
 
         if template.source.is_none() {
             rendered.push_str(&tmpl.render({})?);
