@@ -20,17 +20,18 @@ impl<'a> MiniJinjaRenderer<'a> {
             path.push(name);
             match fs::read_to_string(path) {
                 Ok(result) => Ok(Some(result)),
-                Err(err) => {
-                    if err.kind() == std::io::ErrorKind::NotFound {
-                        Ok(None)
-                    } else {
-                        Err(minijinja::Error::new(
-                            minijinja::ErrorKind::TemplateNotFound,
-                            "failed to load template",
-                        )
-                        .with_source(err))
+                Err(err) => match err.kind() {
+                    std::io::ErrorKind::NotFound => Ok(None),
+                    std::io::ErrorKind::InvalidData => Err(minijinja::Error::new(
+                        minijinja::ErrorKind::SyntaxError,
+                        format!("{err} ({name})"),
+                    )
+                    .with_source(err)),
+                    other_error => {
+                        dbg!(&other_error);
+                        panic!("Unknown error, please report it");
                     }
-                }
+                },
             }
         }));
         renderer

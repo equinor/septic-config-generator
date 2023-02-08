@@ -59,7 +59,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
             .env
             .get_template(&template.name)
             .unwrap_or_else(|e| {
-                eprintln!("Problem reading template file: {e}");
+                eprintln!("Problem reading template: {e}");
                 process::exit(1);
             });
 
