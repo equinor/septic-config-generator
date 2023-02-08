@@ -6,6 +6,33 @@ use std::path::PathBuf;
 pub struct MiniJinjaRenderer<'a> {
     pub env: Environment<'a>,
 }
+fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, minijinja::Error> {
+    let mut path = PathBuf::new();
+    path.push(template_path);
+    path.push(name);
+    let file = match File::open(path) {
+        Ok(f) => f,
+        Err(err) => match err.kind() {
+            std::io::ErrorKind::NotFound => return Ok(None),
+            other_error => {
+                dbg!(&other_error);
+                panic!("Unknown error, please report it");
+            }
+        },
+    };
+    let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+        .encoding(Some(encoding_rs::WINDOWS_1252))
+        .build(file);
+    let mut content = String::new();
+
+    match reader.read_to_string(&mut content) {
+        Ok(_) => Ok(Some(content)),
+        Err(err) => {
+            dbg!(&err);
+            panic!("Unknown error when reading template, please report it");
+        }
+    }
+}
 
 impl<'a> MiniJinjaRenderer<'a> {
     pub fn new(globals: &[String], template_path: &Path) -> MiniJinjaRenderer<'a> {
@@ -14,38 +41,15 @@ impl<'a> MiniJinjaRenderer<'a> {
         };
         renderer.add_globals(globals);
         renderer.env.set_formatter(error_formatter);
-        
+
         let local_template_path = template_path.to_path_buf();
 
         renderer.env.set_source(Source::with_loader(move |name| {
-            let mut path = PathBuf::new();
-            path.push(local_template_path.clone());
-            path.push(name);
-            let file = match File::open(path) {
-                Ok(f) => f,
-                Err(err) => match err.kind() {
-                    std::io::ErrorKind::NotFound => return Ok(None),
-                    other_error => {
-                        dbg!(&other_error);
-                        panic!("Unknown error, please report it");
-                    }
-                },
-            };
-            let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-                .encoding(Some(encoding_rs::WINDOWS_1252))
-                .build(file);
-            let mut content = String::new();
-
-            match reader.read_to_string(&mut content) {
-                Ok(_) => Ok(Some(content)),
-                Err(err) => {
-                    dbg!(&err);
-                    panic!("Unknown error when reading template, please report it");
-                }
-            }
+            load_template(&local_template_path, name)
         }));
         renderer
     }
+
     fn add_globals(&mut self, globals: &[String]) {
         for chunk in globals.chunks(2) {
             let (key, val) = (chunk[0].to_string(), chunk[1].to_string());
