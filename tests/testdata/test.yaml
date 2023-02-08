@@ -14,18 +14,23 @@ sources:
     sheet: Specials
     # Col1, Col2_empty, Col3_error
 
-
 layout:
-  - name: 01_normals.cnfg
+  - name: 01_normals.tmpl
     source: main
     include:
       - one
       - two
-  - name: 01_normals.cnfg
+  - name: 01_normals.tmpl
     source: main
     exclude:
       - one
       - two
-  - name: 02_specials.cnfg
+  - name: 02_specials.tmpl
     source: errors
-  - name: 03_globals.cnfg    
+  - name: 03_globals.tmpl    
+  - name: 04_include.tmpl
+  - name: 05_expressions.tmpl
+    source: main
+    include: 
+      - one
+  # - name: 06_encoding.tmpl
