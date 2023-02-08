@@ -33,4 +33,4 @@ layout:
     source: main
     include: 
       - one
-  # - name: 06_encoding.tmpl
+  - name: 06_encoding.tmpl

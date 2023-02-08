@@ -14,7 +14,8 @@ path = "src/main.rs"
 [dependencies]
 calamine = "0.19.1"
 clap = { version = "4.1.4", features = ["derive"] }
-log = "0.4.17"
-minijinja = { version="0.30.2", features = ["source"] }
-serde = { version= "1.0.152", features=["derive"] }
+encoding_rs = "0.8.32"
+encoding_rs_io = "0.1.7"
+minijinja = { version = "0.30.2", features = ["source"] }
+serde = { version = "1.0.152", features = ["derive"] }
 serde_yaml = "0.9.17"

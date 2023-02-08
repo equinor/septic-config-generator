@@ -1,5 +1,6 @@
 use minijinja::{Environment, Source};
-use std::fs;
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 pub struct MiniJinjaRenderer<'a> {
@@ -13,25 +14,34 @@ impl<'a> MiniJinjaRenderer<'a> {
         };
         renderer.add_globals(globals);
         renderer.env.set_formatter(error_formatter);
+        
         let local_template_path = template_path.to_path_buf();
+
         renderer.env.set_source(Source::with_loader(move |name| {
             let mut path = PathBuf::new();
             path.push(local_template_path.clone());
             path.push(name);
-            match fs::read_to_string(path) {
-                Ok(result) => Ok(Some(result)),
+            let file = match File::open(path) {
+                Ok(f) => f,
                 Err(err) => match err.kind() {
-                    std::io::ErrorKind::NotFound => Ok(None),
-                    std::io::ErrorKind::InvalidData => Err(minijinja::Error::new(
-                        minijinja::ErrorKind::SyntaxError,
-                        format!("{err} ({name})"),
-                    )
-                    .with_source(err)),
+                    std::io::ErrorKind::NotFound => return Ok(None),
                     other_error => {
                         dbg!(&other_error);
                         panic!("Unknown error, please report it");
                     }
                 },
+            };
+            let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+                .encoding(Some(encoding_rs::WINDOWS_1252))
+                .build(file);
+            let mut content = String::new();
+
+            match reader.read_to_string(&mut content) {
+                Ok(_) => Ok(Some(content)),
+                Err(err) => {
+                    dbg!(&err);
+                    panic!("Unknown error when reading template, please report it");
+                }
             }
         }));
         renderer
