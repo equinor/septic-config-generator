@@ -1,4 +1,4 @@
-outputfile: test.cnfg
+# outputfile: test.cnfg
 
 templatepath: templates
 
@@ -35,3 +35,4 @@ layout:
     include: 
       - one
   - name: 06_encoding.tmpl
+  - name: 07_functions.tmpl

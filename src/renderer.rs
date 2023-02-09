@@ -1,9 +1,52 @@
-use minijinja::{Environment, Source};
+use minijinja::{Environment, Error, ErrorKind, Source};
 use serde::Serialize;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
+
+fn gitcommitlong() -> Result<String, Error> {
+    gitcommit(false)
+}
+
+fn gitcommitshort() -> Result<String, Error> {
+    gitcommit(true)
+}
+
+fn gitcommit(short: bool) -> Result<String, Error> {
+    let args = match short {
+        true => ["rev-parse", "--short", "HEAD"],
+        _ => ["rev-parse", "--verify", "HEAD"],
+    };
+    let output = match std::process::Command::new("git").args(args).output() {
+        Ok(cmd) => cmd,
+        Err(err) => {
+            return Err(
+                Error::new(ErrorKind::InvalidOperation, "cannot execute git").with_source(err),
+            );
+        }
+    };
+    let hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(hash)
+}
+
+fn _gitcommit() -> Result<String, Error> {
+    let length = "long";
+    let args = match length.to_lowercase().as_str() {
+        "short" => ["rev-parse", "--short", "HEAD"],
+        _ => ["rev-parse", "--verify", "HEAD"],
+    };
+    let output = match std::process::Command::new("git").args(args).output() {
+        Ok(cmd) => cmd,
+        Err(err) => {
+            return Err(
+                Error::new(ErrorKind::InvalidOperation, "cannot execute git").with_source(err),
+            );
+        }
+    };
+    let hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    Ok(hash)
+}
 
 fn erroring_formatter(
     out: &mut minijinja::Output,
@@ -12,12 +55,12 @@ fn erroring_formatter(
 ) -> Result<(), minijinja::Error> {
     // A crude way to stop execution when a variable is undefined.
     if let true = value.is_undefined() {
-        return Err(minijinja::Error::from(minijinja::ErrorKind::UndefinedError));
+        return Err(Error::from(ErrorKind::UndefinedError));
     }
     minijinja::escape_formatter(out, state, value)
 }
 
-fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, minijinja::Error> {
+fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, Error> {
     let mut path = PathBuf::new();
     path.push(template_path);
     path.push(name);
@@ -55,6 +98,8 @@ impl<'a> MiniJinjaRenderer<'a> {
             env: Environment::new(),
         };
         renderer.add_globals(globals);
+        renderer.env.add_function("gitcommit", gitcommitlong);
+        renderer.env.add_function("gitcommitshort", gitcommitshort);
         renderer.env.set_formatter(erroring_formatter);
 
         let local_template_path = template_path.to_path_buf();
