@@ -55,16 +55,12 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
     let mut rendered = "".to_string();
 
     for template in &cfg.layout {
-        let tmpl = renderer
-            .env
-            .get_template(&template.name)
-            .unwrap_or_else(|e| {
-                eprintln!("Problem reading template: {e}");
+        if template.source.is_none() {
+            let tmpl_rend = renderer.render(&template.name, ()).unwrap_or_else(|err| {
+                eprintln!("Problem reading template: {err}");
                 process::exit(1);
             });
-
-        if template.source.is_none() {
-            rendered.push_str(&tmpl.render({})?);
+            rendered.push_str(&tmpl_rend);
         } else {
             let src_name = &template.source.clone().unwrap();
 
@@ -89,7 +85,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
 
             for (key, row) in all_source_data[src_name].iter() {
                 if items_set.contains(key) {
-                    let tmpl_rend = tmpl.render(row)?;
+                    let tmpl_rend = renderer.render(&template.name, Some(row)).unwrap();
                     rendered.push_str(&tmpl_rend);
                 }
             }

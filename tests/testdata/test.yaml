@@ -15,6 +15,7 @@ sources:
     # Col1, Col2_empty, Col3_error
 
 layout:
+  - name: 00_plaintext.tmpl
   - name: 01_normals.tmpl
     source: main
     include:
