@@ -65,18 +65,19 @@ impl<'a> MiniJinjaRenderer<'a> {
         renderer
     }
 
-    pub fn render<S: Serialize>(
+    pub fn render<S: Serialize, W: std::io::Write>(
         &self,
         template_name: &str,
         ctx: S,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+        writer: W,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let tmpl = match self.env.get_template(template_name) {
             Ok(t) => t,
             Err(e) => return Err(Box::new(e)),
         };
 
-        match tmpl.render(ctx) {
-            Ok(r) => Ok(r),
+        match tmpl.render_to_write(ctx, writer) {
+            Ok(()) => Ok(()),
             Err(e) => Err(Box::new(e)),
         }
     }

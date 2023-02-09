@@ -142,3 +142,4 @@ cli.build/
 
 # rust
 /target
+tests/testdata/test.cnfg

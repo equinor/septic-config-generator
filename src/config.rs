@@ -6,7 +6,7 @@ use std::path::PathBuf;
 
 #[derive(Deserialize, Debug)]
 pub struct Config {
-    pub outputfile: String,
+    pub outputfile: Option<String>,
     pub templatepath: String,
     pub masterpath: Option<String>,
     pub masterkey: Option<String>,

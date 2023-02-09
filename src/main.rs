@@ -5,6 +5,8 @@ use septic_config_generator::renderer::MiniJinjaRenderer;
 use septic_config_generator::{args, datasource, DataSourceRow};
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fs::File;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -27,6 +29,7 @@ fn _merge_maps(
 
 fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
     let cfg_file = ensure_has_extension(cfg_file, "yaml");
+    let relative_root = PathBuf::from(cfg_file.parent().unwrap());
 
     let cfg = Config::new(&cfg_file).unwrap_or_else(|e| {
         eprintln!("Problem reading '{}': {}", &cfg_file.display(), e);
@@ -36,9 +39,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
     let mut all_source_data: HashMap<String, DataSourceRow> = HashMap::new();
 
     for source in &cfg.sources {
-        let mut path = PathBuf::from(cfg_file.parent().unwrap());
-        path.push(&source.filename);
-
+        let path = relative_root.join(&source.filename);
         let source_data = datasource::read(&path, &source.sheet).unwrap_or_else(|e| {
             eprintln!("Problem reading source file '{}': {}", path.display(), e);
             process::exit(1);
@@ -46,21 +47,30 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         all_source_data.insert(source.id.to_string(), source_data);
     }
 
-    let template_path = PathBuf::from(cfg_file.parent().unwrap());
-    let mut path = template_path;
-    path.push(&cfg.templatepath);
+    let template_path = relative_root.join(&cfg.templatepath);
+    let renderer = MiniJinjaRenderer::new(globals, &template_path);
 
-    let renderer = MiniJinjaRenderer::new(globals, &path);
+    let mut sink: Box<dyn Write> = match &cfg.outputfile {
+        Some(filename) => {
+            let path = relative_root.join(filename);
 
-    let mut rendered = "".to_string();
+            let file = File::create(&path).unwrap_or_else(|e| {
+                eprintln!("Problem creating output file '{}': {}", &path.display(), e);
+                process::exit(1);
+            });
+            Box::new(file)
+        }
+        None => Box::new(io::stdout()),
+    };
 
     for template in &cfg.layout {
         if template.source.is_none() {
-            let tmpl_rend = renderer.render(&template.name, ()).unwrap_or_else(|err| {
-                eprintln!("Problem reading template: {err}");
-                process::exit(1);
-            });
-            rendered.push_str(&tmpl_rend);
+            renderer
+                .render(&template.name, (), &mut sink)
+                .unwrap_or_else(|err| {
+                    eprintln!("Problem reading template: {err}");
+                    process::exit(1);
+                });
         } else {
             let src_name = &template.source.clone().unwrap();
 
@@ -85,13 +95,14 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
 
             for (key, row) in all_source_data[src_name].iter() {
                 if items_set.contains(key) {
-                    let tmpl_rend = renderer.render(&template.name, Some(row)).unwrap();
-                    rendered.push_str(&tmpl_rend);
+                    renderer
+                        .render(&template.name, Some(row), &mut sink)
+                        .unwrap();
                 }
             }
         }
     }
-    println!("{rendered}");
+    // println!("{rendered}");
 
     Ok(())
 }
