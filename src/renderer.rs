@@ -5,47 +5,16 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 
-fn gitcommitlong() -> Result<String, Error> {
-    gitcommit(false)
-}
-
-fn gitcommitshort() -> Result<String, Error> {
-    gitcommit(true)
-}
-
-fn gitcommit(short: bool) -> Result<String, Error> {
+fn gitcommit(short: bool) -> String {
     let args = match short {
         true => ["rev-parse", "--short", "HEAD"],
         _ => ["rev-parse", "--verify", "HEAD"],
     };
-    let output = match std::process::Command::new("git").args(args).output() {
-        Ok(cmd) => cmd,
-        Err(err) => {
-            return Err(
-                Error::new(ErrorKind::InvalidOperation, "cannot execute git").with_source(err),
-            );
-        }
-    };
-    let hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(hash)
-}
-
-fn _gitcommit() -> Result<String, Error> {
-    let length = "long";
-    let args = match length.to_lowercase().as_str() {
-        "short" => ["rev-parse", "--short", "HEAD"],
-        _ => ["rev-parse", "--verify", "HEAD"],
-    };
-    let output = match std::process::Command::new("git").args(args).output() {
-        Ok(cmd) => cmd,
-        Err(err) => {
-            return Err(
-                Error::new(ErrorKind::InvalidOperation, "cannot execute git").with_source(err),
-            );
-        }
-    };
-    let hash = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(hash)
+    std::process::Command::new("git")
+        .args(args)
+        .output()
+        .map(|cmd| String::from_utf8_lossy(&cmd.stdout).trim().to_string())
+        .unwrap_or_else(|err| format!("***** Unable to execute git: {err:#} *****"))
 }
 
 fn erroring_formatter(
@@ -98,8 +67,9 @@ impl<'a> MiniJinjaRenderer<'a> {
             env: Environment::new(),
         };
         renderer.add_globals(globals);
-        renderer.env.add_function("gitcommit", gitcommitlong);
-        renderer.env.add_function("gitcommitshort", gitcommitshort);
+        renderer.env.add_global("gitcommit", gitcommit(false));
+        // renderer.env.add_function("gitcommit", gitcommitlong);
+        // renderer.env.add_function("gitcommitshort", gitcommitshort);
         renderer.env.set_formatter(erroring_formatter);
 
         let local_template_path = template_path.to_path_buf();
