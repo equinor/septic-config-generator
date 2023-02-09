@@ -41,7 +41,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
     for source in &cfg.sources {
         let path = relative_root.join(&source.filename);
         let source_data = datasource::read(&path, &source.sheet).unwrap_or_else(|e| {
-            eprintln!("Problem reading source file '{}': {}", path.display(), e);
+            eprintln!("Problem reading source file '{}': {e}", path.display());
             process::exit(1);
         });
         all_source_data.insert(source.id.to_string(), source_data);
@@ -55,7 +55,13 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
     for template in &cfg.layout {
         if template.source.is_none() {
             let tmpl_rend = renderer.render(&template.name, ()).unwrap_or_else(|err| {
-                eprintln!("Problem reading template: {err}");
+                eprintln!("Template error: {err:#}");
+                let mut err = &*err;
+                while let Some(next_err) = err.source() {
+                    eprintln!();
+                    eprintln!("Above error caused by: {next_err:#}");
+                    err = next_err;
+                }
                 process::exit(1);
             });
             rendered.push_str(&tmpl_rend);
