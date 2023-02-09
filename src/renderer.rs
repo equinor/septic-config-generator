@@ -1,9 +1,15 @@
+use chrono::Local;
 use minijinja::{Environment, Error, ErrorKind, Source};
 use serde::Serialize;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
+
+fn timestamp(format: &str) -> String {
+    let now = Local::now();
+    now.format(format).to_string()
+}
 
 fn gitcommit(short: bool) -> String {
     let args = match short {
@@ -68,8 +74,7 @@ impl<'a> MiniJinjaRenderer<'a> {
         };
         renderer.add_globals(globals);
         renderer.env.add_global("gitcommit", gitcommit(false));
-        // renderer.env.add_function("gitcommit", gitcommitlong);
-        // renderer.env.add_function("gitcommitshort", gitcommitshort);
+        renderer.env.add_function("now", timestamp);
         renderer.env.set_formatter(erroring_formatter);
 
         let local_template_path = template_path.to_path_buf();
