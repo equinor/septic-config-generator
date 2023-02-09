@@ -65,7 +65,23 @@ impl<'a> MiniJinjaRenderer<'a> {
         renderer
     }
 
-    pub fn render<S: Serialize, W: std::io::Write>(
+    pub fn render<S: Serialize>(
+        &self,
+        template_name: &str,
+        ctx: S,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let tmpl = match self.env.get_template(template_name) {
+            Ok(t) => t,
+            Err(e) => return Err(Box::new(e)),
+        };
+
+        match tmpl.render(ctx) {
+            Ok(r) => Ok(r),
+            Err(e) => Err(Box::new(e)),
+        }
+    }
+
+    pub fn render_to_file<S: Serialize, W: std::io::Write>(
         &self,
         template_name: &str,
         ctx: S,

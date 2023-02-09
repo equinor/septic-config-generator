@@ -6,7 +6,7 @@ use septic_config_generator::{args, datasource, DataSourceRow};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -50,27 +50,15 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
     let template_path = relative_root.join(&cfg.templatepath);
     let renderer = MiniJinjaRenderer::new(globals, &template_path);
 
-    let mut sink: Box<dyn Write> = match &cfg.outputfile {
-        Some(filename) => {
-            let path = relative_root.join(filename);
-
-            let file = File::create(&path).unwrap_or_else(|e| {
-                eprintln!("Problem creating output file '{}': {}", &path.display(), e);
-                process::exit(1);
-            });
-            Box::new(file)
-        }
-        None => Box::new(io::stdout()),
-    };
+    let mut rendered = String::new();
 
     for template in &cfg.layout {
         if template.source.is_none() {
-            renderer
-                .render(&template.name, (), &mut sink)
-                .unwrap_or_else(|err| {
-                    eprintln!("Problem reading template: {err}");
-                    process::exit(1);
-                });
+            let tmpl_rend = renderer.render(&template.name, ()).unwrap_or_else(|err| {
+                eprintln!("Problem reading template: {err}");
+                process::exit(1);
+            });
+            rendered.push_str(&tmpl_rend);
         } else {
             let src_name = &template.source.clone().unwrap();
 
@@ -95,14 +83,25 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
 
             for (key, row) in all_source_data[src_name].iter() {
                 if items_set.contains(key) {
-                    renderer
-                        .render(&template.name, Some(row), &mut sink)
-                        .unwrap();
+                    let temp_rend = renderer.render(&template.name, Some(row)).unwrap();
+                    rendered.push_str(&temp_rend);
                 }
             }
         }
     }
-    // println!("{rendered}");
+
+    if cfg.outputfile.is_none() {
+        // TODO: || with input argument for writing to stdout
+        println!("{rendered}");
+    } else {
+        let path = relative_root.join(cfg.outputfile.unwrap());
+        let mut f = File::create(&path).unwrap_or_else(|e| {
+            eprintln!("Problem creating output file '{}': {}", &path.display(), e);
+            process::exit(1);
+        });
+        let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
+        f.write_all(&cow).unwrap();
+    }
 
     Ok(())
 }
