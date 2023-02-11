@@ -12,8 +12,7 @@ jobs:
         id: release
         uses: google-github-actions/release-please-action@v3
         with:
-          release-type: simple
-          package-name: septic-config
+          release-type: rust
           bump-minor-pre-major: true
           changelog-types: >
             [{"type":"build", "section":"📦 Build system","hidden":false},
@@ -28,8 +27,8 @@ jobs:
             {"type":"style","section":"💎 Style","hidden":false},
             {"type":"test", "section":"🧪 Tests","hidden":false}]
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      release_created: ${{ steps.release_please.outputs.release_created }}
+      tag_name: ${{ steps.release_please.outputs.tag_name }}
 
   build:
     name: '🛠️ Build'
@@ -42,6 +41,7 @@ jobs:
     needs: [build, release_please]
     uses: ./.github/workflows/publish-workflow.yml
     with:
-      artifact: ${{ needs.build.outputs.artifact-name }}
+      artifact-windows: ${{ needs.build.outputs.artifact-name-windows }}
+      artifact-linux: ${{ needs.build.outputs.artifact-name-linux }}
       tag_name: ${{ needs.release_please.outputs.tag_name }}
     secrets: inherit
