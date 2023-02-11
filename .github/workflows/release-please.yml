@@ -27,12 +27,12 @@ jobs:
             {"type":"style","section":"💎 Style","hidden":false},
             {"type":"test", "section":"🧪 Tests","hidden":false}]
     outputs:
-      release_created: ${{ steps.release_please.outputs.release_created }}
-      tag_name: ${{ steps.release_please.outputs.tag_name }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
 
   build:
     name: '🛠️ Build'
-    if: ${{ needs.release_please.outputs.release_created }}
+    if: ${{ needs.release.outputs.release_created }}
     needs: [release_please]
     uses: ./.github/workflows/build-workflow.yml
 
@@ -43,5 +43,5 @@ jobs:
     with:
       artifact-windows: ${{ needs.build.outputs.artifact-name-windows }}
       artifact-linux: ${{ needs.build.outputs.artifact-name-linux }}
-      tag_name: ${{ needs.release_please.outputs.tag_name }}
+      tag_name: ${{ needs.release.outputs.tag_name }}
     secrets: inherit
