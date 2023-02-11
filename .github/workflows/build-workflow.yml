@@ -37,16 +37,20 @@ jobs:
       - name: 'Set artifact name'
         run: echo "ARTIFACT_NAME=$(echo SCG-${{ env.BUILD_VERSION }}-${{ matrix.os }})" >> $GITHUB_ENV
 
-      - name: 'Upload artifact'
+      - name: 'Upload artifact for Windows'
+        if: ${{ matrix.os }} == 'windows-latest'
         uses: actions/upload-artifact@v3
         with:
           name: ${{ env.ARTIFACT_NAME }}
-          path: |
-            if [ "${{ matrix.os }}" == "windows-latest" ]; then
-              "target/release/scg.exe"
-            else
-              "target/release/scg"
-            fi
+          path: "target/release/scg.exe"
+          retention-days: 7
+
+      - name: 'Upload artifact for Linux'
+        if: ${{ matrix.os }} == 'ubuntu-latest'
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: "target/release/scg"
           retention-days: 7
 
     outputs:
