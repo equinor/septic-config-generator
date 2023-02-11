@@ -2,7 +2,10 @@ name: '🚀 Publish release'
 on:
   workflow_call:
     inputs:
-      artifact:
+      artifact-windows:
+        required: true
+        type: string
+      artifact-linux:
         required: true
         type: string
       tag_name:
@@ -16,10 +19,17 @@ jobs:
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
-          name: ${{ inputs.artifact }}
+          name: ${{ inputs.artifact-windows }}
 
-      - name: Publish config
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.artifact-linux }}
+
+      - name: Publish
         uses: softprops/action-gh-release@v1
         with:
-          files: "*.cnfg"
+          files: |
+            scg
+            scg.exe
           tag_name: ${{ inputs.tag_name }} 
