@@ -6,3 +6,4 @@ venv\Scripts\pyinstaller.exe ^
   --onefile ^
   --name scg.exe ^
   cli.py
+
