@@ -32,14 +32,27 @@ jobs:
       - name: 'Resolve build version'
         run: echo "BUILD_VERSION=$GITHUB_SHA" >> $GITHUB_ENV
 
-      - name: 'Set artifact name'
-        run: echo "ARTIFACT_NAME=$(echo SCG-${{ env.BUILD_VERSION }}-${{ matrix.os }})" >> $GITHUB_ENV
+      - name: 'Set artifact name for Windows'
+        if: runner.os == 'Windows'
+        run: |
+          echo "ARTIFACT_NAME_WINDOWS=SCG-$env:GITHUB_SHA-$env:RUNNER_OS" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME_WINDOWS=SCG-$env:GITHUB_SHA-$env:RUNNER_OS"
+
+
+      - name: 'Set artifact name for Linux'
+        if: runner.os == 'Linux'
+        run: |
+          echo "ARTIFACT_NAME_LINUX=$(echo SCG-$GITHUB_SHA-$RUNNER_OS)" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME_LINUX=SCG-$GITHUB_SHA-$RUNNER_OS"
+          
+        
+        #run: echo "ARTIFACT_NAME=$(echo SCG-${{ env.BUILD_VERSION }}-${{ matrix.os }})" >> $GITHUB_ENV
 
       - name: 'Upload artifact for Windows'
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.ARTIFACT_NAME }}
+          name: ${{ env.ARTIFACT_NAME_WINDOWS }}
           path: "target/release/scg.exe"
           retention-days: 7
 
@@ -47,9 +60,10 @@ jobs:
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v3
         with:
-          name: ${{ env.ARTIFACT_NAME }}
+          name: ${{ env.ARTIFACT_NAME_LINUX }}
           path: "target/release/scg"
           retention-days: 7
 
     outputs:
-      artifact-name: ${{ env.ARTIFACT_NAME }}
+      artifact-name-windows: ${{ env.ARTIFACT_NAME_WINDOWS }}
+      artifact-name-linux: ${{ env.ARTIFACT_NAME_LINUX }}
