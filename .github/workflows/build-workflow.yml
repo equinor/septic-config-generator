@@ -39,16 +39,6 @@ jobs:
       - name: 'Set artifact name for Linux'
         if: runner.os == 'Linux'
         run: echo "ARTIFACT_NAME_LINUX=SCG-$GITHUB_SHA-$RUNNER_OS" >> $GITHUB_ENV
-        
-      - name: 'Test'
-        run: |
-          if [ "${{ runner.os }}" == "Windows" ]; then
-            echo "ARTIFACT_NAME_WINDOWS=SCG-${{ env.GITHUB_SHA }}-${{ env.RUNNER_OS }}"
-          elif [ "${{ runner.os }}" == "Linux" ]; then
-            echo "ARTIFACT_NAME_LINUX=SCG-${{ env.GITHUB_SHA }}-${{ env.RUNNER_OS }}"
-          fi
-        
-        #run: echo "ARTIFACT_NAME=$(echo SCG-${{ env.BUILD_VERSION }}-${{ matrix.os }})" >> $GITHUB_ENV
 
       - name: 'Upload artifact for Windows'
         if: runner.os == 'Windows'
