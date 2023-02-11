@@ -138,3 +138,8 @@ scg/version.py
 .vscode
 
 cli.build/
+
+
+# rust
+/target
+tests/testdata/test.cnfg
