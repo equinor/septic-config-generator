@@ -1,4 +1,4 @@
-name: '🛠️ Build SCG'
+name: '🛠️ Build for release'
 
 on:
   workflow_dispatch:
@@ -27,9 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Build
-        run: cargo build --verbose
-#      - name: Run tests
-#        run: cargo test --verbose
+        run: cargo build --release --verbose
 
       - name: 'Resolve build version'
         run: echo "BUILD_VERSION=$GITHUB_SHA" >> $GITHUB_ENV
@@ -38,7 +36,7 @@ jobs:
         run: echo "ARTIFACT_NAME=$(echo SCG-${{ env.BUILD_VERSION }}-${{ matrix.os }})" >> $GITHUB_ENV
 
       - name: 'Upload artifact for Windows'
-        if: ${{ matrix.os }} == 'windows-latest'
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v3
         with:
           name: ${{ env.ARTIFACT_NAME }}
@@ -46,7 +44,7 @@ jobs:
           retention-days: 7
 
       - name: 'Upload artifact for Linux'
-        if: ${{ matrix.os }} == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         uses: actions/upload-artifact@v3
         with:
           name: ${{ env.ARTIFACT_NAME }}
