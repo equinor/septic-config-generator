@@ -4,8 +4,11 @@ on:
   workflow_dispatch:
   workflow_call:
     outputs:
-      artifact-name:
-        value: ${{ jobs.build.outputs.artifact-name }}
+      artifact-name-windows:
+        value: ${{ jobs.build.outputs.artifact-name-windows }}
+      artifact-name-linux:
+        value: ${{ jobs.build.outputs.artifact-name-linux }}
+
   push:
     branches: [ "main" ]
   pull_request:
