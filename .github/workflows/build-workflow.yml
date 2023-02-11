@@ -8,12 +8,6 @@ on:
         value: ${{ jobs.build.outputs.artifact-name-windows }}
       artifact-name-linux:
         value: ${{ jobs.build.outputs.artifact-name-linux }}
-
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
 env:
   CARGO_TERM_COLOR: always
 
