@@ -20,16 +20,19 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.artifact-windows }}
-
+          path: ./release/windows/
       - name: Download artifact
         uses: actions/download-artifact@v3
         with:
           name: ${{ inputs.artifact-linux }}
-
-      - name: Publish
+          path: ./release/linux/
+      - name: Stage files
+        run: |
+          mkdir stage
+          zip -j ./stage/scg.windows.amd64.zip ../release/windows/*
+          zip -j ./stage/scg.linux.amd64.zip ../release/linux/*
+      - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            scg
-            scg.exe
+          files: ./stage/*.zip
           tag_name: ${{ inputs.tag_name }} 
