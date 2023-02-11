@@ -27,7 +27,7 @@ fn _merge_maps(
     merged
 }
 
-fn bubble_errors(pretext: &str, err: Box<dyn std::error::Error>) {
+fn bubble_error(pretext: &str, err: Box<dyn std::error::Error>) {
     eprintln!("{pretext}: {err:#}");
     let mut err = &*err;
     while let Some(next_err) = err.source() {
@@ -65,7 +65,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
     for template in &cfg.layout {
         if template.source.is_none() {
             let tmpl_rend = renderer.render(&template.name, ()).unwrap_or_else(|err| {
-                bubble_errors("Template error", err);
+                bubble_error("Template error", err);
                 process::exit(1);
             });
             rendered.push_str(&tmpl_rend);
@@ -97,7 +97,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
                         renderer
                             .render(&template.name, Some(row))
                             .unwrap_or_else(|err| {
-                                bubble_errors("Template Error", err);
+                                bubble_error("Template Error", err);
                                 process::exit(1);
                             });
                     rendered.push_str(&temp_rend);
