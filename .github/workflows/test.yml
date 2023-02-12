@@ -15,16 +15,10 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: ✅ Cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
+        run: cargo check
 
       - name: 🛠️ Cargo build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
+        run: cargo build --verbose
 
       - name: 🧪 Cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+        run: cargo test
