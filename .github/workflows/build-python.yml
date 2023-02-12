@@ -1,7 +1,7 @@
-name: Build Python
+name: '🐍 Build Python version (deprecated)'
 
 on: 
-  workflow_dispatch
+  workflow_dispatch:
 
 jobs:
   build:
