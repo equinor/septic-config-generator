@@ -1,0 +1,56 @@
+name: '🛠️ Build for release'
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      artifact-name:
+        value: ${{ jobs.build.outputs.artifact-name }}
+      artifact-name-exe:
+        value: ${{ jobs.build.outputs.artifact-name-exe }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: '🛠️ Build'
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: cargo build --release --verbose
+
+      - name: 'Set artifact name for Windows'
+        if: runner.os == 'Windows'
+        run: echo "ARTIFACT_NAME_EXE=SCG-$env:GITHUB_SHA-$env:RUNNER_OS" >> $env:GITHUB_ENV
+
+      - name: 'Set artifact name for non-Windows'
+        if: runner.os == 'Linux'
+        run: echo "ARTIFACT_NAME=SCG-$GITHUB_SHA-$RUNNER_OS" >> $GITHUB_ENV
+
+      - name: 'Upload artifact for Windows'
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_NAME_EXE }}
+          path: "target/release/scg.exe"
+          retention-days: 7
+
+      - name: 'Upload artifact for non-Windows'
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: "target/release/scg"
+          retention-days: 7
+
+    outputs:
+      artifact-name: ${{ env.ARTIFACT_NAME }}
+      artifact-name-exe: ${{ env.ARTIFACT_NAME_EXE }}
