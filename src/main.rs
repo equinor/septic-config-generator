@@ -1,7 +1,7 @@
 use clap::Parser;
 use minijinja::Error;
 use septic_config_generator::config::Config;
-use septic_config_generator::renderer::MiniJinjaRenderer;
+use septic_config_generator::renderer::MiniJinja;
 use septic_config_generator::{args, datasource, DataSourceRow};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -58,7 +58,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
     }
 
     let template_path = relative_root.join(&cfg.templatepath);
-    let renderer = MiniJinjaRenderer::new(globals, &template_path);
+    let renderer = MiniJinja::new(globals, &template_path);
 
     let mut rendered = String::new();
 

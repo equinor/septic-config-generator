@@ -21,12 +21,15 @@ pub fn read(file: &PathBuf, sheet: &String) -> Result<DataSourceRow, Box<dyn Err
                 .zip(row.iter())
                 .map(|(header, cell)| {
                     let header_str = header.get_string().unwrap().to_string();
-                    let value = match cell.to_owned() {
+                    let value = match cell.clone() {
                         DataType::Int(i) => CtxDataType::Int(i),
-                        DataType::Float(f) => match f == f.floor() {
-                            true => CtxDataType::Int(f as i64),
-                            false => CtxDataType::Float(f),
-                        }, // TODO: This is hacky. Why doesn't Calamine parse ints as Int?
+                        DataType::Float(f) => {
+                            if (f - f.floor()).abs() < f64::EPSILON {
+                                CtxDataType::Int(f as i64)
+                            } else {
+                                CtxDataType::Float(f)
+                            }
+                        }
                         DataType::String(s) => CtxDataType::String(s),
                         DataType::Bool(b) => CtxDataType::Bool(b),
                         DataType::DateTime(d) => CtxDataType::DateTime(d),

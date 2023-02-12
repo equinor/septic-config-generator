@@ -11,13 +11,13 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Commands {
     /// Generate SEPTIC config
-    Make(MakeArgs),
+    Make(MakeArguments),
     /// Show difference between two text files
     Diff,
 }
 
 #[derive(Parser)]
-pub struct MakeArgs {
+pub struct MakeArguments {
     /// The yaml config file
     pub config_file: PathBuf,
     /// Name of output file (overrides config option "outputfile")

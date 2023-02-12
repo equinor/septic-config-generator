@@ -8,7 +8,6 @@ pub mod renderer;
 pub type DataSourceRow = Vec<(String, HashMap<String, CtxDataType>)>;
 
 #[derive(Debug)]
-
 pub enum CtxErrorType {
     /// Division by 0 error
     Div0,
@@ -45,12 +44,11 @@ impl Serialize for CtxDataType {
         S: serde::Serializer,
     {
         match self {
-            CtxDataType::Int(value) => serializer.serialize_i64(*value),
-            CtxDataType::Float(value) => serializer.serialize_f64(*value),
-            CtxDataType::String(value) => serializer.serialize_str(value),
-            CtxDataType::Bool(value) => serializer.serialize_bool(*value),
-            CtxDataType::DateTime(value) => serializer.serialize_f64(*value),
-            CtxDataType::Error(value) => {
+            Self::Int(value) => serializer.serialize_i64(*value),
+            Self::Float(value) | Self::DateTime(value) => serializer.serialize_f64(*value),
+            Self::String(value) => serializer.serialize_str(value),
+            Self::Bool(value) => serializer.serialize_bool(*value),
+            Self::Error(value) => {
                 let s = match value {
                     CtxErrorType::Div0 => "#DIV/0!",
                     CtxErrorType::NA => "#N/A",
@@ -59,13 +57,13 @@ impl Serialize for CtxDataType {
                     CtxErrorType::Num => "#NUM!",
                     CtxErrorType::Ref => "#REF!",
                     CtxErrorType::Value => "#VALUE!",
-                    _ => "#UNKNOWN!",
+                    CtxErrorType::GettingData => "#UNKNOWN!",
                 };
                 serializer.serialize_str(s)
             }
 
             // DataTypeSer::Error(_) => serializer.serialize_str("Error in cell"), // Do I need to handle this as Err or just return a special value?
-            CtxDataType::Empty => serializer.serialize_unit(),
+            Self::Empty => serializer.serialize_unit(),
         }
     }
 }

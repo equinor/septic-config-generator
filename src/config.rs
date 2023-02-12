@@ -21,9 +21,9 @@ const fn _default_true() -> bool {
 }
 
 impl Config {
-    pub fn new(filename: &PathBuf) -> Result<Config, Box<dyn Error>> {
+    pub fn new(filename: &PathBuf) -> Result<Self, Box<dyn Error>> {
         let content = fs::read_to_string(filename)?;
-        let cfg: Config = serde_yaml::from_str(&content)?;
+        let cfg: Self = serde_yaml::from_str(&content)?;
         Ok(cfg)
     }
 }
@@ -45,18 +45,16 @@ pub struct Template {
 
 impl Template {
     pub fn include_set(&self) -> HashSet<String> {
-        match &self.include {
-            Some(include) => HashSet::<String>::from_iter(include.iter().cloned()),
-            None => HashSet::new(),
-        }
+        self.include.as_ref().map_or_else(HashSet::new, |include| {
+            include.iter().cloned().collect::<HashSet<String>>()
+        })
     }
 }
 
 impl Template {
     pub fn exclude_set(&self) -> HashSet<String> {
-        match &self.exclude {
-            Some(exclude) => HashSet::<String>::from_iter(exclude.iter().cloned()),
-            None => HashSet::new(),
-        }
+        self.exclude.as_ref().map_or_else(HashSet::new, |exclude| {
+            exclude.iter().cloned().collect::<HashSet<String>>()
+        })
     }
 }

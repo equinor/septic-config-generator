@@ -12,15 +12,25 @@ fn timestamp(format: &str) -> String {
 }
 
 fn gitcommit(short: bool) -> String {
-    let args = match short {
-        true => ["rev-parse", "--short", "HEAD"],
-        _ => ["rev-parse", "--verify", "HEAD"],
+    let args = if short {
+        ["rev-parse", "--short", "HEAD"]
+    } else {
+        ["rev-parse", "--verify", "HEAD"]
     };
+
     std::process::Command::new("git")
         .args(args)
         .output()
-        .map(|cmd| String::from_utf8_lossy(&cmd.stdout).trim().to_string())
-        .unwrap_or_else(|err| format!("***** Unable to execute git: {err:#} *****"))
+        .map_or_else(
+            |err| format!("***** Unable to execute git: {err:#} *****"),
+            |cmd| String::from_utf8_lossy(&cmd.stdout).trim().to_string(),
+        )
+
+    // std::process::Command::new("git")
+    //     .args(args)
+    //     .output()
+    //     .map(|cmd| String::from_utf8_lossy(&cmd.stdout).trim().to_string())
+    //     .unwrap_or_else(|err| format!("***** Unable to execute git: {err:#} *****"))
 }
 
 fn erroring_formatter(
@@ -29,7 +39,7 @@ fn erroring_formatter(
     value: &minijinja::value::Value,
 ) -> Result<(), minijinja::Error> {
     // A crude way to stop execution when a variable is undefined.
-    if let true = value.is_undefined() {
+    if value.is_undefined() {
         return Err(Error::from(ErrorKind::UndefinedError));
     }
     minijinja::escape_formatter(out, state, value)
@@ -63,13 +73,13 @@ fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, Err
     }
 }
 
-pub struct MiniJinjaRenderer<'a> {
+pub struct MiniJinja<'a> {
     pub env: Environment<'a>,
 }
 
-impl<'a> MiniJinjaRenderer<'a> {
-    pub fn new(globals: &[String], template_path: &Path) -> MiniJinjaRenderer<'a> {
-        let mut renderer = MiniJinjaRenderer {
+impl<'a> MiniJinja<'a> {
+    pub fn new(globals: &[String], template_path: &Path) -> MiniJinja<'a> {
+        let mut renderer = MiniJinja {
             env: Environment::new(),
         };
         renderer.add_globals(globals);
@@ -128,7 +138,7 @@ impl<'a> MiniJinjaRenderer<'a> {
                     Ok(i) => self.env.add_global(key, i),
                     Err(_) => match val.parse::<f64>() {
                         Ok(f) => self.env.add_global(key, f),
-                        Err(_) => self.env.add_global(key, val.to_owned()),
+                        Err(_) => self.env.add_global(key, val.clone()),
                     },
                 },
             }
