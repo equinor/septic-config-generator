@@ -1,0 +1,46 @@
+name: '💎 Code quality'
+on:
+  workflow_dispatch:
+  workflow_call:
+  schedule:
+    - cron: '19 12 * * 1'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  code_quality:
+    name: ✨ Format & 📎 Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: ✨ Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+      - name: 📎 Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features -- -D warnings
+        continue-on-error: true
+
+#       - name: 📦 Install dependencies
+#         run: cargo install clippy-sarif sarif-fmt
+
+#       - name: 📎 Run cargo clippy      
+#         run: cargo clippy --all-features --message-format=json | clippy-sarif | tee rust-clippy-results.sarif | sarif-fmt
+#         continue-on-error: true
+
+#       - name: Upload analysis results to GitHub
+#         uses: github/codeql-action/upload-sarif@v2
+#         with:
+#           sarif_file: rust-clippy-results.sarif
+#           wait-for-processing: true
