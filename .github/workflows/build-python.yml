@@ -1,6 +1,7 @@
-name: Build
+name: '🐍 Build Python version (deprecated)'
 
-on: [push, pull_request]
+on: 
+  workflow_dispatch:
 
 jobs:
   build:
