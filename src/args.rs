@@ -1,11 +1,8 @@
 use clap::{Parser, Subcommand};
-use git_version::git_version;
 use std::path::PathBuf;
-const GIT_VERSION: &str = git_version!(suffix = " (BETA)");
 
 #[derive(Parser)]
-#[command(version=GIT_VERSION, about, disable_colored_help=true)]
-#[command(next_line_help = true)]
+#[command(version, about, disable_colored_help = true, next_line_help = true)]
 pub struct Cli {
     #[clap(subcommand)]
     pub command: Commands,
