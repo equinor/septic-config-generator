@@ -1,0 +1,38 @@
+# outputfile: test.cnfg
+
+templatepath: templates
+
+verifycontent: true
+
+sources:
+  - filename: test.xlsx
+    id: main
+    sheet: Normals
+    # Col1, Col2_str, Col3_int, Col4_float_whole, Col5_float, Col6_bool
+  - filename: test.xlsx
+    id: errors
+    sheet: Specials
+    # Col1, Col2_empty, Col3_error
+
+layout:
+  - name: 00_plaintext.tmpl
+  - name: 01_normals.tmpl
+    source: main
+    include:
+      - one
+      - two
+  - name: 01_normals.tmpl
+    source: main
+    exclude:
+      - one
+      - two
+  - name: 02_specials.tmpl
+    source: errors
+  - name: 03_globals.tmpl    
+  - name: 04_include.tmpl
+  - name: 05_expressions.tmpl
+    source: main
+    include: 
+      - one
+  - name: 06_encoding.tmpl
+  - name: 07_functions.tmpl

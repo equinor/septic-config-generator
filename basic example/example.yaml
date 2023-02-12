@@ -4,7 +4,7 @@ templatepath: templates
 masterpath: masters
 
 masterkey: D02
-verifycontent: yes
+# verifycontent: true
 
 sources:
   - filename: example.xlsx
