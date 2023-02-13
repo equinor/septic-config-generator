@@ -115,6 +115,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         let path = relative_root.join(cfg.outputfile.unwrap());
 
         let mut do_write_file = true;
+        let mut has_diff = false;
 
         if path.exists() {
             let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
@@ -123,11 +124,14 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
             let mut old_file_content = String::new();
             reader.read_to_string(&mut old_file_content).unwrap();
 
-            let difference = create_patch(&old_file_content, &rendered);
+            let diff = create_patch(&old_file_content, &rendered);
 
-            if !difference.hunks().is_empty() && cfg.verifycontent {
+            has_diff = !diff.hunks().is_empty();
+            if !has_diff {
+                do_write_file = false;
+            } else if has_diff && cfg.verifycontent {
                 let f = PatchFormatter::new().with_color();
-                print!("{}", f.fmt_patch(&difference));
+                print!("{}", f.fmt_patch(&diff));
                 print!("\n\nReplace original? [Y]es or [N]o: ");
                 let mut response = String::new();
                 io::stdout().flush().unwrap();
@@ -146,6 +150,10 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
                         .unwrap()
                         == 'y'
             }
+        }
+        if !has_diff {
+            eprintln!("No change from original version, exiting.");
+            return Ok(());
         }
         if do_write_file {
             if path.exists() {
