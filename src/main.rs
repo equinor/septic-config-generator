@@ -150,10 +150,9 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) {
                         == 'y';
             }
         }
-        if !has_diff {
+        if path.exists() && !has_diff {
             eprintln!("No change from original version, exiting.");
-        }
-        if do_write_file {
+        } else if do_write_file {
             if path.exists() {
                 let backup_path = path.with_extension(format!(
                     "{}.bak",
