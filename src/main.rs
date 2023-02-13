@@ -114,36 +114,38 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
     } else {
         let path = relative_root.join(cfg.outputfile.unwrap());
 
-        let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-            .encoding(Some(encoding_rs::WINDOWS_1252))
-            .build(File::open(&path).unwrap());
-        let mut old_file_content = String::new();
-        reader.read_to_string(&mut old_file_content).unwrap();
-
-        let difference = create_patch(&old_file_content, &rendered);
-
         let mut do_write_file = true;
 
-        if !difference.hunks().is_empty() && cfg.verifycontent {
-            let f = PatchFormatter::new().with_color();
-            print!("{}", f.fmt_patch(&difference));
-            print!("\n\nReplace original? [Y]es or [N]o: ");
-            let mut response = String::new();
-            io::stdout().flush().unwrap();
-            io::stdin()
-                .read_line(&mut response)
-                .expect("error: unable to read user input");
+        if path.exists() {
+            let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+                .encoding(Some(encoding_rs::WINDOWS_1252))
+                .build(File::open(&path).unwrap());
+            let mut old_file_content = String::new();
+            reader.read_to_string(&mut old_file_content).unwrap();
 
-            do_write_file = response.len() > 1
-                && response
-                    .trim_end()
-                    .chars()
-                    .last()
-                    .unwrap()
-                    .to_lowercase()
-                    .next()
-                    .unwrap()
-                    == 'y'
+            let difference = create_patch(&old_file_content, &rendered);
+
+            if !difference.hunks().is_empty() && cfg.verifycontent {
+                let f = PatchFormatter::new().with_color();
+                print!("{}", f.fmt_patch(&difference));
+                print!("\n\nReplace original? [Y]es or [N]o: ");
+                let mut response = String::new();
+                io::stdout().flush().unwrap();
+                io::stdin()
+                    .read_line(&mut response)
+                    .expect("error: unable to read user input");
+
+                do_write_file = response.len() > 1
+                    && response
+                        .trim_end()
+                        .chars()
+                        .last()
+                        .unwrap()
+                        .to_lowercase()
+                        .next()
+                        .unwrap()
+                        == 'y'
+            }
         }
 
         if do_write_file {
