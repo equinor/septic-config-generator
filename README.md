@@ -9,7 +9,7 @@ Excel tables in uniquely identified locations.
 
 The tool is ready for use, but should be used with care. Ensure you do not overwrite
 the only copy of your perfectly working config.
- 
+  
 ## Introduction
 
 Upon inspecting a SEPTIC configuration file, you will find that it can be divided into 
