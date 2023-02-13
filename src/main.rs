@@ -1,6 +1,5 @@
 use clap::Parser;
 use diffy::{create_patch, PatchFormatter};
-use minijinja::Error;
 use septic_config_generator::config::Config;
 use septic_config_generator::renderer::MiniJinja;
 use septic_config_generator::{args, datasource, DataSourceRow};
@@ -39,7 +38,7 @@ fn bubble_error(pretext: &str, err: Box<dyn std::error::Error>) {
     }
 }
 
-fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
+fn cmd_make(cfg_file: &Path, globals: &[String]) {
     let cfg_file = ensure_has_extension(cfg_file, "yaml");
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
 
@@ -93,7 +92,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
                 .cloned()
                 .collect();
 
-            for (key, row) in all_source_data[src_name].iter() {
+            for (key, row) in &all_source_data[src_name] {
                 if items_set.contains(key) {
                     let temp_rend =
                         renderer
@@ -148,12 +147,11 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
                         .to_lowercase()
                         .next()
                         .unwrap()
-                        == 'y'
+                        == 'y';
             }
         }
         if !has_diff {
             eprintln!("No change from original version, exiting.");
-            return Ok(());
         }
         if do_write_file {
             if path.exists() {
@@ -161,7 +159,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
                     "{}.bak",
                     path.extension().unwrap().to_str().unwrap()
                 ));
-                fs::rename(&path, &backup_path).expect("Failed to create backup file");
+                fs::rename(&path, backup_path).expect("Failed to create backup file");
             }
 
             let mut f = fs::File::create(&path).unwrap_or_else(|err| {
@@ -176,8 +174,6 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
             f.write_all(&cow).unwrap();
         }
     }
-
-    Ok(())
 }
 
 fn main() {
@@ -185,7 +181,7 @@ fn main() {
 
     match args.command {
         args::Commands::Make(make_args) => {
-            cmd_make(&make_args.config_file, &make_args.var.unwrap_or_default()).unwrap();
+            cmd_make(&make_args.config_file, &make_args.var.unwrap_or_default());
         }
         args::Commands::Diff => todo!(),
     }

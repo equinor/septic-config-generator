@@ -39,6 +39,7 @@ fn erroring_formatter(
     minijinja::escape_formatter(out, state, value)
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, Error> {
     let mut path = PathBuf::new();
     path.push(template_path);
@@ -89,6 +90,7 @@ impl<'a> MiniJinja<'a> {
         renderer
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn render<S: Serialize>(
         &self,
         template_name: &str,
@@ -105,6 +107,7 @@ impl<'a> MiniJinja<'a> {
         }
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn render_to_file<S: Serialize, W: std::io::Write>(
         &self,
         template_name: &str,

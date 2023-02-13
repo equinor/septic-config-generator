@@ -21,6 +21,7 @@ const fn _default_true() -> bool {
 }
 
 impl Config {
+    #[allow(clippy::missing_errors_doc)]
     pub fn new(filename: &PathBuf) -> Result<Self, Box<dyn Error>> {
         let content = fs::read_to_string(filename)?;
         let cfg: Self = serde_yaml::from_str(&content)?;
