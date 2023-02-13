@@ -15,7 +15,7 @@ the only copy of your perfectly working config.
 Upon inspecting a SEPTIC configuration file, you will find that it can be divided into 
 segments where some segments are static while others are repeated for several wells 
 (or some other entity) with only minor modifications.
-
+ 
 For example: The initial `System` section of the SEPTIC config is a static part that only
 occurs once. The following `SopcProc` section usually contains a static header followed 
 by the definition of a number of `SopcXvr`. The latter part usually consists of many 
