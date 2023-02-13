@@ -1,4 +1,5 @@
 use clap::Parser;
+use diffy::{create_patch, PatchFormatter};
 use minijinja::Error;
 use septic_config_generator::config::Config;
 use septic_config_generator::renderer::MiniJinja;
@@ -6,6 +7,7 @@ use septic_config_generator::{args, datasource, DataSourceRow};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::File;
+use std::io;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -111,12 +113,51 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         println!("{rendered}");
     } else {
         let path = relative_root.join(cfg.outputfile.unwrap());
-        let mut f = File::create(&path).unwrap_or_else(|e| {
-            eprintln!("Problem creating output file '{}': {}", &path.display(), e);
-            process::exit(1);
-        });
-        let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
-        f.write_all(&cow).unwrap();
+
+        let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+            .encoding(Some(encoding_rs::WINDOWS_1252))
+            .build(File::open(&path).unwrap());
+        let mut old_file_content = String::new();
+        reader.read_to_string(&mut old_file_content).unwrap();
+
+        let difference = create_patch(&old_file_content, &rendered);
+
+        let mut do_write_file = true;
+
+        if !difference.hunks().is_empty() && cfg.verifycontent {
+            let f = PatchFormatter::new().with_color();
+            print!("{}", f.fmt_patch(&difference));
+            print!("\n\nReplace original? [Y]es or [N]o: ");
+            let mut response = String::new();
+            io::stdout().flush().unwrap();
+            io::stdin()
+                .read_line(&mut response)
+                .expect("error: unable to read user input");
+
+            do_write_file = response.len() > 1
+                && response
+                    .trim_end()
+                    .chars()
+                    .last()
+                    .unwrap()
+                    .to_lowercase()
+                    .next()
+                    .unwrap()
+                    == 'y'
+        }
+
+        if do_write_file {
+            let mut f = File::create(&path).unwrap_or_else(|err| {
+                eprintln!(
+                    "Problem creating output file '{}': {}",
+                    &path.display(),
+                    err
+                );
+                process::exit(1);
+            });
+            let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
+            f.write_all(&cow).unwrap();
+        }
     }
 
     Ok(())

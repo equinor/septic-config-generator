@@ -25,12 +25,6 @@ fn gitcommit(short: bool) -> String {
             |err| format!("***** Unable to execute git: {err:#} *****"),
             |cmd| String::from_utf8_lossy(&cmd.stdout).trim().to_string(),
         )
-
-    // std::process::Command::new("git")
-    //     .args(args)
-    //     .output()
-    //     .map(|cmd| String::from_utf8_lossy(&cmd.stdout).trim().to_string())
-    //     .unwrap_or_else(|err| format!("***** Unable to execute git: {err:#} *****"))
 }
 
 fn erroring_formatter(
