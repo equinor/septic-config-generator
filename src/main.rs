@@ -6,7 +6,7 @@ use septic_config_generator::renderer::MiniJinja;
 use septic_config_generator::{args, datasource, DataSourceRow};
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fs::File;
+use std::fs;
 use std::io;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -119,7 +119,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         if path.exists() {
             let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
                 .encoding(Some(encoding_rs::WINDOWS_1252))
-                .build(File::open(&path).unwrap());
+                .build(fs::File::open(&path).unwrap());
             let mut old_file_content = String::new();
             reader.read_to_string(&mut old_file_content).unwrap();
 
@@ -147,9 +147,16 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
                         == 'y'
             }
         }
-
         if do_write_file {
-            let mut f = File::create(&path).unwrap_or_else(|err| {
+            if path.exists() {
+                let backup_path = path.with_extension(format!(
+                    "{}.bak",
+                    path.extension().unwrap().to_str().unwrap()
+                ));
+                fs::rename(&path, &backup_path).expect("Failed to create backup file");
+            }
+
+            let mut f = fs::File::create(&path).unwrap_or_else(|err| {
                 eprintln!(
                     "Problem creating output file '{}': {}",
                     &path.display(),
