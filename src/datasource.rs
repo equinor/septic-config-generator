@@ -4,6 +4,9 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
 
+#[allow(clippy::missing_errors_doc)]
+#[allow(clippy::missing_panics_doc)]
+#[allow(clippy::cast_possible_truncation)]
 pub fn read(file: &PathBuf, sheet: &String) -> Result<DataSourceRow, Box<dyn Error>> {
     let mut workbook: Xlsx<_> = open_workbook(file)?;
     let range = workbook

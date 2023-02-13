@@ -1,11 +1,12 @@
 use clap::Parser;
-use minijinja::Error;
+use diffy::{create_patch, PatchFormatter};
 use septic_config_generator::config::Config;
 use septic_config_generator::renderer::MiniJinja;
 use septic_config_generator::{args, datasource, DataSourceRow};
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fs::File;
+use std::fs;
+use std::io;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process;
@@ -37,7 +38,7 @@ fn bubble_error(pretext: &str, err: Box<dyn std::error::Error>) {
     }
 }
 
-fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
+fn cmd_make(cfg_file: &Path, globals: &[String]) {
     let cfg_file = ensure_has_extension(cfg_file, "yaml");
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
 
@@ -91,7 +92,7 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
                 .cloned()
                 .collect();
 
-            for (key, row) in all_source_data[src_name].iter() {
+            for (key, row) in &all_source_data[src_name] {
                 if items_set.contains(key) {
                     let temp_rend =
                         renderer
@@ -111,15 +112,68 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) -> Result<(), Error> {
         println!("{rendered}");
     } else {
         let path = relative_root.join(cfg.outputfile.unwrap());
-        let mut f = File::create(&path).unwrap_or_else(|e| {
-            eprintln!("Problem creating output file '{}': {}", &path.display(), e);
-            process::exit(1);
-        });
-        let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
-        f.write_all(&cow).unwrap();
-    }
 
-    Ok(())
+        let mut do_write_file = true;
+        let mut has_diff = false;
+
+        if path.exists() {
+            let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+                .encoding(Some(encoding_rs::WINDOWS_1252))
+                .build(fs::File::open(&path).unwrap());
+            let mut old_file_content = String::new();
+            reader.read_to_string(&mut old_file_content).unwrap();
+
+            let diff = create_patch(&old_file_content, &rendered);
+
+            has_diff = !diff.hunks().is_empty();
+            if !has_diff {
+                do_write_file = false;
+            } else if has_diff && cfg.verifycontent {
+                let f = PatchFormatter::new().with_color();
+                print!("{}", f.fmt_patch(&diff));
+                print!("\n\nReplace original? [Y]es or [N]o: ");
+                let mut response = String::new();
+                io::stdout().flush().unwrap();
+                io::stdin()
+                    .read_line(&mut response)
+                    .expect("error: unable to read user input");
+
+                do_write_file = response.len() > 1
+                    && response
+                        .trim_end()
+                        .chars()
+                        .last()
+                        .unwrap()
+                        .to_lowercase()
+                        .next()
+                        .unwrap()
+                        == 'y';
+            }
+        }
+        if !has_diff {
+            eprintln!("No change from original version, exiting.");
+        }
+        if do_write_file {
+            if path.exists() {
+                let backup_path = path.with_extension(format!(
+                    "{}.bak",
+                    path.extension().unwrap().to_str().unwrap()
+                ));
+                fs::rename(&path, backup_path).expect("Failed to create backup file");
+            }
+
+            let mut f = fs::File::create(&path).unwrap_or_else(|err| {
+                eprintln!(
+                    "Problem creating output file '{}': {}",
+                    &path.display(),
+                    err
+                );
+                process::exit(1);
+            });
+            let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
+            f.write_all(&cow).unwrap();
+        }
+    }
 }
 
 fn main() {
@@ -127,7 +181,7 @@ fn main() {
 
     match args.command {
         args::Commands::Make(make_args) => {
-            cmd_make(&make_args.config_file, &make_args.var.unwrap_or_default()).unwrap();
+            cmd_make(&make_args.config_file, &make_args.var.unwrap_or_default());
         }
         args::Commands::Diff => todo!(),
     }
