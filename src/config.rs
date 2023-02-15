@@ -11,6 +11,8 @@ pub struct Config {
     pub masterpath: Option<String>,
     pub masterkey: Option<String>,
     #[serde(default = "_default_true")]
+    pub forcenewline: bool,
+    #[serde(default = "_default_true")]
     pub verifycontent: bool,
     pub sources: Vec<Source>,
     pub layout: Vec<Template>,

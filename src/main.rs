@@ -65,10 +65,14 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) {
 
     for template in &cfg.layout {
         if template.source.is_none() {
-            let tmpl_rend = renderer.render(&template.name, ()).unwrap_or_else(|err| {
+            let mut tmpl_rend = renderer.render(&template.name, ()).unwrap_or_else(|err| {
                 bubble_error("Template error", err);
                 process::exit(1);
             });
+            if cfg.forcenewline {
+                tmpl_rend = tmpl_rend.trim().to_string();
+                tmpl_rend.push_str("\n\n");
+            }
             rendered.push_str(&tmpl_rend);
         } else {
             let src_name = &template.source.clone().unwrap();
@@ -94,17 +98,25 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) {
 
             for (key, row) in &all_source_data[src_name] {
                 if items_set.contains(key) {
-                    let temp_rend =
+                    let mut tmpl_rend =
                         renderer
                             .render(&template.name, Some(row))
                             .unwrap_or_else(|err| {
                                 bubble_error("Template Error", err);
                                 process::exit(1);
                             });
-                    rendered.push_str(&temp_rend);
+
+                    if cfg.forcenewline {
+                        tmpl_rend = tmpl_rend.trim().to_string();
+                        tmpl_rend.push_str("\n\n");
+                    }
+                    rendered.push_str(&tmpl_rend);
                 }
             }
         }
+    }
+    if cfg.forcenewline {
+        rendered = rendered.trim().to_string();
     }
 
     if cfg.outputfile.is_none() {
