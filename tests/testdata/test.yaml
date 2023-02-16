@@ -1,8 +1,8 @@
-# outputfile: test.cnfg
+outputfile: test.cnfg
 
 templatepath: templates
 
-forcenewline: true
+adjustspacing: true
 
 verifycontent: true
 
