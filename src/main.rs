@@ -69,8 +69,8 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) {
                 bubble_error("Template error", err);
                 process::exit(1);
             });
-            if cfg.forcenewline {
-                tmpl_rend = tmpl_rend.trim().to_string();
+            if cfg.adjustspacing {
+                tmpl_rend = tmpl_rend.trim_end().to_string();
                 tmpl_rend.push_str("\n\n");
             }
             rendered.push_str(&tmpl_rend);
@@ -106,8 +106,8 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) {
                                 process::exit(1);
                             });
 
-                    if cfg.forcenewline {
-                        tmpl_rend = tmpl_rend.trim().to_string();
+                    if cfg.adjustspacing {
+                        tmpl_rend = tmpl_rend.trim_end().to_string();
                         tmpl_rend.push_str("\n\n");
                     }
                     rendered.push_str(&tmpl_rend);
@@ -115,8 +115,8 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) {
             }
         }
     }
-    if cfg.forcenewline {
-        rendered = rendered.trim().to_string();
+    if cfg.adjustspacing {
+        rendered = rendered.trim_end().to_string();
     }
 
     if cfg.outputfile.is_none() {
