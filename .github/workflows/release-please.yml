@@ -22,7 +22,7 @@ jobs:
             {"type":"docs","section":"📚 Documentation","hidden":false},
             {"type":"feat","section":"✨ Features","hidden":false},
             {"type":"fix","section":"🐛 Bug Fixes","hidden":false},
-            {"type":"perf", "section":"🏎️ Optimalization","hidden":false},
+            {"type":"perf", "section":"🏎️ Performance","hidden":false},
             {"type":"refactor", "section":"🔨 Refactor","hidden":false},
             {"type":"revert", "section":"⏪️ Revert","hidden":false},
             {"type":"style","section":"💎 Style","hidden":false},
