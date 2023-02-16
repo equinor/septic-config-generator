@@ -2,6 +2,8 @@ outputfile: test.cnfg
 
 templatepath: templates
 
+adjustspacing: true
+
 verifycontent: true
 
 sources:
