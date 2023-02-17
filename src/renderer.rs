@@ -6,16 +6,16 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 
-fn timestamp(format: &str) -> String {
-    let now = Local::now();
-    now.format(format).to_string()
+fn timestamp(format: Option<&str>) -> String {
+    let fmt = format.unwrap_or("%Y-%m-%d %H:%M:%S");
+    Local::now().format(fmt).to_string()
 }
 
 fn gitcommit(short: bool) -> String {
     let args = if short {
-        ["rev-parse", "--short", "HEAD"]
-    } else {
         ["rev-parse", "--verify", "HEAD"]
+    } else {
+        ["rev-parse", "--short", "HEAD"]
     };
 
     std::process::Command::new("git")
@@ -79,6 +79,7 @@ impl<'a> MiniJinja<'a> {
         };
         renderer.add_globals(globals);
         renderer.env.add_global("gitcommit", gitcommit(false));
+        renderer.env.add_global("gitcommitlong", gitcommit(true));
         renderer.env.add_function("now", timestamp);
         renderer.env.set_formatter(erroring_formatter);
 
