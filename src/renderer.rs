@@ -7,13 +7,8 @@ use std::path::Path;
 use std::path::PathBuf;
 
 fn timestamp(format: Option<&str>) -> String {
-    let fmt = match format {
-        Some(strf) => strf,
-        None => "%Y-%m-%d %H:%M:%S",
-    };
-
-    let now = Local::now();
-    now.format(fmt).to_string()
+    let fmt = format.unwrap_or("%Y-%m-%d %H:%M:%S");
+    Local::now().format(fmt).to_string()
 }
 
 fn gitcommit(short: bool) -> String {
