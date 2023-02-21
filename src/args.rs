@@ -23,9 +23,6 @@ pub struct MakeArguments {
     /// Name of output file (overrides config option "outputfile")
     #[arg(short, long, value_name = "FILE")]
     pub output: Option<PathBuf>,
-    /// Do not prompt for verification of output file before overwriting original (overrides config option "verifycontent")
-    #[arg(short, long = "no-verify")]
-    pub noverify: bool,
     /// Only output warnings or errors
     #[arg(short, long)]
     pub silent: bool,
