@@ -1,10 +1,10 @@
 outputfile: example.cnfg
 
 templatepath: templates
-masterpath: masters
 
-masterkey: D02
-# verifycontent: true
+verifycontent: true
+
+adjustsspacing: true
 
 sources:
   - filename: example.xlsx
