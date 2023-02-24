@@ -9,7 +9,7 @@ updates:
     commit-message:
       prefix: "chore(deps): "
     versioning-strategy: lockfile-only
-- package-ecosystem: 'github-actions'
+  - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: "weekly"
