@@ -187,6 +187,33 @@ fn cmd_make(cfg_file: &Path, globals: &[String]) {
     }
 }
 
+fn cmd_diff(file1: &PathBuf, file2: &PathBuf) {
+    let mut file1_content = String::new();
+    let mut file2_content = String::new();
+
+    if file1.exists() {
+        let mut reader1 = encoding_rs_io::DecodeReaderBytesBuilder::new()
+            .encoding(Some(encoding_rs::WINDOWS_1252))
+            .build(fs::File::open(&file1).unwrap());
+        reader1.read_to_string(&mut file1_content).unwrap();
+    } else {
+        eprintln!("File not found: '{}'", &file1.display());
+        process::exit(1);
+    }
+    if file2.exists() {
+        let mut reader2 = encoding_rs_io::DecodeReaderBytesBuilder::new()
+            .encoding(Some(encoding_rs::WINDOWS_1252))
+            .build(fs::File::open(&file2).unwrap());
+        reader2.read_to_string(&mut file2_content).unwrap();
+    } else {
+        eprintln!("File not found: '{}'", &file2.display());
+        process::exit(1);
+    }
+    let diff = create_patch(&file1_content, &file2_content);
+    let f = PatchFormatter::new().with_color();
+    print!("{}", f.fmt_patch(&diff));
+}
+
 fn main() {
     let args = args::Cli::parse();
 
@@ -194,6 +221,8 @@ fn main() {
         args::Commands::Make(make_args) => {
             cmd_make(&make_args.config_file, &make_args.var.unwrap_or_default());
         }
-        args::Commands::Diff => todo!(),
+        args::Commands::Diff(diff_args) => {
+            cmd_diff(&diff_args.file1, &diff_args.file2);
+        }
     }
 }
