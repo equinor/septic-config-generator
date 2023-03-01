@@ -1,0 +1,552 @@
+
+  System:        CVMVtest
+         Text1=  "Small system for SEPTIC test of three CVs and three MVs. OPC connection to simulator "
+         Text2=  ""
+         Nsecs=  10
+       PlotMax=  10
+         Nhist=  10
+         Npred=  10
+	     Nmodl=  10
+         Nxupd=  1
+        ClipOn=  OFF
+     ChngLogOn=  ON
+         WdwDx=  800
+         WdwDy=  400
+         Xline=  0
+         Xback=  0.7
+          Grps=  3
+                 "Group1"  "Group2"  "Group3"
+       GrpLock=  0000
+        Xgroup=  0001
+      MaxLogon=  ROOT
+       RootPwd=  ""
+       MngrPwd=  ""
+       OperPwd=  ""
+       UserPwd=  ""
+          Terr=  0
+       DebugNR=  1000
+       DebugOn=  00000000
+         Zname=  225
+         Zhilo=  275
+        Zstate=  225
+         Zopen=  225
+         Zfont=  275
+         Zline=  275
+      FontSize=  -1
+  InitialGroup=  -1
+ShowText1WithName=  OFF
+       MinXPos=  0
+       MinYPos=  0
+       MaxXPos=  0
+       MaxYPos=  0
+    InitScreen=  -1
+      InitXPos=  -1
+      InitYPos=  -1
+     InitWidth=  -1
+    InitHeight=  -1
+MinimizeByHide=  OFF
+HideCloseButton=  OFF
+OPCSampleTimeOffset=  0
+
+ExprProc:      CVMVtest
+
+SopcProc:      CVMVtest
+         Text1=  ""
+         Text2=  ""
+          Site=  SITENONE
+      ServName=  "Statoil.OPC.Server_v2"
+      ServNode=  "SERVNODE"
+   RealTimeFac=  1
+       ProcTag=  ""
+AllowActiveTag=  "Common.WD_OK"
+     StatusTag=  "Common.STATUS"
+    DesModeTag=  "DUMMY_TAG"
+       PulsTag=  "Common.PULS"
+LoopcheckWriteTag=  "DUMMY_TAG"
+LoopcheckReadTag=  "DUMMY_TAG"
+ ServFactorTag=  "DUMMY_TAG"
+    CPUTimeTag=  "DUMMY_TAG"
+         IdTag=  ""
+   ScheduleTag=  "time"
+        RunSec=  -1
+   RequestRate=  -1
+ BadCountLimit=  0
+SampleAgeLimit=  -1
+BlockWritingIfBad=  OFF
+    WriteGroups=  1
+WriteGroupPause=  1000
+
+   SopcCvr:    	 D01Qg
+         Text1=  "D01:GasRate"
+         Text2=  ""
+        CvrTag=  "D06Qg"
+       MeasTag=  "18FE0601-U001_X"
+         IdTag=  "D01"
+         SpTag=  "18FE0601-U001_XSP"
+      CvLowTag=  "NotUsed"
+     CvHighTag=  "NotUsed"
+ CvSetpointTag=  "NotUsed"
+   NotValidTag=  "18FE0601_U001_XF"
+   CvSwitchTag=  "18FE0601-U001_YA"
+   CvActiveTag=  "18FE0601-U001_XAPC"
+         LoTag=  "NotUsed"
+         HiTag=  "NotUsed"
+         Scale=  1
+        Offset=  0
+
+   SopcMvr:    	 D01Zpc
+         Text1=  "D01 Production choke"
+         Text2=  ""
+        MvrTag=  "D01Zpc"
+       MeasTag=  "18HCV0600.XR"
+   NotValidTag=  "DUMMY_TAG"
+         PVTag=  "18HCV0600.XSP"
+         IdTag=  "D01"
+   NotValidTag=  "18HCV0600.XF"
+     SpCalcTag=  "18HCV0600."
+         HiTag=  "18HCV0600."
+         LoTag=  "18HCV0600.XRL"
+         IvTag=  "18HCV0600.XRH"
+      MvLowTag=  "DUMMY_TAG"
+     MvHighTag=  "DUMMY_TAG"
+       MvIvTag=  "DUMMY_TAG"
+      MaxUpTag=  "18HCV0600.XRCU"
+    MaxDownTag=  "18HCV0600.XRCD"
+       AutoTag=  "18HCV0600.YBA"
+
+   SopcCvr:    	 D02Qg
+         Text1=  "D02:GasRate"
+         Text2=  ""
+        CvrTag=  "D07Qg"
+       MeasTag=  "18FE0701-U001_X"
+         IdTag=  "D02"
+         SpTag=  "18FE0701-U001_XSP"
+      CvLowTag=  "NotUsed"
+     CvHighTag=  "NotUsed"
+ CvSetpointTag=  "NotUsed"
+   NotValidTag=  "18FE0701_U001_XF"
+   CvSwitchTag=  "18FE0701-U001_YA"
+   CvActiveTag=  "18FE0701-U001_XAPC"
+         LoTag=  "NotUsed"
+         HiTag=  "NotUsed"
+         Scale=  1
+        Offset=  0
+
+   SopcMvr:    	 D02Zpc
+         Text1=  "D02 Production choke"
+         Text2=  ""
+        MvrTag=  "D02Zpc"
+       MeasTag=  "18HCV0700.XR"
+   NotValidTag=  "DUMMY_TAG"
+         PVTag=  "18HCV0700.XSP"
+         IdTag=  "D02"
+   NotValidTag=  "18HCV0700.XF"
+     SpCalcTag=  "18HCV0700."
+         HiTag=  "18HCV0700."
+         LoTag=  "18HCV0700.XRL"
+         IvTag=  "18HCV0700.XRH"
+      MvLowTag=  "DUMMY_TAG"
+     MvHighTag=  "DUMMY_TAG"
+       MvIvTag=  "DUMMY_TAG"
+      MaxUpTag=  "18HCV0700.XRCU"
+    MaxDownTag=  "18HCV0700.XRCD"
+       AutoTag=  "18HCV0700.YBA"
+
+   SopcCvr:    	 D03Qg
+         Text1=  "D03:GasRate"
+         Text2=  ""
+        CvrTag=  "D08Qg"
+       MeasTag=  "18FE0801-U001_X"
+         IdTag=  "D03"
+         SpTag=  "18FE0801-U001_XSP"
+      CvLowTag=  "NotUsed"
+     CvHighTag=  "NotUsed"
+ CvSetpointTag=  "NotUsed"
+   NotValidTag=  "18FE0801_U001_XF"
+   CvSwitchTag=  "18FE0801-U001_YA"
+   CvActiveTag=  "18FE0801-U001_XAPC"
+         LoTag=  "NotUsed"
+         HiTag=  "NotUsed"
+         Scale=  1
+        Offset=  0
+
+   SopcMvr:    	 D03Zpc
+         Text1=  "D03 Production choke"
+         Text2=  ""
+        MvrTag=  "D03Zpc"
+       MeasTag=  "18HCV0800.XR"
+   NotValidTag=  "DUMMY_TAG"
+         PVTag=  "18HCV0800.XSP"
+         IdTag=  "D03"
+   NotValidTag=  "18HCV0800.XF"
+     SpCalcTag=  "18HCV0800."
+         HiTag=  "18HCV0800."
+         LoTag=  "18HCV0800.XRL"
+         IvTag=  "18HCV0800.XRH"
+      MvLowTag=  "DUMMY_TAG"
+     MvHighTag=  "DUMMY_TAG"
+       MvIvTag=  "DUMMY_TAG"
+      MaxUpTag=  "18HCV0800.XRCU"
+    MaxDownTag=  "18HCV0800.XRCD"
+       AutoTag=  "18HCV0800.YBA"
+ 
+  SmpcAppl:      CVMVtest
+         Text1=  ""
+         Text2=  ""
+         Npred=  80
+         Nstep=  1
+       PlotMax=  25
+         Nhorz=  80
+        Nstart=  0
+      MasterOn=  ON
+       DesMode=  ACTIVE
+       FailMax=  0
+       PriceOn=  ON
+    PriceScale=  1
+       IterOpt=  OFF
+   IterNewSens=  OFF
+     IterQpMax=  0
+   IterLineMax=  0
+    DoStdSolve=  ON
+  SteadySolver=  QP
+      MajItLim=  200
+      MajPrint=  0
+   ObjConPrint=  OFF
+   VerifyGrads=  OFF
+      FuncPrec=  1e-008
+         FeTol=  1e-005
+      OptimTol=  1e-006
+      FdifIntv=  0.001
+    MaxSeconds=  10
+        LmPrio=  100
+    MaxPrioSQP=  100
+    UnConstrnd=  OFF
+      OpenFlag=  CONSTMVR
+       UpdFilt=  0
+       RelPert=  0.05
+       FeasTol=  1e-010
+     EachParam=  OFF
+   LinErrorLim=  1000
+     ColdStart=  OFF
+    SimOptimal=  OFF
+     PrintSens=  0
+     SensLimSS=  1e-006
+    SensLimDyn=  1e-006
+
+         Cvr:  D01Qg
+           Text1=  "D01: Gas rate"
+         Text2=  ""
+          Mode=  ACTIVE
+          Auto=  OFF
+       PlotMax=  250000
+       PlotMin=  0
+      PlotSpan=  -1
+       PlotGrp=  0000000000000000000000000000000
+          Nfix=  1
+        MaxChg=  -1
+          Unit=  "Sm3/h"
+          Meas=  230000
+       GrpMask=  0000000000000000000000100000000
+       GrpType=  0000000000000000000000100000000
+          Span=  3
+      SetPntOn=  230000
+       HighOff=  250000
+        LowOff=  0
+    SetPntPrio=  2
+      HighPrio=  1
+       LowPrio=  1
+   HighBackOff=  0
+    LowBackOff=  0
+          Fulf=  1
+     HighPnlty=  1
+      LowPnlty=  1
+     HighLimit=  1000
+      LowLimit=  1000
+     RelxParam=  3    1   30   80
+   FulfReScale=  0.001
+      SetpTref=  1.4116
+     BiasTfilt=  1
+     BiasTpred=  1
+     ConsTfilt=  -1
+         Integ=  0
+ TransformType=  NOTRANS
+     BadCntLim=  0
+       DesHorz=  0
+         Neval=  5
+        EvalDT=  0
+   KeepTargets=  OFF
+MeasValidation=  OFF
+ MeasHighLimit=  1e+010
+  MeasLowLimit=  -1e+010
+        LockHL=  OFF
+        LockSP=  OFF
+        LockLL=  OFF
+UseFactorWeight=  0
+  
+    Mvr:  D01Zpc            
+         Text1=  "D01: Production choke"
+         Text2=  ""
+          Mode=  ACTIVE
+          Auto=  OFF
+       PlotMax=  100
+       PlotMin=  0
+      PlotSpan=  -1
+       PlotGrp=  0000000000000000000000000000000
+          Nfix=  1
+        MaxChg=  100
+          Unit=  "%"
+          Meas=  35
+       GrpMask=  0000000000000000000000100000000
+       GrpType=  0000000000000000000000100000000
+          Span=  1
+        HighOn=  40
+         LowOn=  5
+  ProcessValue=  35
+         IvOff=  100
+         MaxUp=  0.5
+         MaxDn=  -0.5
+     MovePnlty=  1
+         IvRoc=  -1
+        IvPrio=  5
+          Fulf=  10
+   FulfReScale=  1
+         Price=  0
+      Blocking=  8    1    2    4    8   16   32   64   96
+MeasValidation=  OFF
+ MeasHighLimit=  1e+010
+  MeasLowLimit=  -1e+010
+        LockHL=  OFF
+        LockIV=  OFF
+        LockLL=  OFF
+UseFactorWeight=  0
+
+         Cvr:  D02Qg
+           Text1=  "D02: Gas rate"
+         Text2=  ""
+          Mode=  ACTIVE
+          Auto=  OFF
+       PlotMax=  250000
+       PlotMin=  0
+      PlotSpan=  -1
+       PlotGrp=  0000000000000000000000000000000
+          Nfix=  1
+        MaxChg=  -1
+          Unit=  "Sm3/h"
+          Meas=  230000
+       GrpMask=  0000000000000000000001000000000
+       GrpType=  0000000000000000000000100000000
+          Span=  3
+      SetPntOn=  230000
+       HighOff=  250000
+        LowOff=  0
+    SetPntPrio=  2
+      HighPrio=  1
+       LowPrio=  1
+   HighBackOff=  0
+    LowBackOff=  0
+          Fulf=  1
+     HighPnlty=  1
+      LowPnlty=  1
+     HighLimit=  1000
+      LowLimit=  1000
+     RelxParam=  3    1   30   80
+   FulfReScale=  0.001
+      SetpTref=  1.4116
+     BiasTfilt=  1
+     BiasTpred=  1
+     ConsTfilt=  -1
+         Integ=  0
+ TransformType=  NOTRANS
+     BadCntLim=  0
+       DesHorz=  0
+         Neval=  5
+        EvalDT=  0
+   KeepTargets=  OFF
+MeasValidation=  OFF
+ MeasHighLimit=  1e+010
+  MeasLowLimit=  -1e+010
+        LockHL=  OFF
+        LockSP=  OFF
+        LockLL=  OFF
+UseFactorWeight=  0
+  
+    Mvr:  D02Zpc            
+         Text1=  "D02: Production choke"
+         Text2=  ""
+          Mode=  ACTIVE
+          Auto=  OFF
+       PlotMax=  100
+       PlotMin=  0
+      PlotSpan=  -1
+       PlotGrp=  0000000000000000000000000000000
+          Nfix=  1
+        MaxChg=  100
+          Unit=  "%"
+          Meas=  35
+       GrpMask=  0000000000000000000001000000000
+       GrpType=  0000000000000000000000100000000
+          Span=  1
+        HighOn=  40
+         LowOn=  5
+  ProcessValue=  35
+         IvOff=  100
+         MaxUp=  0.5
+         MaxDn=  -0.5
+     MovePnlty=  1
+         IvRoc=  -1
+        IvPrio=  5
+          Fulf=  10
+   FulfReScale=  1
+         Price=  0
+      Blocking=  8    1    2    4    8   16   32   64   96
+MeasValidation=  OFF
+ MeasHighLimit=  1e+010
+  MeasLowLimit=  -1e+010
+        LockHL=  OFF
+        LockIV=  OFF
+        LockLL=  OFF
+UseFactorWeight=  0
+
+         Cvr:  D03Qg
+           Text1=  "D03: Gas rate"
+         Text2=  ""
+          Mode=  ACTIVE
+          Auto=  OFF
+       PlotMax=  250000
+       PlotMin=  0
+      PlotSpan=  -1
+       PlotGrp=  0000000000000000000000000000000
+          Nfix=  1
+        MaxChg=  -1
+          Unit=  "Sm3/h"
+          Meas=  230000
+       GrpMask=  0000000000000000000010000000000
+       GrpType=  0000000000000000000000100000000
+          Span=  3
+      SetPntOn=  230000
+       HighOff=  250000
+        LowOff=  0
+    SetPntPrio=  2
+      HighPrio=  1
+       LowPrio=  1
+   HighBackOff=  0
+    LowBackOff=  0
+          Fulf=  1
+     HighPnlty=  1
+      LowPnlty=  1
+     HighLimit=  1000
+      LowLimit=  1000
+     RelxParam=  3    1   30   80
+   FulfReScale=  0.001
+      SetpTref=  1.4116
+     BiasTfilt=  1
+     BiasTpred=  1
+     ConsTfilt=  -1
+         Integ=  0
+ TransformType=  NOTRANS
+     BadCntLim=  0
+       DesHorz=  0
+         Neval=  5
+        EvalDT=  0
+   KeepTargets=  OFF
+MeasValidation=  OFF
+ MeasHighLimit=  1e+010
+  MeasLowLimit=  -1e+010
+        LockHL=  OFF
+        LockSP=  OFF
+        LockLL=  OFF
+UseFactorWeight=  0
+  
+    Mvr:  D03Zpc            
+         Text1=  "D03: Production choke"
+         Text2=  ""
+          Mode=  ACTIVE
+          Auto=  OFF
+       PlotMax=  100
+       PlotMin=  0
+      PlotSpan=  -1
+       PlotGrp=  0000000000000000000000000000000
+          Nfix=  1
+        MaxChg=  100
+          Unit=  "%"
+          Meas=  35
+       GrpMask=  0000000000000000000010000000000
+       GrpType=  0000000000000000000000100000000
+          Span=  1
+        HighOn=  40
+         LowOn=  5
+  ProcessValue=  35
+         IvOff=  100
+         MaxUp=  0.5
+         MaxDn=  -0.5
+     MovePnlty=  1
+         IvRoc=  -1
+        IvPrio=  5
+          Fulf=  10
+   FulfReScale=  1
+         Price=  0
+      Blocking=  8    1    2    4    8   16   32   64   96
+MeasValidation=  OFF
+ MeasHighLimit=  1e+010
+  MeasLowLimit=  -1e+010
+        LockHL=  OFF
+        LockIV=  OFF
+        LockLL=  OFF
+UseFactorWeight=  0
+  
+	  DisplayGroup:  Tables
+       GroupNo=  1
+        Locked=  OFF
+          Rows=  -1
+          Cols=  -1
+         xGrid=  OFF
+         yGrid=  OFF
+         xAxis=  OFF
+         yAxis=  ON
+     Autoscale=  OFF
+     Spanscale=  ON
+      HistSize=  360
+
+  Table:         MPCtable
+           Row=  1
+           Col=  1
+       RowSize=  -1
+       ColSize=  -1
+   NameColSize=  -1
+   TextColSize=  -1
+  ValueColSize=  -1
+ GroupsColSize=  -1
+
+  Spacer:        s1
+          Size=  2
+
+  Heading:       D01
+          Text=  "AUTO WELL D01"
+    SizeOffset=  2
+
+  CvrList:       CVList
+          Text=  "CV"
+          Cvrs=  1
+                 "D01Qg"  
+
+  MvrList:       MVlist
+          Text=  "MV"
+          Mvrs=  1
+                 "D01Zpc"  
+
+  Spacer:        s1
+          Size=  2
+
+  Heading:       D02
+          Text=  "AUTO WELL D02"
+    SizeOffset=  2
+
+  CvrList:       CVList
+          Text=  "CV"
+          Cvrs=  1
+                 "D02Qg"  
+
+  MvrList:       MVlist
+          Text=  "MV"
+          Mvrs=  1
+                 "D02Zpc"  
