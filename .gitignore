@@ -143,3 +143,4 @@ cli.build/
 # rust
 /target
 tests/testdata/test.cnfg
+tests/testdata/test.cnfg.bak
