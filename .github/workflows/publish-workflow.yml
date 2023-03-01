@@ -29,8 +29,8 @@ jobs:
       - name: Stage files
         run: |
           mkdir stage
-          tar cvzf ./stage/scg-${{ inputs.tag_name }}.linux.x86_64.tar.gz -C ./release/linux/ scg
-          zip -j ./stage/scg-${{ inputs.tag_name }}.windows.x86_64.zip ./release/windows/scg.exe
+          tar cvzf ./stage/scg-${{ inputs.tag_name }}.linux.x64.tar.gz -C ./release/linux/ scg
+          zip -j ./stage/scg-${{ inputs.tag_name }}.windows.x64.zip ./release/windows/scg.exe
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
