@@ -1,8 +1,8 @@
 # Changes from Python-based 1.0 to Rust-based 2.0
 
-Although the functionality of 2.x is quite similar to 1.0, there are some differences.
+Although the functionality of 2.x is quite similar to 1.0, there are some minor differences.
 When transitioning from using 1.0 to 2.x, expect having to change a few lines in your 
-templates and .yaml file.
+templates and YAML config file.
 
 This document describes the differences between the last Python-based version (1.0) and the first Rust-based version (2.0). Further changes for 2.1 etc. will be documented in [CHANGELOG.md](../CHANGELOG.md) and in the release notes.
 
@@ -30,9 +30,9 @@ MiniJinja is based on the Jinja2 engine and supports a range of features from Ji
 
 # How to make your project compatible with scg version 2.x
 
-## Yaml config
+## YAML config
 1. Remove the keys `masterpath` and `masterkey`.
-2. Ensure that `verifycontent` is either `true` or `false` (not `yes` or `no`).
+2. Ensure that `verifycontent` is either `true` or `false` (not `yes` or `no`, `on` or `off`).
 
 ## Template files
 1. Replace `{% gitcommit %}` with `{{ gitcommitlong }}` or alternatively `{{ gitcommit }}`

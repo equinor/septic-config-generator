@@ -3,9 +3,10 @@
 This is the documentation for the Rust-based SCG 2.x. If you are looking for documentation 
 for the legacy Python-based 1.x version, please go [here](docs/HOWTO_SCG_legacy.md).
 
-Although the functionality of 2.x is quite similar to 1.0, there are some differences.
+Although the functionality of 2.x is quite similar to 1.0, there are some minor differences.
 When transitioning from using 1.0 to 2.x, expect having to change a few lines in your 
-templates and .yaml file. The differences between 1.0 and 2.0 are documented [here](docs/Changes_1.0_2.0.md).
+templates and YAML config file. The differences between 1.0 and 2.0, and what you need to
+change, are documented [here](docs/Changes_1.0_2.0.md).
 
 ## About
 
@@ -213,9 +214,9 @@ You can also type simply
 scg.exe make example
 ```
 
-Verify that the generated `example.cnfg` corresponds with the layout defined in yaml and
-the rows in the Excel sheet. E.g. you should have SopcCvrs and SopcMvrs defined for all 
-three wells, but MPCTable should only list D01 and D02.
+Verify that the generated `example.cnfg` corresponds with the layout defined in the YAML 
+config file and the rows in the Excel sheet. E.g. you should have SopcCvrs and SopcMvrs 
+defined for all three wells, but MPCTable should only list D01 and D02.
 
 Try to make a change to one of the template files and regenerate the config. Since 
 `verifycontent` is `true`, scg will ask whether you want to replace the existing `example.cnfg`.
