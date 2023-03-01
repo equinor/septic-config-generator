@@ -6,15 +6,15 @@ templates and YAML config file.
 
 This document describes the differences between the last Python-based version (1.0) and the first Rust-based version (2.0). Further changes for 2.1 etc. will be documented in [CHANGELOG.md](../CHANGELOG.md) and in the release notes.
 
-The primary difference is, of course, that scg version 2.x is written in Rust instead of Python. This should reduce execution times significantly. Furthermore, scg 2.x uses the [MiniJinja](https://docs.rs/minijinja) templating engine instead of [Jinja2](https://jinja.palletsprojects.com/). 
+The primary difference is, of course, that scg version 2.x is written in Rust instead of Python. This should reduce execution times significantly. Furthermore, scg 2.x uses Rust's [MiniJinja](https://docs.rs/minijinja) templating engine instead of Python's [Jinja2](https://jinja.palletsprojects.com/). 
 
 MiniJinja is based on the Jinja2 engine and supports a range of features from Jinja2, but there are differences and you may experience that some filters and expressions no longer work. If you experience this, then please let me know and we can either find a work-around or we can implement [custom filters](https://docs.rs/minijinja/0.30.4/minijinja/filters/index.html#custom-filters) or [custom functions](https://docs.rs/minijinja/0.30.4/minijinja/functions/index.html#custom-functions) to solve the issue. An overview of the differences between MiniJinja and Jinja2 is available [here](https://github.com/mitsuhiko/minijinja/blob/main/COMPATIBILITY.md)
-
 
 ## Removed
 
 - Reverting config files with `scg revert` has been removed since it is no longer in use by anyone.
 - The command line argument `--no-verify` has been removed. It can easily be re-added if anyone needs it.
+- The diffing method (`scg diff`) has not yet been reimplemented in 2.0. It is scheduled to be added in the next feature release.
 
 ## Changed
 
