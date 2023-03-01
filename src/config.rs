@@ -8,8 +8,6 @@ use std::path::PathBuf;
 pub struct Config {
     pub outputfile: Option<String>,
     pub templatepath: String,
-    pub masterpath: Option<String>,
-    pub masterkey: Option<String>,
     #[serde(default = "_default_true")]
     pub adjustspacing: bool,
     #[serde(default = "_default_true")]
