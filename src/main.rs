@@ -194,7 +194,7 @@ fn cmd_diff(file1: &PathBuf, file2: &PathBuf) {
     if file1.exists() {
         let mut reader1 = encoding_rs_io::DecodeReaderBytesBuilder::new()
             .encoding(Some(encoding_rs::WINDOWS_1252))
-            .build(fs::File::open(&file1).unwrap());
+            .build(fs::File::open(file1).unwrap());
         reader1.read_to_string(&mut file1_content).unwrap();
     } else {
         eprintln!("File not found: '{}'", &file1.display());
@@ -203,7 +203,7 @@ fn cmd_diff(file1: &PathBuf, file2: &PathBuf) {
     if file2.exists() {
         let mut reader2 = encoding_rs_io::DecodeReaderBytesBuilder::new()
             .encoding(Some(encoding_rs::WINDOWS_1252))
-            .build(fs::File::open(&file2).unwrap());
+            .build(fs::File::open(file2).unwrap());
         reader2.read_to_string(&mut file2_content).unwrap();
     } else {
         eprintln!("File not found: '{}'", &file2.display());
