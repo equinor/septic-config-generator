@@ -6,6 +6,8 @@ use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 
+const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn timestamp(format: Option<&str>) -> String {
     let fmt = format.unwrap_or("%Y-%m-%d %H:%M:%S");
     Local::now().format(fmt).to_string()
@@ -78,6 +80,9 @@ impl<'a> MiniJinja<'a> {
             env: Environment::new(),
         };
         renderer.add_globals(globals);
+        renderer
+            .env
+            .add_global("scgversion", String::from(SCG_VERSION));
         renderer.env.add_global("gitcommit", gitcommit(false));
         renderer.env.add_global("gitcommitlong", gitcommit(true));
         renderer.env.add_function("now", timestamp);
