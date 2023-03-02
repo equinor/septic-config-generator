@@ -263,10 +263,11 @@ been added:
  - `{{  now() }} `: Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S"`. The format can be modified by providing an [strftime string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) as function argument to customize the datestamp, e.g. `now("%a %d %b %Y %H:%M:%S")` to get `Thu 23 feb 2023 14:18:12`. 
  - `{{ gitcommit }}`: Global variable that inserts the GIT commit hash on short form.
  - `{{ gitcommitlong }}`: Global variable that inserts the GIT commit hash on long form.
-
+ - `{{ scgversion }}`: Global variable that inserts the SCG version used to create the output file.
+ - 
 Try adding the following line at the top of the first template file:
 
 ```
-// Generated on {{ now() }} from git commit {{ gitcommit }}
+// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }} 
 ```
 

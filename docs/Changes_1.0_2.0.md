@@ -25,7 +25,7 @@ MiniJinja is based on the Jinja2 engine and supports a range of features from Ji
 
 ## New
 
-- [Trailing newlines](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#trailing-newlines) can be somewhat frustrating both with Jinja2 and MiniJinja. The new config option `adjustspacing` tries to solve this. Set it to `true` to force scg to leave exactly one newline after the last non-whitespace character in each template. Newlines at the beginning of the templates are not affected.
+- [Trailing newlines](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#trailing-newlines) can be somewhat frustrating both with Jinja2 and MiniJinja. The new config option `adjustspacing` tries to solve this. Set it to `true` to force scg to leave exactly one blank line after the last non-whitespace character in each template. Newlines at the beginning of the templates are not affected.
 - The global variable `gitcommitlong` has been added. It does the same as the `gitcommit` expression in 1.0.
 
 # How to make your project compatible with scg version 2.x

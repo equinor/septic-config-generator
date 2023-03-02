@@ -1,4 +1,4 @@
-outputfile: test.cnfg
+# outputfile: test.cnfg
 
 templatepath: templates
 
