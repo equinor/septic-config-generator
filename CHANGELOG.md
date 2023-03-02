@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.0](https://github.com/equinor/septic-config-generator/compare/v2.0.0...v2.1.0) (2023-03-02)
+
+
+### 📚 Documentation
+
+* minor changes ([#41](https://github.com/equinor/septic-config-generator/issues/41)) ([9c3f8a4](https://github.com/equinor/septic-config-generator/commit/9c3f8a4a19f0a9c47a83aaa2547994505a85b053))
+
+
+### ✨ Features
+
+* add global variable {{ scgversion }} ([#43](https://github.com/equinor/septic-config-generator/issues/43)) ([14ba63a](https://github.com/equinor/septic-config-generator/commit/14ba63aef4b90ba1c30c5717ddd2cc9ec875b61e))
+* add scg diff ([#44](https://github.com/equinor/septic-config-generator/issues/44)) ([d36f70e](https://github.com/equinor/septic-config-generator/commit/d36f70e7450c2c9d30f10387f573f99c24ec56f7))
+
 ## [2.0.0](https://github.com/equinor/septic-config-generator/compare/v1.0.0...v2.0.0) (2023-03-01)
 
 
