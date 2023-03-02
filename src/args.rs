@@ -1,22 +1,22 @@
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(version, about, disable_colored_help = true, next_line_help = true)]
 pub struct Cli {
     #[clap(subcommand)]
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     /// Generate SEPTIC config
     Make(MakeArguments),
     /// Show difference between two text files
-    Diff,
+    Diff(DiffArguments),
 }
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 pub struct MakeArguments {
     /// The yaml config file
     pub config_file: PathBuf,
@@ -29,4 +29,10 @@ pub struct MakeArguments {
     /// Global variable to use for all templates, also those without specified source. Can be repeated. Global variables overwrite other variables with same name
     #[arg(short, long, value_names = ["name", "value"])]
     pub var: Option<Vec<String>>,
+}
+
+#[derive(Parser, Debug)]
+pub struct DiffArguments {
+    pub file1: PathBuf,
+    pub file2: PathBuf,
 }
