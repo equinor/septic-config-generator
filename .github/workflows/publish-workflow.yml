@@ -29,6 +29,7 @@ jobs:
       - name: Stage files
         run: |
           mkdir stage
+          chmod +x ./release/linux/scg
           tar cvzf ./stage/scg.${{ inputs.tag_name }}.linux.x64.tar.gz -C ./release/linux/ scg
           zip -j ./stage/scg.${{ inputs.tag_name }}.windows.x64.zip ./release/windows/scg.exe
       - name: Release
