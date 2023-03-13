@@ -398,9 +398,9 @@ checksum = "aec276c09560ce4447087aaefc19eb0c18d97e31bd05ebac38881c4723400c40"
 
 [[package]]
 name = "minijinja"
-version = "0.30.4"
+version = "0.30.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f95c8f0999f88dd509934824ce03582ffbbcabf8af6484107572618732660c54"
+checksum = "650266e616c4634fd6c188a410886e8700689fe78197f54d194a9ed560863f94"
 dependencies = [
  "memo-map",
  "self_cell",
