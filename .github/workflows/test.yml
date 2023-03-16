@@ -8,14 +8,11 @@ env:
 
 jobs:
   code_test:
-    name: '✅Check, 🛠️ Build & 🧪 Test'
+    name: '🛠️ Build & 🧪 Test'
     runs-on: ubuntu-latest
     
     steps:
       - uses: actions/checkout@v3
-
-      - name: ✅ Cargo check
-        run: cargo check
 
       - name: 🛠️ Cargo build
         run: cargo build --verbose
