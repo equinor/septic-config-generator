@@ -112,8 +112,15 @@ fn read_config(cfg_file: &Path) -> Result<(Config, PathBuf), String> {
     Ok((cfg, relative_root))
 }
 
-// read_config(cfg_file: &Path) -> Result<Config, String>
-// read_source_data(source: &Source, relative_root: &PathBuf) -> Result<DataSourceRow, String>
+fn read_source_data(
+    source: &config::Source,
+    relative_root: &Path,
+) -> Result<DataSourceRow, String> {
+    let path = relative_root.join(&source.filename);
+    let source_data = datasource::read(&path, &source.sheet).map_err(|e| e.to_string())?;
+    Ok(source_data)
+}
+
 // render_template(template: &Template, all_source_data: &HashMap<String, DataSourceRow>, renderer: &MiniJinja, cfg: &Config) -> Result<String, String>
 // write_to_file(rendered: &str, path: &Path, cfg: &Config) -> Result<(), String>
 pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
@@ -125,9 +132,8 @@ pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
     let mut all_source_data: HashMap<String, DataSourceRow> = HashMap::new();
 
     for source in &cfg.sources {
-        let path = relative_root.join(&source.filename);
-        let source_data = datasource::read(&path, &source.sheet).unwrap_or_else(|e| {
-            eprintln!("Problem reading source file '{}': {e}", path.display());
+        let source_data = read_source_data(source, &relative_root).unwrap_or_else(|e| {
+            eprintln!("Problem reading source file '{}': {e}", source.filename);
             process::exit(1);
         });
         all_source_data.insert(source.id.to_string(), source_data);
@@ -321,5 +327,39 @@ mod tests {
             result.unwrap_err().to_string(),
             "No such file or directory (os error 2)"
         );
+    }
+
+    #[test]
+    fn test_read_source_file_does_not_exist() {
+        let source = config::Source {
+            filename: String::from("nonexistent_file.xlsx"),
+            id: String::from("myid"),
+            sheet: String::from("mysheet"),
+        };
+
+        let relative_root = Path::new("somepath");
+        let result = read_source_data(&source, relative_root);
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "I/O error: No such file or directory (os error 2)"
+        );
+    }
+
+    #[test]
+    fn test_read_source_file_sheet_does_not_exist() {
+        let source = config::Source {
+            filename: String::from("test.xlsx"),
+            id: String::from("myid"),
+            sheet: String::from("nonexistent_sheet"),
+        };
+
+        let relative_root = Path::new("tests/testdata");
+        let result = read_source_data(&source, relative_root);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot find sheet"));
     }
 }
