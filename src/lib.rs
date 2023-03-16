@@ -86,14 +86,6 @@ fn _merge_maps(
     merged
 }
 
-fn ensure_has_extension(filename: &Path, extension: &str) -> PathBuf {
-    let mut file = filename.to_path_buf();
-    if file.extension().is_none() {
-        file.set_extension(extension);
-    }
-    file
-}
-
 fn bubble_error(pretext: &str, err: Box<dyn std::error::Error>) {
     eprintln!("{pretext}: {err:#}");
     let mut err = &*err;
@@ -104,13 +96,30 @@ fn bubble_error(pretext: &str, err: Box<dyn std::error::Error>) {
     }
 }
 
-pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
+fn ensure_has_extension(filename: &Path, extension: &str) -> PathBuf {
+    let mut file = filename.to_path_buf();
+    if file.extension().is_none() {
+        file.set_extension(extension);
+    }
+    file
+}
+
+fn read_config(cfg_file: &Path) -> Result<(Config, PathBuf), String> {
     let cfg_file = ensure_has_extension(cfg_file, "yaml");
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
+    let cfg = Config::new(&cfg_file).map_err(|e| e.to_string())?;
 
-    let cfg = Config::new(&cfg_file).unwrap_or_else(|e| {
-        eprintln!("Problem reading '{}': {}", &cfg_file.display(), e);
-        process::exit(1)
+    Ok((cfg, relative_root))
+}
+
+// read_config(cfg_file: &Path) -> Result<Config, String>
+// read_source_data(source: &Source, relative_root: &PathBuf) -> Result<DataSourceRow, String>
+// render_template(template: &Template, all_source_data: &HashMap<String, DataSourceRow>, renderer: &MiniJinja, cfg: &Config) -> Result<String, String>
+// write_to_file(rendered: &str, path: &Path, cfg: &Config) -> Result<(), String>
+pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
+    let (cfg, relative_root) = read_config(cfg_file).unwrap_or_else(|e| {
+        eprintln!("Problem reading config file '{}: {e}", cfg_file.display());
+        process::exit(1);
     });
 
     let mut all_source_data: HashMap<String, DataSourceRow> = HashMap::new();
@@ -271,4 +280,46 @@ pub fn cmd_diff(file1: &Path, file2: &Path) {
     let diff = create_patch(&file_content[0], &file_content[1]);
     let f = PatchFormatter::new().with_color();
     print!("{}", f.fmt_patch(&diff));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_read_config_invalid_content() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.yaml");
+        let mut file = File::create(&file_path).unwrap();
+
+        // let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, "random").unwrap();
+        let result = read_config(&file_path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("invalid type"));
+    }
+    #[test]
+    fn test_read_config_invalid_yaml() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("test.yaml");
+        let mut file = File::create(&file_path).unwrap();
+
+        // let mut file = NamedTempFile::new().unwrap();
+        writeln!(file, "random: ").unwrap();
+        let result = read_config(&file_path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("missing field"));
+    }
+
+    #[test]
+    fn test_read_config_file_does_not_exist() {
+        let result = read_config(&Path::new("nonexistent_file.yaml"));
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "No such file or directory (os error 2)"
+        );
+    }
 }
