@@ -36,7 +36,7 @@ pub struct Source {
     pub sheet: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Template {
     pub name: String,
     pub source: Option<String>,

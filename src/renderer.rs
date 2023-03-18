@@ -13,8 +13,8 @@ fn timestamp(format: Option<&str>) -> String {
     Local::now().format(fmt).to_string()
 }
 
-fn gitcommit(short: bool) -> String {
-    let args = if short {
+fn gitcommit(long: bool) -> String {
+    let args = if long {
         ["rev-parse", "--verify", "HEAD"]
     } else {
         ["rev-parse", "--short", "HEAD"]
@@ -113,24 +113,6 @@ impl<'a> MiniJinja<'a> {
         }
     }
 
-    #[allow(clippy::missing_errors_doc)]
-    pub fn render_to_file<S: Serialize, W: std::io::Write>(
-        &self,
-        template_name: &str,
-        ctx: S,
-        writer: W,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let tmpl = match self.env.get_template(template_name) {
-            Ok(t) => t,
-            Err(e) => return Err(Box::new(e)),
-        };
-
-        match tmpl.render_to_write(ctx, writer) {
-            Ok(()) => Ok(()),
-            Err(e) => Err(Box::new(e)),
-        }
-    }
-
     fn add_globals(&mut self, globals: &[String]) {
         for chunk in globals.chunks(2) {
             let (key, val) = (chunk[0].to_string(), chunk[1].to_string());
@@ -146,5 +128,31 @@ impl<'a> MiniJinja<'a> {
                 },
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use regex::Regex;
+
+    #[test]
+    fn test_customfunction_timestamp() {
+        let result = timestamp(None);
+        let re = Regex::new(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$").unwrap();
+        assert!(re.is_match(&result));
+        let result = timestamp(Some("%a %d %b %Y %H:%M:%S"));
+        let re = Regex::new(r"^\w{3} \d{1,2} \w{3} \d{4} \d{2}:\d{2}:\d{2}$").unwrap();
+        assert!(re.is_match(&result));
+    }
+
+    #[test]
+    fn test_customfunction_gitcommit() {
+        let result = gitcommit(true);
+        let re = Regex::new(r"^\w{40}$").unwrap();
+        assert!(re.is_match(&result));
+        let result = gitcommit(false);
+        let re = Regex::new(r"^\w{7}$").unwrap();
+        assert!(re.is_match(&result));
     }
 }
