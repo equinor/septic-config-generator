@@ -175,6 +175,26 @@ fn render_template(
     Ok(rendered)
 }
 
+fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, Box<dyn Error>> {
+    let f = PatchFormatter::new().with_color();
+    print!("{}", f.fmt_patch(diff));
+    print!("\n\nReplace original? [Y]es or [N]o: ");
+    let mut response = String::new();
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut response)?;
+
+    Ok(response.len() > 1
+        && response
+            .trim_end()
+            .chars()
+            .last()
+            .unwrap()
+            .to_lowercase()
+            .next()
+            .unwrap()
+            == 'y')
+}
+
 // write_to_file(rendered: &str, path: &Path, cfg: &Config) -> Result<(), String>
 pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
     let (cfg, relative_root) = read_config(cfg_file).unwrap_or_else(|e| {
@@ -213,68 +233,48 @@ pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
     if cfg.outputfile.is_none() {
         // TODO: || with input argument for writing to stdout
         println!("{rendered}");
-    } else {
-        let path = relative_root.join(cfg.outputfile.unwrap());
+        return;
+    }
 
-        let mut do_write_file = true;
-        let mut has_diff = false;
+    let path = relative_root.join(cfg.outputfile.unwrap());
 
-        if path.exists() {
-            let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-                .encoding(Some(encoding_rs::WINDOWS_1252))
-                .build(fs::File::open(&path).unwrap());
-            let mut old_file_content = String::new();
-            reader.read_to_string(&mut old_file_content).unwrap();
+    let mut do_write_file = true;
 
-            let diff = create_patch(&old_file_content, &rendered);
+    if path.exists() {
+        let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+            .encoding(Some(encoding_rs::WINDOWS_1252))
+            .build(fs::File::open(&path).unwrap());
+        let mut old_file_content = String::new();
+        reader.read_to_string(&mut old_file_content).unwrap();
 
-            has_diff = !diff.hunks().is_empty();
-            if !has_diff {
-                do_write_file = false;
-            } else if has_diff && cfg.verifycontent {
-                let f = PatchFormatter::new().with_color();
-                print!("{}", f.fmt_patch(&diff));
-                print!("\n\nReplace original? [Y]es or [N]o: ");
-                let mut response = String::new();
-                io::stdout().flush().unwrap();
-                io::stdin()
-                    .read_line(&mut response)
-                    .expect("error: unable to read user input");
+        let diff = create_patch(&old_file_content, &rendered);
 
-                do_write_file = response.len() > 1
-                    && response
-                        .trim_end()
-                        .chars()
-                        .last()
-                        .unwrap()
-                        .to_lowercase()
-                        .next()
-                        .unwrap()
-                        == 'y';
-            }
-        }
-        if path.exists() && !has_diff {
+        if diff.hunks().is_empty() {
             eprintln!("No change from original version, exiting.");
-        } else if do_write_file {
-            if path.exists() {
-                let backup_path = path.with_extension(format!(
-                    "{}.bak",
-                    path.extension().unwrap().to_str().unwrap()
-                ));
-                fs::rename(&path, backup_path).expect("Failed to create backup file");
-            }
-
-            let mut f = fs::File::create(&path).unwrap_or_else(|err| {
-                eprintln!(
-                    "Problem creating output file '{}': {}",
-                    &path.display(),
-                    err
-                );
-                process::exit(1);
-            });
-            let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
-            f.write_all(&cow).unwrap();
+            process::exit(0);
+        } else if cfg.verifycontent {
+            do_write_file = ask_should_overwrite(&diff).expect("error: unable to read user input");
         }
+    }
+    if do_write_file {
+        if path.exists() {
+            let backup_path = path.with_extension(format!(
+                "{}.bak",
+                path.extension().unwrap().to_str().unwrap()
+            ));
+            fs::rename(&path, backup_path).expect("Failed to create backup file");
+        }
+
+        let mut f = fs::File::create(&path).unwrap_or_else(|err| {
+            eprintln!(
+                "Problem creating output file '{}': {}",
+                &path.display(),
+                err
+            );
+            process::exit(1);
+        });
+        let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
+        f.write_all(&cow).unwrap();
     }
 }
 
