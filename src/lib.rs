@@ -456,19 +456,9 @@ mod tests {
             name: "00_plaintext.tmpl".to_string(),
             ..Default::default()
         };
-        let result_false: Vec<char> = render_template(&renderer, &template, &HashMap::new(), false)
-            .unwrap()
-            .chars()
-            .rev()
-            .take(4)
-            .collect();
-        let result_true: Vec<char> = render_template(&renderer, &template, &HashMap::new(), true)
-            .unwrap()
-            .chars()
-            .rev()
-            .take(3)
-            .collect();
-        assert_eq!(vec!['\n', '\n', '.', 'c'], result_false);
-        assert_eq!(vec!['\n', '\n', '.'], result_true);
+        let result_false = render_template(&renderer, &template, &HashMap::new(), false).unwrap();
+        let result_true = render_template(&renderer, &template, &HashMap::new(), true).unwrap();
+        assert_eq!(&result_false[result_false.len() - 3..], "c.\n");
+        assert_eq!(&result_true[result_true.len() - 3..], ".\n\n");
     }
 }
