@@ -305,6 +305,14 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
+    fn test_ensure_has_extension() {
+        let before = Path::new("file.extension");
+        assert_eq!(before, ensure_has_extension(before, "extension"));
+        assert_eq!(before, ensure_has_extension(Path::new("file"), "extension"));
+        assert!(ensure_has_extension(before, "other") == before);
+    }
+
+    #[test]
     fn test_read_config_invalid_content() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("test.yaml");
