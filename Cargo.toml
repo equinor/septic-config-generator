@@ -30,4 +30,5 @@ serde = { version = "1.0.156", features = ["derive"] }
 serde_yaml = "0.9.19"
 
 [dev-dependencies]
+regex = "1.7.1"
 tempfile = "3.4.0"

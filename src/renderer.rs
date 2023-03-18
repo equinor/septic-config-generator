@@ -13,8 +13,8 @@ fn timestamp(format: Option<&str>) -> String {
     Local::now().format(fmt).to_string()
 }
 
-fn gitcommit(short: bool) -> String {
-    let args = if short {
+fn gitcommit(long: bool) -> String {
+    let args = if long {
         ["rev-parse", "--verify", "HEAD"]
     } else {
         ["rev-parse", "--short", "HEAD"]
@@ -146,5 +146,31 @@ impl<'a> MiniJinja<'a> {
                 },
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use regex::Regex;
+
+    #[test]
+    fn test_customfunction_timestamp() {
+        let result = timestamp(None);
+        let re = Regex::new(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$").unwrap();
+        assert!(re.is_match(&result));
+        let result = timestamp(Some("%a %d %b %Y %H:%M:%S"));
+        let re = Regex::new(r"^\w{3} \d{1,2} \w{3} \d{4} \d{2}:\d{2}:\d{2}$").unwrap();
+        assert!(re.is_match(&result));
+    }
+
+    #[test]
+    fn test_customfunction_gitcommit() {
+        let result = gitcommit(true);
+        let re = Regex::new(r"^\w{40}$").unwrap();
+        assert!(re.is_match(&result));
+        let result = gitcommit(false);
+        let re = Regex::new(r"^\w{7}$").unwrap();
+        assert!(re.is_match(&result));
     }
 }
