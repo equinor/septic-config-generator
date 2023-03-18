@@ -113,24 +113,6 @@ impl<'a> MiniJinja<'a> {
         }
     }
 
-    #[allow(clippy::missing_errors_doc)]
-    pub fn render_to_file<S: Serialize, W: std::io::Write>(
-        &self,
-        template_name: &str,
-        ctx: S,
-        writer: W,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let tmpl = match self.env.get_template(template_name) {
-            Ok(t) => t,
-            Err(e) => return Err(Box::new(e)),
-        };
-
-        match tmpl.render_to_write(ctx, writer) {
-            Ok(()) => Ok(()),
-            Err(e) => Err(Box::new(e)),
-        }
-    }
-
     fn add_globals(&mut self, globals: &[String]) {
         for chunk in globals.chunks(2) {
             let (key, val) = (chunk[0].to_string(), chunk[1].to_string());
