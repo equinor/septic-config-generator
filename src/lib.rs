@@ -124,7 +124,57 @@ fn read_source_data(
     Ok(source_data)
 }
 
-// render_template(template: &Template, all_source_data: &HashMap<String, DataSourceRow>, renderer: &MiniJinja, cfg: &Config) -> Result<String, String>
+fn render_template(
+    renderer: &MiniJinja,
+    template: &config::Template,
+    source_data: &HashMap<String, DataSourceRow>,
+    adjust_spacing: bool,
+) -> Result<String, Box<dyn Error>> {
+    let mut rendered = String::new();
+
+    if template.source.is_none() {
+        rendered = renderer.render(&template.name, ())?;
+    } else {
+        let src_name = &template.source.clone().unwrap();
+
+        let keys: Vec<String> = source_data[src_name]
+            .iter()
+            .map(|(key, _row)| key.clone())
+            .collect();
+
+        let mut items_set: HashSet<String> = keys.iter().cloned().collect();
+
+        if template.include.is_some() {
+            items_set = items_set
+                .intersection(&template.include_set())
+                .cloned()
+                .collect();
+        }
+
+        items_set = items_set
+            .difference(&template.exclude_set())
+            .cloned()
+            .collect();
+
+        for (key, row) in &source_data[src_name] {
+            if items_set.contains(key) {
+                let mut tmpl_rend = renderer.render(&template.name, Some(row))?;
+
+                if adjust_spacing {
+                    tmpl_rend = tmpl_rend.trim_end().to_string();
+                    tmpl_rend.push_str("\n\n");
+                }
+                rendered.push_str(&tmpl_rend);
+            }
+        }
+    }
+    if adjust_spacing {
+        rendered = rendered.trim_end().to_string();
+        rendered.push_str("\n\n");
+    }
+    Ok(rendered)
+}
+
 // write_to_file(rendered: &str, path: &Path, cfg: &Config) -> Result<(), String>
 pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
     let (cfg, relative_root) = read_config(cfg_file).unwrap_or_else(|e| {
@@ -148,56 +198,12 @@ pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
     let mut rendered = String::new();
 
     for template in &cfg.layout {
-        if template.source.is_none() {
-            let mut tmpl_rend = renderer.render(&template.name, ()).unwrap_or_else(|err| {
-                bubble_error("Template error", err);
-                process::exit(1);
-            });
-            if cfg.adjustspacing {
-                tmpl_rend = tmpl_rend.trim_end().to_string();
-                tmpl_rend.push_str("\n\n");
-            }
-            rendered.push_str(&tmpl_rend);
-        } else {
-            let src_name = &template.source.clone().unwrap();
-
-            let keys: Vec<String> = all_source_data[src_name]
-                .iter()
-                .map(|(key, _row)| key.clone())
-                .collect();
-
-            let mut items_set: HashSet<String> = keys.iter().cloned().collect();
-
-            if template.include.is_some() {
-                items_set = items_set
-                    .intersection(&template.include_set())
-                    .cloned()
-                    .collect();
-            }
-
-            items_set = items_set
-                .difference(&template.exclude_set())
-                .cloned()
-                .collect();
-
-            for (key, row) in &all_source_data[src_name] {
-                if items_set.contains(key) {
-                    let mut tmpl_rend =
-                        renderer
-                            .render(&template.name, Some(row))
-                            .unwrap_or_else(|err| {
-                                bubble_error("Template Error", err);
-                                process::exit(1);
-                            });
-
-                    if cfg.adjustspacing {
-                        tmpl_rend = tmpl_rend.trim_end().to_string();
-                        tmpl_rend.push_str("\n\n");
-                    }
-                    rendered.push_str(&tmpl_rend);
-                }
-            }
-        }
+        rendered = rendered
+            + &render_template(&renderer, template, &all_source_data, cfg.adjustspacing)
+                .unwrap_or_else(|err| {
+                    bubble_error("Template Error", err);
+                    process::exit(1);
+                });
     }
     if cfg.adjustspacing {
         rendered = rendered.trim_end().to_string();
@@ -364,5 +370,104 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Cannot find sheet"));
+    }
+
+    fn get_all_source_data() -> HashMap<String, DataSourceRow> {
+        let mut all_source_data: HashMap<String, DataSourceRow> = HashMap::new();
+        let source_main = config::Source {
+            filename: "test.xlsx".to_string(),
+            id: "main".to_string(),
+            sheet: "Normals".to_string(),
+        };
+        let source_errors = config::Source {
+            filename: "test.xlsx".to_string(),
+            id: "errors".to_string(),
+            sheet: "Specials".to_string(),
+        };
+        for source in [source_main, source_errors] {
+            let source_data = read_source_data(&source, Path::new("tests/testdata/")).unwrap();
+            all_source_data.insert(source.id.to_string(), source_data);
+        }
+        all_source_data
+    }
+
+    #[test]
+    fn test_render_template_with_normals() {
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
+        let template = config::Template {
+            name: "01_normals.tmpl".to_string(),
+            source: Some("main".to_string()),
+            ..Default::default()
+        };
+        let all_source_data = get_all_source_data();
+        let result = render_template(&renderer, &template, &all_source_data, true).unwrap();
+        assert_eq!(
+            result.trim_end(),
+            "String: one\nBool: true\nInteger: 1\nWhole float: 1\nFloat: 1.234\n\nString: two\nBool: false\nInteger: 2\nWhole float: 2\nFloat: 2.3456\n\nString: three\nBool: true\nInteger: 3\nWhole float: 3\nFloat: 34.56"
+        );
+    }
+
+    #[test]
+    fn test_render_template_with_specials() {
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
+        let template = config::Template {
+            name: "02_specials.tmpl".to_string(),
+            source: Some("errors".to_string()),
+            ..Default::default()
+        };
+        let all_source_data = get_all_source_data();
+        let result = render_template(&renderer, &template, &all_source_data, true).unwrap();
+        assert_eq!(
+            result.trim_end(),
+            "Empty: >|none|<\nError: >|#DIV/0!|<\n\nEmpty: >||<\nError: >|#N/A|<\n\nEmpty: >|\"\"|<\nError: >|#NAME?|<\n\nEmpty: >|\"\"|<\nError: >|#NULL!|<\n\nEmpty: >|none|<\nError: >|#NUM!|<\n\nEmpty: >||<\nError: >|#REF!|<\n\nEmpty: >|\"\"|<\nError: >|#VALUE!|<"
+        );
+    }
+
+    #[test]
+    fn test_render_template_with_global() {
+        let globals = ["glob".to_string(), "globvalue".to_string()];
+        let renderer = MiniJinja::new(&globals, Path::new("tests/testdata/templates/"));
+        let template = config::Template {
+            name: "03_globals.tmpl".to_string(),
+            ..Default::default()
+        };
+        let all_source_data = get_all_source_data();
+
+        let result = render_template(&renderer, &template, &all_source_data, true).unwrap();
+        assert_eq!(result.trim_end(), "Global: >|globvalue|<");
+    }
+
+    #[test]
+    fn test_render_template_encoding() {
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
+        let template = config::Template {
+            name: "06_encoding.tmpl".to_string(),
+            ..Default::default()
+        };
+        let result = render_template(&renderer, &template, &HashMap::new(), true).unwrap();
+        assert_eq!(result.trim_end(), "ae: æ\noe: ø\naa: å\ns^2: s²\nm^3: m³");
+    }
+
+    #[test]
+    fn test_render_template_adjustspacing() {
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
+        let template = config::Template {
+            name: "00_plaintext.tmpl".to_string(),
+            ..Default::default()
+        };
+        let result_false: Vec<char> = render_template(&renderer, &template, &HashMap::new(), false)
+            .unwrap()
+            .chars()
+            .rev()
+            .take(4)
+            .collect();
+        let result_true: Vec<char> = render_template(&renderer, &template, &HashMap::new(), true)
+            .unwrap()
+            .chars()
+            .rev()
+            .take(3)
+            .collect();
+        assert_eq!(vec!['\n', '\n', '.', 'c'], result_false);
+        assert_eq!(vec!['\n', '\n', '.'], result_true);
     }
 }
