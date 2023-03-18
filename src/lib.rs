@@ -4,6 +4,7 @@ use diffy::{create_patch, PatchFormatter};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::error::Error;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
@@ -86,7 +87,7 @@ fn _merge_maps(
     merged
 }
 
-fn bubble_error(pretext: &str, err: Box<dyn std::error::Error>) {
+fn bubble_error(pretext: &str, err: Box<dyn Error>) {
     eprintln!("{pretext}: {err:#}");
     let mut err = &*err;
     while let Some(next_err) = err.source() {
@@ -101,13 +102,14 @@ fn ensure_has_extension(filename: &Path, extension: &str) -> PathBuf {
     if file.extension().is_none() {
         file.set_extension(extension);
     }
+
     file
 }
 
-fn read_config(cfg_file: &Path) -> Result<(Config, PathBuf), String> {
+fn read_config(cfg_file: &Path) -> Result<(Config, PathBuf), Box<dyn Error>> {
     let cfg_file = ensure_has_extension(cfg_file, "yaml");
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
-    let cfg = Config::new(&cfg_file).map_err(|e| e.to_string())?;
+    let cfg = Config::new(&cfg_file)?;
 
     Ok((cfg, relative_root))
 }
@@ -115,9 +117,10 @@ fn read_config(cfg_file: &Path) -> Result<(Config, PathBuf), String> {
 fn read_source_data(
     source: &config::Source,
     relative_root: &Path,
-) -> Result<DataSourceRow, String> {
+) -> Result<DataSourceRow, Box<dyn Error>> {
     let path = relative_root.join(&source.filename);
-    let source_data = datasource::read(&path, &source.sheet).map_err(|e| e.to_string())?;
+    let source_data = datasource::read(&path, &source.sheet)?;
+
     Ok(source_data)
 }
 
