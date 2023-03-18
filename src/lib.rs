@@ -207,6 +207,7 @@ pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
     }
     if cfg.adjustspacing {
         rendered = rendered.trim_end().to_string();
+        rendered.push_str("\n");
     }
 
     if cfg.outputfile.is_none() {
