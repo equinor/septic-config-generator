@@ -529,4 +529,47 @@ mod tests {
         assert_eq!(&result_false[result_false.len() - 3..], "c.\n");
         assert_eq!(&result_true[result_true.len() - 3..], ".\n\n");
     }
+
+    #[test]
+    fn test_collect_file_list() {
+        let sources = vec![
+            config::Source {
+                filename: "source1".to_string(),
+                ..Default::default()
+            },
+            config::Source {
+                filename: "source2".to_string(),
+                ..Default::default()
+            },
+        ];
+        let layout = vec![
+            config::Template {
+                name: "temp1".to_string(),
+                ..Default::default()
+            },
+            config::Template {
+                name: "temp2".to_string(),
+                ..Default::default()
+            },
+            config::Template {
+                name: "temp2".to_string(),
+                ..Default::default()
+            },
+        ];
+        let cfg = config::Config {
+            outputfile: Some("outfile".to_string()),
+            templatepath: "temps".to_string(),
+            sources: sources,
+            layout: layout,
+            ..Default::default()
+        };
+        let result = collect_file_list(&cfg, Path::new("temppath"));
+        let mut expected = HashSet::new();
+        for filename in ["source1", "source2", "temps/temp1", "temps/temp2"].iter() {
+            expected.insert(PathBuf::from("temppath").join(filename));
+        }
+        println!("{:?}", result);
+        assert!(result.len() == 4);
+        assert!(result == expected);
+    }
 }

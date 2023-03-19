@@ -4,7 +4,7 @@ use std::error::Error;
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Config {
     pub outputfile: Option<String>,
     pub templatepath: String,
@@ -29,7 +29,7 @@ impl Config {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Source {
     pub filename: String,
     pub id: String,
