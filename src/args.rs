@@ -29,6 +29,9 @@ pub struct MakeArguments {
     /// Global variable to use for all templates, also those without specified source. Can be repeated. Global variables overwrite other variables with same name
     #[arg(short, long, value_names = ["name", "value"])]
     pub var: Option<Vec<String>>,
+    /// Only make if layout or source files have changed since last make
+    #[arg(long)]
+    pub ifchanged: bool,
 }
 
 #[derive(Parser, Debug)]

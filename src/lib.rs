@@ -195,19 +195,78 @@ fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, Box<dyn Error>
             == 'y')
 }
 
-// write_to_file(rendered: &str, path: &Path, cfg: &Config) -> Result<(), String>
-pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
+fn collect_file_list(config: &Config, relative_root: &Path) -> HashSet<PathBuf> {
+    let mut files = HashSet::new();
+    let template_root = relative_root.join(Path::new(&config.templatepath));
+
+    for template in &config.layout {
+        let template_path = template_root.join(&template.name);
+        files.insert(template_path);
+    }
+    for source in &config.sources {
+        let source_path = relative_root.join(Path::new(&source.filename));
+        files.insert(source_path.to_path_buf());
+    }
+    files
+}
+
+fn timestamps_newer_than(
+    files: HashSet<PathBuf>,
+    outfile: &PathBuf,
+) -> Result<bool, Box<dyn Error>> {
+    let metadata = fs::metadata(outfile).map_err(|e| format!("{e} {outfile:?}"))?;
+    let checktime = metadata.modified()?;
+    for f in files {
+        let metadata = fs::metadata(&f).map_err(|e| format!("{e} {f:?}"))?;
+        let systime = metadata.modified()?;
+        if systime > checktime {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     let (cfg, relative_root) = read_config(cfg_file).unwrap_or_else(|e| {
         eprintln!("Problem reading config file '{}: {e}", cfg_file.display());
-        process::exit(1);
+        process::exit(2);
     });
+
+    let outfile = cfg
+        .outputfile
+        .as_ref()
+        .map(|f| relative_root.join(Path::new(f)));
+
+    if only_if_changed & outfile.is_some() & outfile.as_ref().unwrap().exists() {
+        let file_list = collect_file_list(&cfg, &relative_root);
+        let dirty = match outfile {
+            Some(ref f) => {
+                if f.exists() {
+                    timestamps_newer_than(file_list, f).unwrap_or_else(|e| {
+                        eprintln!("Problem checking timestamp: '{e}'");
+                        process::exit(2)
+                    })
+                } else {
+                    true
+                }
+            }
+            None => true,
+        };
+
+        if dirty {
+            println!("One or more files changed. Rebuilding.");
+        } else {
+            println!("No files have changed. Skipping rebuild.");
+            process::exit(1);
+        }
+    }
 
     let mut all_source_data: HashMap<String, DataSourceRow> = HashMap::new();
 
     for source in &cfg.sources {
         let source_data = read_source_data(source, &relative_root).unwrap_or_else(|e| {
             eprintln!("Problem reading source file '{}': {e}", source.filename);
-            process::exit(1);
+            process::exit(2);
         });
         all_source_data.insert(source.id.to_string(), source_data);
     }
@@ -222,7 +281,7 @@ pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
             + &render_template(&renderer, template, &all_source_data, cfg.adjustspacing)
                 .unwrap_or_else(|err| {
                     bubble_error("Template Error", err);
-                    process::exit(1);
+                    process::exit(2);
                 });
     }
     if cfg.adjustspacing {
@@ -251,7 +310,7 @@ pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
 
         if diff.hunks().is_empty() {
             eprintln!("No change from original version, exiting.");
-            process::exit(0);
+            process::exit(1);
         } else if cfg.verifycontent {
             do_write_file = ask_should_overwrite(&diff).expect("error: unable to read user input");
         }
@@ -271,7 +330,7 @@ pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
                 &path.display(),
                 err
             );
-            process::exit(1);
+            process::exit(2);
         });
         let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
         f.write_all(&cow).unwrap();
