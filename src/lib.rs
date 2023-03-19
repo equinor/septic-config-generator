@@ -289,51 +289,52 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         rendered.push('\n');
     }
 
-    if cfg.outputfile.is_none() {
-        // TODO: || with input argument for writing to stdout
-        println!("{rendered}");
-        return;
-    }
-
-    let path = relative_root.join(cfg.outputfile.unwrap());
-
-    let mut do_write_file = true;
-
-    if path.exists() {
-        let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-            .encoding(Some(encoding_rs::WINDOWS_1252))
-            .build(fs::File::open(&path).unwrap());
-        let mut old_file_content = String::new();
-        reader.read_to_string(&mut old_file_content).unwrap();
-
-        let diff = create_patch(&old_file_content, &rendered);
-
-        if diff.hunks().is_empty() {
-            eprintln!("No change from original version, exiting.");
-            process::exit(1);
-        } else if cfg.verifycontent {
-            do_write_file = ask_should_overwrite(&diff).expect("error: unable to read user input");
+    match outfile {
+        None => {
+            // TODO: || with input argument for writing to stdout
+            println!("{rendered}");
         }
-    }
-    if do_write_file {
-        if path.exists() {
-            let backup_path = path.with_extension(format!(
-                "{}.bak",
-                path.extension().unwrap().to_str().unwrap()
-            ));
-            fs::rename(&path, backup_path).expect("Failed to create backup file");
-        }
+        Some(path) => {
+            let mut do_write_file = true;
 
-        let mut f = fs::File::create(&path).unwrap_or_else(|err| {
-            eprintln!(
-                "Problem creating output file '{}': {}",
-                &path.display(),
-                err
-            );
-            process::exit(2);
-        });
-        let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
-        f.write_all(&cow).unwrap();
+            if path.exists() {
+                let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+                    .encoding(Some(encoding_rs::WINDOWS_1252))
+                    .build(fs::File::open(&path).unwrap());
+                let mut old_file_content = String::new();
+                reader.read_to_string(&mut old_file_content).unwrap();
+
+                let diff = create_patch(&old_file_content, &rendered);
+
+                if diff.hunks().is_empty() {
+                    eprintln!("No change from original version, exiting.");
+                    process::exit(1);
+                } else if cfg.verifycontent {
+                    do_write_file =
+                        ask_should_overwrite(&diff).expect("error: unable to read user input");
+                }
+            }
+            if do_write_file {
+                if path.exists() {
+                    let backup_path = path.with_extension(format!(
+                        "{}.bak",
+                        path.extension().unwrap().to_str().unwrap()
+                    ));
+                    fs::rename(&path, backup_path).expect("Failed to create backup file");
+                }
+
+                let mut f = fs::File::create(&path).unwrap_or_else(|err| {
+                    eprintln!(
+                        "Problem creating output file '{}': {}",
+                        &path.display(),
+                        err
+                    );
+                    process::exit(2);
+                });
+                let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
+                f.write_all(&cow).unwrap();
+            }
+        }
     }
 }
 
