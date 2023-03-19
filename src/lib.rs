@@ -702,6 +702,40 @@ mod tests {
     }
 
     #[test]
+    fn test_check_outfile_not_unique_file() {
+        let dir = tempdir().unwrap();
+
+        // With empty dir
+        let result = check_outfile(dir.path());
+        assert!(result.is_err());
+        println!("{result:?}");
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No .out file found in"));
+
+        // Add two .out files
+        let file1_path = dir.path().join("file1.out");
+        let _file1 = File::create(&file1_path).unwrap();
+
+        let file2_path = dir.path().join("file2.out");
+        let _file2 = File::create(&file2_path).unwrap();
+
+        let result = check_outfile(dir.path());
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("More than one .out file found in"));
+    }
+
+    #[test]
+    fn test_check_outfile() {
+        let result = check_outfile(Path::new(r"tests/testdata/rundir/"));
+        assert!(result.unwrap().len() == 1);
+    }
+
+    #[test]
     fn test_collect_file_list() {
         let sources = vec![
             config::Source {
