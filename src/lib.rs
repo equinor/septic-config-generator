@@ -3,6 +3,7 @@ use crate::renderer::MiniJinja;
 use datasource::DataSourceRows;
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
+use regex::RegexSet;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -10,6 +11,7 @@ use std::error::Error;
 use std::fs;
 use std::io;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::process;
 
@@ -350,6 +352,62 @@ pub fn cmd_diff(file1: &Path, file2: &Path) {
     print!("{}", f.fmt_patch(&diff));
 }
 
+fn check_cncfile(_rundir: &Path) -> bool {
+    // check for existence of startlogs directory and change rootdir accordingly
+    // Find newest cnc file
+    true
+}
+
+fn check_outfile(rundir: &Path) -> Result<Vec<String>, Box<dyn Error>> {
+    let entries = glob(rundir.join("*.out").to_str().unwrap());
+    let mut result: Vec<String> = Vec::new();
+    match entries {
+        Ok(paths) => {
+            let pathvec: Vec<PathBuf> = paths.filter_map(Result::ok).collect();
+            match pathvec.len() {
+                0 => return Err(format!("No .out file found in {:?}", &rundir).into()),
+                1 => {
+                    let regex_set = RegexSet::new([r"string1", r"string2"]).unwrap();
+                    let file_name = &pathvec[0];
+                    let file = fs::File::open(file_name)?;
+                    let reader = BufReader::new(file);
+                    for (line_number, line) in reader.lines().enumerate() {
+                        let line = line?;
+                        let matches: Vec<_> = regex_set.matches(&line).into_iter().collect();
+
+                        if !matches.is_empty() {
+                            result.push(format!("{}: {}", line_number + 1, line));
+                        }
+                    }
+                }
+                _ => {
+                    let filenames: Vec<String> = pathvec
+                        .into_iter()
+                        .map(|path| path.file_name().unwrap().to_string_lossy().into_owned())
+                        .collect();
+                    return Err(format!(
+                        "More than one .out file found in {:?}: {:?}",
+                        &rundir, &filenames
+                    )
+                    .into());
+                }
+            }
+        }
+        Err(_) => todo!(),
+    }
+    Ok(result)
+}
+
+pub fn cmd_check(rundir: PathBuf) {
+    let results = check_outfile(&rundir).unwrap();
+
+    for line in results.iter() {
+        println!("{line}");
+    }
+
+    check_cncfile(&rundir);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -641,5 +699,39 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("(os error 2)"));
         Ok(())
+    }
+
+    #[test]
+    fn test_check_outfile_not_unique_file() {
+        let dir = tempdir().unwrap();
+
+        // With empty dir
+        let result = check_outfile(dir.path());
+        assert!(result.is_err());
+        println!("{result:?}");
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No .out file found in"));
+
+        // Add two .out files
+        let file1_path = dir.path().join("file1.out");
+        let _file1 = File::create(&file1_path).unwrap();
+
+        let file2_path = dir.path().join("file2.out");
+        let _file2 = File::create(&file2_path).unwrap();
+
+        let result = check_outfile(dir.path());
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("More than one .out file found in"));
+    }
+
+    #[test]
+    fn test_check_outfile() {
+        let result = check_outfile(Path::new(r"tests/testdata/rundir/"));
+        assert!(result.unwrap().len() == 1);
     }
 }
