@@ -211,7 +211,7 @@ fn collect_file_list(config: &Config, relative_root: &Path) -> HashSet<PathBuf> 
 }
 
 fn timestamps_newer_than(
-    files: HashSet<PathBuf>,
+    files: &HashSet<PathBuf>,
     outfile: &PathBuf,
 ) -> Result<bool, Box<dyn Error>> {
     let metadata = fs::metadata(outfile).map_err(|e| format!("{e} {outfile:?}"))?;
@@ -242,7 +242,7 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         let dirty = match outfile {
             Some(ref f) => {
                 if f.exists() {
-                    timestamps_newer_than(file_list, f).unwrap_or_else(|e| {
+                    timestamps_newer_than(&file_list, f).unwrap_or_else(|e| {
                         eprintln!("Problem checking timestamp: '{e}'");
                         process::exit(2)
                     })
@@ -252,7 +252,6 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
             }
             None => true,
         };
-
         if dirty {
             println!("One or more files changed. Rebuilding.");
         } else {
@@ -571,5 +570,71 @@ mod tests {
         println!("{:?}", result);
         assert!(result.len() == 4);
         assert!(result == expected);
+    }
+
+    #[test]
+    fn test_timestamps_newer_than() -> Result<(), Box<dyn Error>> {
+        let dir = tempdir()?;
+
+        let file1_path = dir.path().join("file1.txt");
+        let mut file1 = File::create(&file1_path)?;
+        file1.write_all(b"file1 content")?;
+
+        let file2_path = dir.path().join("file2.txt");
+        let mut file2 = File::create(&file2_path)?;
+        file2.write_all(b"file2 content")?;
+
+        let mut files = HashSet::new();
+        files.insert(file1_path);
+        files.insert(file2_path);
+
+        let outfile_path = dir.path().join("outfile.txt");
+        let mut outfile = File::create(&outfile_path)?;
+        outfile.write_all(b"outfile content")?;
+
+        assert!(!timestamps_newer_than(&files, &outfile_path)?);
+
+        // Modify one of the files to make it newer than the outfile
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        file2.write_all(b"modified content")?;
+        assert!(timestamps_newer_than(&files, &outfile_path)?);
+        Ok(())
+    }
+
+    #[test]
+    fn test_timestamps_newer_than_file_outfile_not_exists() -> Result<(), Box<dyn Error>> {
+        let dir = tempdir()?;
+        let file1_path = dir.path().join("file1.txt");
+        let mut file1 = File::create(&file1_path)?;
+        file1.write_all(b"file1 content")?;
+
+        let outfile_path = dir.path().join("outfile.txt");
+
+        let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No such file or directory"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_timestamps_newer_than_file_infile_not_exists() -> Result<(), Box<dyn Error>> {
+        let dir = tempdir()?;
+        let file1_path = dir.path().join("file1.txt");
+
+        let outfile_path = dir.path().join("outfile.txt");
+        let mut outfile = File::create(&file1_path)?;
+        outfile.write_all(b"file1 content")?;
+
+        let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No such file or directory"));
+        Ok(())
     }
 }
