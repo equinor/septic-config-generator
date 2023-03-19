@@ -217,7 +217,7 @@ fn timestamps_newer_than(
     let metadata = fs::metadata(outfile).map_err(|e| format!("{e} {outfile:?}"))?;
     let checktime = metadata.modified()?;
     for f in files {
-        let metadata = fs::metadata(&f).map_err(|e| format!("{e} {f:?}"))?;
+        let metadata = fs::metadata(f).map_err(|e| format!("{e} {f:?}"))?;
         let systime = metadata.modified()?;
         if systime > checktime {
             return Ok(true);
