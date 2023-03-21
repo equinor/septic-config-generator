@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::renderer::MiniJinja;
 use diffy::{create_patch, PatchFormatter};
+use glob::glob;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -195,19 +196,31 @@ fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, Box<dyn Error>
             == 'y')
 }
 
-fn collect_file_list(config: &Config, relative_root: &Path) -> HashSet<PathBuf> {
+fn collect_file_list(
+    config: &Config,
+    cfg_file: &Path,
+    relative_root: &Path,
+) -> Result<HashSet<PathBuf>, Box<dyn Error>> {
     let mut files = HashSet::new();
-    let template_root = relative_root.join(Path::new(&config.templatepath));
 
-    for template in &config.layout {
-        let template_path = template_root.join(&template.name);
-        files.insert(template_path);
+    // The yaml file
+    files.insert(relative_root.join(cfg_file));
+
+    // All files in templatedir
+    let template_root = relative_root.join(Path::new(&config.templatepath));
+    for entry in glob(&format!("{}/**/*", template_root.display()))? {
+        let path = entry?;
+        if path.is_file() {
+            files.insert(path);
+        }
     }
+
+    // All sources
     for source in &config.sources {
         let source_path = relative_root.join(Path::new(&source.filename));
         files.insert(source_path.to_path_buf());
     }
-    files
+    Ok(files)
 }
 
 fn timestamps_newer_than(
@@ -238,7 +251,10 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         .map(|f| relative_root.join(Path::new(f)));
 
     if only_if_changed & outfile.is_some() & outfile.as_ref().unwrap().exists() {
-        let file_list = collect_file_list(&cfg, &relative_root);
+        let file_list = collect_file_list(&cfg, cfg_file, &relative_root).unwrap_or_else(|e| {
+            eprintln!("Problem identifying changed files: {e}");
+            process::exit(2)
+        });
         let dirty = match outfile {
             Some(ref f) => {
                 if f.exists() {
@@ -541,34 +557,44 @@ mod tests {
                 ..Default::default()
             },
         ];
-        let layout = vec![
-            config::Template {
-                name: "temp1".to_string(),
-                ..Default::default()
-            },
-            config::Template {
-                name: "temp2".to_string(),
-                ..Default::default()
-            },
-            config::Template {
-                name: "temp2".to_string(),
-                ..Default::default()
-            },
-        ];
+        let cfg_file = Path::new("config.yaml");
+        let dir = tempfile::tempdir().unwrap();
+        let dir_path = dir.path().to_path_buf();
+        let subdir_path = dir_path.join("subdir");
+        fs::create_dir(&subdir_path).unwrap();
+        let file1 = dir_path.join("temp1");
+        let file2 = dir_path.join("temp2");
+        let file3 = subdir_path.join("temp3");
+
+        fs::write(&file1, "content1").unwrap();
+        fs::write(&file2, "content2").unwrap();
+        fs::write(&file3, "content3").unwrap();
+
+        let layout = vec![];
         let cfg = config::Config {
             outputfile: Some("outfile".to_string()),
-            templatepath: "temps".to_string(),
+            templatepath: String::from(dir.path().to_str().unwrap()),
             sources: sources,
             layout: layout,
             ..Default::default()
         };
-        let result = collect_file_list(&cfg, Path::new("temppath"));
+
+        let result = collect_file_list(&cfg, &cfg_file, Path::new("relative_root")).unwrap();
         let mut expected = HashSet::new();
-        for filename in ["source1", "source2", "temps/temp1", "temps/temp2"].iter() {
-            expected.insert(PathBuf::from("temppath").join(filename));
+        for filename in [
+            file1.to_str().unwrap(),
+            file2.to_str().unwrap(),
+            file3.to_str().unwrap(),
+        ]
+        .iter()
+        {
+            expected.insert(PathBuf::from("relative_root/templates").join(filename));
         }
-        println!("{:?}", result);
-        assert!(result.len() == 4);
+        for filename in ["source1", "source2", "config.yaml"].iter() {
+            expected.insert(PathBuf::from("relative_root").join(filename));
+        }
+
+        assert!(result.len() == 6);
         assert!(result == expected);
     }
 
