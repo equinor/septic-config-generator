@@ -108,9 +108,8 @@ fn ensure_has_extension(filename: &Path, extension: &str) -> PathBuf {
 }
 
 fn read_config(cfg_file: &Path) -> Result<(Config, PathBuf), Box<dyn Error>> {
-    let cfg_file = ensure_has_extension(cfg_file, "yaml");
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
-    let cfg = Config::new(&cfg_file)?;
+    let cfg = Config::new(cfg_file)?;
 
     Ok((cfg, relative_root))
 }
@@ -204,7 +203,7 @@ fn collect_file_list(
     let mut files = HashSet::new();
 
     // The yaml file
-    files.insert(relative_root.join(cfg_file));
+    files.insert(cfg_file.to_path_buf());
 
     // All files in templatedir
     let template_root = relative_root.join(Path::new(&config.templatepath));
@@ -240,7 +239,8 @@ fn timestamps_newer_than(
 }
 
 pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
-    let (cfg, relative_root) = read_config(cfg_file).unwrap_or_else(|e| {
+    let cfg_file = ensure_has_extension(cfg_file, "yaml");
+    let (cfg, relative_root) = read_config(&cfg_file).unwrap_or_else(|e| {
         eprintln!("Problem reading config file '{}: {e}", cfg_file.display());
         process::exit(2);
     });
@@ -251,7 +251,7 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         .map(|f| relative_root.join(Path::new(f)));
 
     if only_if_changed & outfile.is_some() & outfile.as_ref().unwrap().exists() {
-        let file_list = collect_file_list(&cfg, cfg_file, &relative_root).unwrap_or_else(|e| {
+        let file_list = collect_file_list(&cfg, &cfg_file, &relative_root).unwrap_or_else(|e| {
             eprintln!("Problem identifying changed files: {e}");
             process::exit(2)
         });
@@ -557,7 +557,9 @@ mod tests {
                 ..Default::default()
             },
         ];
-        let cfg_file = Path::new("config.yaml");
+        let relative_root = Path::new("relative_root");
+        let cfg_file = relative_root.join("config.yaml");
+
         let dir = tempfile::tempdir().unwrap();
         let dir_path = dir.path().to_path_buf();
         let subdir_path = dir_path.join("subdir");
@@ -579,7 +581,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = collect_file_list(&cfg, &cfg_file, Path::new("relative_root")).unwrap();
+        let result = collect_file_list(&cfg, &cfg_file, relative_root).unwrap();
         let mut expected = HashSet::new();
         for filename in [
             file1.to_str().unwrap(),
