@@ -268,9 +268,7 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
             }
             None => true,
         };
-        if dirty {
-            println!("One or more files changed. Rebuilding.");
-        } else {
+        if !dirty {
             println!("No files have changed. Skipping rebuild.");
             process::exit(1);
         }
