@@ -245,32 +245,22 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         process::exit(2);
     });
 
-    let outfile = cfg
-        .outputfile
-        .as_ref()
-        .map(|f| relative_root.join(Path::new(f)));
-
-    if only_if_changed & outfile.is_some() & outfile.as_ref().unwrap().exists() {
-        let file_list = collect_file_list(&cfg, &cfg_file, &relative_root).unwrap_or_else(|e| {
-            eprintln!("Problem identifying changed files: {e}");
-            process::exit(2)
-        });
-        let dirty = match outfile {
-            Some(ref f) => {
-                if f.exists() {
-                    timestamps_newer_than(&file_list, f).unwrap_or_else(|e| {
-                        eprintln!("Problem checking timestamp: '{e}'");
-                        process::exit(2)
-                    })
-                } else {
-                    true
-                }
+    if only_if_changed & cfg.outputfile.is_some() {
+        let outfile = relative_root.join(cfg.outputfile.as_ref().unwrap());
+        if outfile.exists() {
+            let file_list =
+                collect_file_list(&cfg, &cfg_file, &relative_root).unwrap_or_else(|e| {
+                    eprintln!("Problem identifying changed files: {e}");
+                    process::exit(2)
+                });
+            let dirty = &timestamps_newer_than(&file_list, &outfile).unwrap_or_else(|e| {
+                eprintln!("Problem checking timestamp: '{e}'");
+                process::exit(2)
+            });
+            if !dirty {
+                println!("No files have changed. Skipping rebuild.");
+                process::exit(1);
             }
-            None => true,
-        };
-        if !dirty {
-            println!("No files have changed. Skipping rebuild.");
-            process::exit(1);
         }
     }
 
