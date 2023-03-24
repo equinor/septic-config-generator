@@ -274,15 +274,17 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         }
     }
 
-    let mut all_source_data: HashMap<String, DataSourceRow> = HashMap::new();
-
-    for source in &cfg.sources {
-        let source_data = read_source_data(source, &relative_root).unwrap_or_else(|e| {
-            eprintln!("Problem reading source file '{}': {e}", source.filename);
-            process::exit(2);
-        });
-        all_source_data.insert(source.id.to_string(), source_data);
-    }
+    let all_source_data: HashMap<_, _> = cfg
+        .sources
+        .iter()
+        .map(|source| {
+            let source_data = read_source_data(source, &relative_root).unwrap_or_else(|e| {
+                eprintln!("Problem reading source file '{}': {e}", source.filename);
+                process::exit(2);
+            });
+            (source.id.clone(), source_data)
+        })
+        .collect();
 
     let template_path = relative_root.join(&cfg.templatepath);
     let renderer = MiniJinja::new(globals, &template_path);
@@ -290,64 +292,60 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     let mut rendered = String::new();
 
     for template in &cfg.layout {
-        rendered = rendered
-            + &render_template(&renderer, template, &all_source_data, cfg.adjustspacing)
-                .unwrap_or_else(|err| {
-                    bubble_error("Template Error", err);
-                    process::exit(2);
-                });
+        rendered += &render_template(&renderer, template, &all_source_data, cfg.adjustspacing)
+            .unwrap_or_else(|err| {
+                bubble_error("Template Error", err);
+                process::exit(2);
+            });
     }
     if cfg.adjustspacing {
         rendered = rendered.trim_end().to_string();
         rendered.push('\n');
     }
 
-    match outfile {
-        None => {
-            // TODO: || with input argument for writing to stdout
-            println!("{rendered}");
-        }
-        Some(path) => {
-            let mut do_write_file = true;
+    if let Some(path) = cfg.outputfile.as_ref().map(|f| relative_root.join(f)) {
+        let mut do_write_file = true;
 
+        if path.exists() {
+            let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+                .encoding(Some(encoding_rs::WINDOWS_1252))
+                .build(fs::File::open(&path).unwrap());
+            let mut old_file_content = String::new();
+            reader.read_to_string(&mut old_file_content).unwrap();
+
+            let diff = create_patch(&old_file_content, &rendered);
+
+            if diff.hunks().is_empty() {
+                eprintln!("No change from original version, exiting.");
+                process::exit(1);
+            } else if cfg.verifycontent {
+                do_write_file =
+                    ask_should_overwrite(&diff).expect("error: unable to read user input");
+            }
+        }
+        if do_write_file {
             if path.exists() {
-                let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-                    .encoding(Some(encoding_rs::WINDOWS_1252))
-                    .build(fs::File::open(&path).unwrap());
-                let mut old_file_content = String::new();
-                reader.read_to_string(&mut old_file_content).unwrap();
-
-                let diff = create_patch(&old_file_content, &rendered);
-
-                if diff.hunks().is_empty() {
-                    eprintln!("No change from original version, exiting.");
-                    process::exit(1);
-                } else if cfg.verifycontent {
-                    do_write_file =
-                        ask_should_overwrite(&diff).expect("error: unable to read user input");
-                }
+                let backup_path = path.with_extension(format!(
+                    "{}.bak",
+                    path.extension().unwrap().to_str().unwrap()
+                ));
+                fs::rename(&path, backup_path).expect("Failed to create backup file");
             }
-            if do_write_file {
-                if path.exists() {
-                    let backup_path = path.with_extension(format!(
-                        "{}.bak",
-                        path.extension().unwrap().to_str().unwrap()
-                    ));
-                    fs::rename(&path, backup_path).expect("Failed to create backup file");
-                }
 
-                let mut f = fs::File::create(&path).unwrap_or_else(|err| {
-                    eprintln!(
-                        "Problem creating output file '{}': {}",
-                        &path.display(),
-                        err
-                    );
-                    process::exit(2);
-                });
-                let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
-                f.write_all(&cow).unwrap();
-            }
+            let mut f = fs::File::create(&path).unwrap_or_else(|err| {
+                eprintln!(
+                    "Problem creating output file '{}': {}",
+                    &path.display(),
+                    err
+                );
+                process::exit(2);
+            });
+            let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
+            f.write_all(&cow).unwrap();
         }
+    } else {
+        // TODO: || with input argument for writing to stdout
+        println!("{rendered}");
     }
 }
 
