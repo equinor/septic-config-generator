@@ -12,10 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout source code
+        uses: actions/checkout@v3
 
       - name: 🛠️ Cargo build
         run: cargo build --verbose
 
       - name: 🧪 Cargo test
         run: cargo test
+
+      - name: Coverage
+        uses: actions-rs/tarpaulin@v0.1
+      
+      - name: Archive coverage results
+        uses: actions/upload-artifact@v1
+        with:
+          name: code-coverage-report
+          path: cobertura.xml
