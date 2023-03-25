@@ -702,6 +702,127 @@ mod tests {
     }
 
     #[test]
+    fn test_collect_file_list() {
+        let sources = vec![
+            config::Source {
+                filename: "source1".to_string(),
+                ..Default::default()
+            },
+            config::Source {
+                filename: "source2".to_string(),
+                ..Default::default()
+            },
+        ];
+        let relative_root = Path::new("relative_root");
+        let cfg_file = relative_root.join("config.yaml");
+
+        let dir = tempfile::tempdir().unwrap();
+        let dir_path = dir.path().to_path_buf();
+        let subdir_path = dir_path.join("subdir");
+        fs::create_dir(&subdir_path).unwrap();
+        let file1 = dir_path.join("temp1");
+        let file2 = dir_path.join("temp2");
+        let file3 = subdir_path.join("temp3");
+
+        fs::write(&file1, "content1").unwrap();
+        fs::write(&file2, "content2").unwrap();
+        fs::write(&file3, "content3").unwrap();
+
+        let layout = vec![];
+        let cfg = config::Config {
+            outputfile: Some("outfile".to_string()),
+            templatepath: String::from(dir.path().to_str().unwrap()),
+            sources: sources,
+            layout: layout,
+            ..Default::default()
+        };
+
+        let result = collect_file_list(&cfg, &cfg_file, relative_root).unwrap();
+        let mut expected = HashSet::new();
+        for filename in [
+            file1.to_str().unwrap(),
+            file2.to_str().unwrap(),
+            file3.to_str().unwrap(),
+        ]
+        .iter()
+        {
+            expected.insert(PathBuf::from("relative_root/templates").join(filename));
+        }
+        for filename in ["source1", "source2", "config.yaml"].iter() {
+            expected.insert(PathBuf::from("relative_root").join(filename));
+        }
+
+        assert!(result.len() == 6);
+        assert!(result == expected);
+    }
+
+    #[test]
+    fn test_timestamps_newer_than() -> Result<(), Box<dyn Error>> {
+        let dir = tempdir()?;
+
+        let file1_path = dir.path().join("file1.txt");
+        let mut file1 = File::create(&file1_path)?;
+        file1.write_all(b"file1 content")?;
+
+        let file2_path = dir.path().join("file2.txt");
+        let mut file2 = File::create(&file2_path)?;
+        file2.write_all(b"file2 content")?;
+
+        let mut files = HashSet::new();
+        files.insert(file1_path);
+        files.insert(file2_path);
+
+        let outfile_path = dir.path().join("outfile.txt");
+        let mut outfile = File::create(&outfile_path)?;
+        outfile.write_all(b"outfile content")?;
+
+        assert!(!timestamps_newer_than(&files, &outfile_path)?);
+
+        // Modify one of the files to make it newer than the outfile
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        file2.write_all(b"modified content")?;
+        assert!(timestamps_newer_than(&files, &outfile_path)?);
+        Ok(())
+    }
+
+    #[test]
+    fn test_timestamps_newer_than_file_outfile_not_exists() -> Result<(), Box<dyn Error>> {
+        let dir = tempdir()?;
+        let file1_path = dir.path().join("file1.txt");
+        let mut file1 = File::create(&file1_path)?;
+        file1.write_all(b"file1 content")?;
+
+        let outfile_path = dir.path().join("outfile.txt");
+
+        let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No such file or directory"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_timestamps_newer_than_file_infile_not_exists() -> Result<(), Box<dyn Error>> {
+        let dir = tempdir()?;
+        let file1_path = dir.path().join("file1.txt");
+
+        let outfile_path = dir.path().join("outfile.txt");
+        let mut outfile = File::create(&file1_path)?;
+        outfile.write_all(b"file1 content")?;
+
+        let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No such file or directory"));
+        Ok(())
+    }
+
+    #[test]
     fn test_check_outfile_not_unique_file() {
         let dir = tempdir().unwrap();
 
