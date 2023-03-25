@@ -90,7 +90,7 @@ fn _merge_maps(
 
 fn bubble_error(pretext: &str, err: Box<dyn Error>) {
     eprintln!("{pretext}: {err:#}");
-    let mut err = &*err;
+    let mut err = err.as_ref();
     while let Some(next_err) = err.source() {
         eprintln!();
         eprintln!("Above error caused by: {next_err:#}");
