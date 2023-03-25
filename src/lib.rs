@@ -226,11 +226,13 @@ fn timestamps_newer_than(
     files: &HashSet<PathBuf>,
     outfile: &PathBuf,
 ) -> Result<bool, Box<dyn Error>> {
-    let metadata = fs::metadata(outfile).map_err(|e| format!("{e} {outfile:?}"))?;
-    let checktime = metadata.modified()?;
+    let checktime = fs::metadata(outfile)
+        .map_err(|e| format!("{e} {outfile:?}"))?
+        .modified()?;
     for f in files {
-        let metadata = fs::metadata(f).map_err(|e| format!("{e} {f:?}"))?;
-        let systime = metadata.modified()?;
+        let systime = fs::metadata(f)
+            .map_err(|e| format!("{e} {f:?}"))?
+            .modified()?;
         if systime > checktime {
             return Ok(true);
         }
