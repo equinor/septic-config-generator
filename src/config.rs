@@ -2,9 +2,9 @@ use serde::Deserialize;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
-use std::path::PathBuf;
+use std::path::Path;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Config {
     pub outputfile: Option<String>,
     pub templatepath: String,
@@ -22,14 +22,14 @@ const fn _default_true() -> bool {
 
 impl Config {
     #[allow(clippy::missing_errors_doc)]
-    pub fn new(filename: &PathBuf) -> Result<Self, Box<dyn Error>> {
+    pub fn new(filename: &Path) -> Result<Self, Box<dyn Error>> {
         let content = fs::read_to_string(filename)?;
         let cfg: Self = serde_yaml::from_str(&content)?;
         Ok(cfg)
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Source {
     pub filename: String,
     pub id: String,

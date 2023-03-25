@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::renderer::MiniJinja;
 use diffy::{create_patch, PatchFormatter};
+use glob::glob;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -89,7 +90,7 @@ fn _merge_maps(
 
 fn bubble_error(pretext: &str, err: Box<dyn Error>) {
     eprintln!("{pretext}: {err:#}");
-    let mut err = &*err;
+    let mut err = err.as_ref();
     while let Some(next_err) = err.source() {
         eprintln!();
         eprintln!("Above error caused by: {next_err:#}");
@@ -107,9 +108,8 @@ fn ensure_has_extension(filename: &Path, extension: &str) -> PathBuf {
 }
 
 fn read_config(cfg_file: &Path) -> Result<(Config, PathBuf), Box<dyn Error>> {
-    let cfg_file = ensure_has_extension(cfg_file, "yaml");
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
-    let cfg = Config::new(&cfg_file)?;
+    let cfg = Config::new(cfg_file)?;
 
     Ok((cfg, relative_root))
 }
@@ -132,11 +132,7 @@ fn render_template(
 ) -> Result<String, Box<dyn Error>> {
     let mut rendered = String::new();
 
-    if template.source.is_none() {
-        rendered = renderer.render(&template.name, ())?;
-    } else {
-        let src_name = &template.source.clone().unwrap();
-
+    if let Some(src_name) = &template.source {
         let keys: Vec<String> = source_data[src_name]
             .iter()
             .map(|(key, _row)| key.clone())
@@ -167,50 +163,109 @@ fn render_template(
                 rendered.push_str(&tmpl_rend);
             }
         }
+    } else {
+        rendered = renderer.render(&template.name, ())?;
     }
+
     if adjust_spacing {
         rendered = rendered.trim_end().to_string();
         rendered.push_str("\n\n");
     }
+
     Ok(rendered)
 }
 
 fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, Box<dyn Error>> {
     let f = PatchFormatter::new().with_color();
-    print!("{}", f.fmt_patch(diff));
-    print!("\n\nReplace original? [Y]es or [N]o: ");
+    print!("{}\n\nReplace original? [Y]es or [N]o: ", f.fmt_patch(diff));
+    io::stdout().flush()?;
     let mut response = String::new();
-    io::stdout().flush().unwrap();
     io::stdin().read_line(&mut response)?;
-
-    Ok(response.len() > 1
-        && response
-            .trim_end()
-            .chars()
-            .last()
-            .unwrap()
-            .to_lowercase()
-            .next()
-            .unwrap()
-            == 'y')
+    Ok(response.trim().eq_ignore_ascii_case("y"))
 }
 
-// write_to_file(rendered: &str, path: &Path, cfg: &Config) -> Result<(), String>
-pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
-    let (cfg, relative_root) = read_config(cfg_file).unwrap_or_else(|e| {
+fn collect_file_list(
+    config: &Config,
+    cfg_file: &Path,
+    relative_root: &Path,
+) -> Result<HashSet<PathBuf>, Box<dyn Error>> {
+    let mut files = HashSet::new();
+
+    // The yaml file
+    files.insert(cfg_file.to_path_buf());
+
+    // All files in templatedir
+    let template_root = relative_root.join(Path::new(&config.templatepath));
+    for entry in glob(&format!("{}/**/*", template_root.display()))? {
+        let path = entry?;
+        if path.is_file() {
+            files.insert(path);
+        }
+    }
+
+    // All sources
+    for source in &config.sources {
+        let source_path = relative_root.join(Path::new(&source.filename));
+        files.insert(source_path.to_path_buf());
+    }
+    Ok(files)
+}
+
+fn timestamps_newer_than(
+    files: &HashSet<PathBuf>,
+    outfile: &PathBuf,
+) -> Result<bool, Box<dyn Error>> {
+    let checktime = fs::metadata(outfile)
+        .map_err(|e| format!("{e} {outfile:?}"))?
+        .modified()?;
+    for f in files {
+        let systime = fs::metadata(f)
+            .map_err(|e| format!("{e} {f:?}"))?
+            .modified()?;
+        if systime > checktime {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
+    let cfg_file = ensure_has_extension(cfg_file, "yaml");
+    let (cfg, relative_root) = read_config(&cfg_file).unwrap_or_else(|e| {
         eprintln!("Problem reading config file '{}: {e}", cfg_file.display());
-        process::exit(1);
+        process::exit(2);
     });
 
-    let mut all_source_data: HashMap<String, DataSourceRow> = HashMap::new();
-
-    for source in &cfg.sources {
-        let source_data = read_source_data(source, &relative_root).unwrap_or_else(|e| {
-            eprintln!("Problem reading source file '{}': {e}", source.filename);
-            process::exit(1);
-        });
-        all_source_data.insert(source.id.to_string(), source_data);
+    if only_if_changed & cfg.outputfile.is_some() {
+        let outfile = relative_root.join(cfg.outputfile.as_ref().unwrap());
+        if outfile.exists() {
+            let file_list =
+                collect_file_list(&cfg, &cfg_file, &relative_root).unwrap_or_else(|e| {
+                    eprintln!("Problem identifying changed files: {e}");
+                    process::exit(2)
+                });
+            let dirty = &timestamps_newer_than(&file_list, &outfile).unwrap_or_else(|e| {
+                eprintln!("Problem checking timestamp: '{e}'");
+                process::exit(2)
+            });
+            if !dirty {
+                println!("No files have changed. Skipping rebuild.");
+                process::exit(1);
+            }
+        }
     }
+
+    let all_source_data: HashMap<_, _> = cfg
+        .sources
+        .iter()
+        .map(|source| {
+            let source_data = read_source_data(source, &relative_root).unwrap_or_else(|e| {
+                eprintln!("Problem reading source file '{}': {e}", source.filename);
+                process::exit(2);
+            });
+            (source.id.clone(), source_data)
+        })
+        .collect();
 
     let template_path = relative_root.join(&cfg.templatepath);
     let renderer = MiniJinja::new(globals, &template_path);
@@ -218,63 +273,60 @@ pub fn cmd_make(cfg_file: &Path, globals: &[String]) {
     let mut rendered = String::new();
 
     for template in &cfg.layout {
-        rendered = rendered
-            + &render_template(&renderer, template, &all_source_data, cfg.adjustspacing)
-                .unwrap_or_else(|err| {
-                    bubble_error("Template Error", err);
-                    process::exit(1);
-                });
+        rendered += &render_template(&renderer, template, &all_source_data, cfg.adjustspacing)
+            .unwrap_or_else(|err| {
+                bubble_error("Template Error", err);
+                process::exit(2);
+            });
     }
     if cfg.adjustspacing {
         rendered = rendered.trim_end().to_string();
         rendered.push('\n');
     }
 
-    if cfg.outputfile.is_none() {
+    if let Some(path) = cfg.outputfile.as_ref().map(|f| relative_root.join(f)) {
+        let mut do_write_file = true;
+
+        if path.exists() {
+            let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+                .encoding(Some(encoding_rs::WINDOWS_1252))
+                .build(fs::File::open(&path).unwrap());
+            let mut old_file_content = String::new();
+            reader.read_to_string(&mut old_file_content).unwrap();
+
+            let diff = create_patch(&old_file_content, &rendered);
+
+            if diff.hunks().is_empty() {
+                eprintln!("No change from original version, exiting.");
+                process::exit(1);
+            } else if cfg.verifycontent {
+                do_write_file =
+                    ask_should_overwrite(&diff).expect("error: unable to read user input");
+            }
+        }
+        if do_write_file {
+            if path.exists() {
+                let backup_path = path.with_extension(format!(
+                    "{}.bak",
+                    path.extension().unwrap().to_str().unwrap()
+                ));
+                fs::rename(&path, backup_path).expect("Failed to create backup file");
+            }
+
+            let mut f = fs::File::create(&path).unwrap_or_else(|err| {
+                eprintln!(
+                    "Problem creating output file '{}': {}",
+                    &path.display(),
+                    err
+                );
+                process::exit(2);
+            });
+            let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
+            f.write_all(&cow).unwrap();
+        }
+    } else {
         // TODO: || with input argument for writing to stdout
         println!("{rendered}");
-        return;
-    }
-
-    let path = relative_root.join(cfg.outputfile.unwrap());
-
-    let mut do_write_file = true;
-
-    if path.exists() {
-        let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-            .encoding(Some(encoding_rs::WINDOWS_1252))
-            .build(fs::File::open(&path).unwrap());
-        let mut old_file_content = String::new();
-        reader.read_to_string(&mut old_file_content).unwrap();
-
-        let diff = create_patch(&old_file_content, &rendered);
-
-        if diff.hunks().is_empty() {
-            eprintln!("No change from original version, exiting.");
-            process::exit(0);
-        } else if cfg.verifycontent {
-            do_write_file = ask_should_overwrite(&diff).expect("error: unable to read user input");
-        }
-    }
-    if do_write_file {
-        if path.exists() {
-            let backup_path = path.with_extension(format!(
-                "{}.bak",
-                path.extension().unwrap().to_str().unwrap()
-            ));
-            fs::rename(&path, backup_path).expect("Failed to create backup file");
-        }
-
-        let mut f = fs::File::create(&path).unwrap_or_else(|err| {
-            eprintln!(
-                "Problem creating output file '{}': {}",
-                &path.display(),
-                err
-            );
-            process::exit(1);
-        });
-        let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
-        f.write_all(&cow).unwrap();
     }
 }
 
@@ -468,5 +520,126 @@ mod tests {
         let result_true = render_template(&renderer, &template, &HashMap::new(), true).unwrap();
         assert_eq!(&result_false[result_false.len() - 3..], "c.\n");
         assert_eq!(&result_true[result_true.len() - 3..], ".\n\n");
+    }
+
+    #[test]
+    fn test_collect_file_list() {
+        let sources = vec![
+            config::Source {
+                filename: "source1".to_string(),
+                ..Default::default()
+            },
+            config::Source {
+                filename: "source2".to_string(),
+                ..Default::default()
+            },
+        ];
+        let relative_root = Path::new("relative_root");
+        let cfg_file = relative_root.join("config.yaml");
+
+        let dir = tempfile::tempdir().unwrap();
+        let dir_path = dir.path().to_path_buf();
+        let subdir_path = dir_path.join("subdir");
+        fs::create_dir(&subdir_path).unwrap();
+        let file1 = dir_path.join("temp1");
+        let file2 = dir_path.join("temp2");
+        let file3 = subdir_path.join("temp3");
+
+        fs::write(&file1, "content1").unwrap();
+        fs::write(&file2, "content2").unwrap();
+        fs::write(&file3, "content3").unwrap();
+
+        let layout = vec![];
+        let cfg = config::Config {
+            outputfile: Some("outfile".to_string()),
+            templatepath: String::from(dir.path().to_str().unwrap()),
+            sources: sources,
+            layout: layout,
+            ..Default::default()
+        };
+
+        let result = collect_file_list(&cfg, &cfg_file, relative_root).unwrap();
+        let mut expected = HashSet::new();
+        for filename in [
+            file1.to_str().unwrap(),
+            file2.to_str().unwrap(),
+            file3.to_str().unwrap(),
+        ]
+        .iter()
+        {
+            expected.insert(PathBuf::from("relative_root/templates").join(filename));
+        }
+        for filename in ["source1", "source2", "config.yaml"].iter() {
+            expected.insert(PathBuf::from("relative_root").join(filename));
+        }
+
+        assert!(result.len() == 6);
+        assert!(result == expected);
+    }
+
+    #[test]
+    fn test_timestamps_newer_than() -> Result<(), Box<dyn Error>> {
+        let dir = tempdir()?;
+
+        let file1_path = dir.path().join("file1.txt");
+        let mut file1 = File::create(&file1_path)?;
+        file1.write_all(b"file1 content")?;
+
+        let file2_path = dir.path().join("file2.txt");
+        let mut file2 = File::create(&file2_path)?;
+        file2.write_all(b"file2 content")?;
+
+        let mut files = HashSet::new();
+        files.insert(file1_path);
+        files.insert(file2_path);
+
+        let outfile_path = dir.path().join("outfile.txt");
+        let mut outfile = File::create(&outfile_path)?;
+        outfile.write_all(b"outfile content")?;
+
+        assert!(!timestamps_newer_than(&files, &outfile_path)?);
+
+        // Modify one of the files to make it newer than the outfile
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        file2.write_all(b"modified content")?;
+        assert!(timestamps_newer_than(&files, &outfile_path)?);
+        Ok(())
+    }
+
+    #[test]
+    fn test_timestamps_newer_than_file_outfile_not_exists() -> Result<(), Box<dyn Error>> {
+        let dir = tempdir()?;
+        let file1_path = dir.path().join("file1.txt");
+        let mut file1 = File::create(&file1_path)?;
+        file1.write_all(b"file1 content")?;
+
+        let outfile_path = dir.path().join("outfile.txt");
+
+        let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No such file or directory"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_timestamps_newer_than_file_infile_not_exists() -> Result<(), Box<dyn Error>> {
+        let dir = tempdir()?;
+        let file1_path = dir.path().join("file1.txt");
+
+        let outfile_path = dir.path().join("outfile.txt");
+        let mut outfile = File::create(&file1_path)?;
+        outfile.write_all(b"file1 content")?;
+
+        let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("No such file or directory"));
+        Ok(())
     }
 }

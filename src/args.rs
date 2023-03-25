@@ -20,15 +20,18 @@ pub enum Commands {
 pub struct MakeArguments {
     /// The yaml config file
     pub config_file: PathBuf,
-    /// Name of output file (overrides config option "outputfile")
-    #[arg(short, long, value_name = "FILE")]
-    pub output: Option<PathBuf>,
-    /// Only output warnings or errors
-    #[arg(short, long)]
-    pub silent: bool,
+    // /// Name of output file (overrides config option "outputfile")
+    // #[arg(short, long, value_name = "FILE")]
+    // pub output: Option<PathBuf>,
+    // /// Only output warnings or errors
+    // #[arg(short, long)]
+    // pub silent: bool,
     /// Global variable to use for all templates, also those without specified source. Can be repeated. Global variables overwrite other variables with same name
     #[arg(short, long, value_names = ["name", "value"])]
     pub var: Option<Vec<String>>,
+    /// Only make if layout or source files have changed since last make
+    #[arg(long)]
+    pub ifchanged: bool,
 }
 
 #[derive(Parser, Debug)]
