@@ -1,13 +1,15 @@
-use crate::{CtxDataType, CtxErrorType, DataSourceRow};
+use crate::{CtxDataType, CtxErrorType};
 use calamine::{open_workbook, CellErrorType, DataType, Reader, Xlsx};
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::PathBuf;
 
+pub type DataSourceRows = Vec<(String, HashMap<String, CtxDataType>)>;
+
 #[allow(clippy::missing_errors_doc)]
 #[allow(clippy::missing_panics_doc)]
 #[allow(clippy::cast_possible_truncation)]
-pub fn read(file: &PathBuf, sheet: &String) -> Result<DataSourceRow, Box<dyn Error>> {
+pub fn read(file: &PathBuf, sheet: &String) -> Result<DataSourceRows, Box<dyn Error>> {
     let mut workbook: Xlsx<_> = open_workbook(file)?;
     let range = workbook
         .worksheet_range(sheet)
@@ -63,7 +65,6 @@ pub fn read(file: &PathBuf, sheet: &String) -> Result<DataSourceRow, Box<dyn Err
                 .collect::<HashMap<String, CtxDataType>>();
             (key, values)
         })
-        .collect::<DataSourceRow>();
-
+        .collect::<DataSourceRows>();
     Ok(data)
 }

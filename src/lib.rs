@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::renderer::MiniJinja;
+use datasource::DataSourceRows;
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
 use serde::Serialize;
@@ -16,7 +17,6 @@ pub mod args;
 pub mod config;
 pub mod datasource;
 pub mod renderer;
-pub type DataSourceRow = Vec<(String, HashMap<String, CtxDataType>)>;
 
 #[derive(Debug)]
 pub enum CtxErrorType {
@@ -117,7 +117,7 @@ fn read_config(cfg_file: &Path) -> Result<(Config, PathBuf), Box<dyn Error>> {
 fn read_source_data(
     source: &config::Source,
     relative_root: &Path,
-) -> Result<DataSourceRow, Box<dyn Error>> {
+) -> Result<DataSourceRows, Box<dyn Error>> {
     let path = relative_root.join(&source.filename);
     let source_data = datasource::read(&path, &source.sheet)?;
 
@@ -127,7 +127,7 @@ fn read_source_data(
 fn render_template(
     renderer: &MiniJinja,
     template: &config::Template,
-    source_data: &HashMap<String, DataSourceRow>,
+    source_data: &HashMap<String, DataSourceRows>,
     adjust_spacing: bool,
 ) -> Result<String, Box<dyn Error>> {
     let mut rendered = String::new();
@@ -433,8 +433,8 @@ mod tests {
             .contains("Cannot find sheet"));
     }
 
-    fn get_all_source_data() -> HashMap<String, DataSourceRow> {
-        let mut all_source_data: HashMap<String, DataSourceRow> = HashMap::new();
+    fn get_all_source_data() -> HashMap<String, DataSourceRows> {
+        let mut all_source_data: HashMap<String, DataSourceRows> = HashMap::new();
         let source_main = config::Source {
             filename: "test.xlsx".to_string(),
             id: "main".to_string(),
