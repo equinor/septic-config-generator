@@ -177,22 +177,11 @@ fn render_template(
 
 fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, Box<dyn Error>> {
     let f = PatchFormatter::new().with_color();
-    print!("{}", f.fmt_patch(diff));
-    print!("\n\nReplace original? [Y]es or [N]o: ");
+    print!("{}\n\nReplace original? [Y]es or [N]o: ", f.fmt_patch(diff));
     let mut response = String::new();
-    io::stdout().flush().unwrap();
+    io::stdout().flush()?;
     io::stdin().read_line(&mut response)?;
-
-    Ok(response.len() > 1
-        && response
-            .trim_end()
-            .chars()
-            .last()
-            .unwrap()
-            .to_lowercase()
-            .next()
-            .unwrap()
-            == 'y')
+    Ok(response.trim().eq_ignore_ascii_case("y"))
 }
 
 fn collect_file_list(
