@@ -52,15 +52,16 @@ The tool has two commands (or modes of operation):
 Type `scg.exe --help` to get basic help information for the tool. You can also get help
 for each command, e.g. `scg.exe make --help` .
 
-### Command line arguments
+### scg make
 
-#### scg make
+This command is used to generate an outputfile based on a configuration layout `.yaml` file. The exit status is 0 if a file was output, 1 if no file was output and 2 if there was an error.
+
 `--var`: Used to add global variables that are available to all templates in the layout. Example:
 ```scg.exe make --var final true``` will create a variable called `final` with the boolean value `true`.
 
 `--ifchanged`: If this argument is provided, the `outputfile` will only be built if at least one of the input files is newer than the `outputfile`. Input files include the layout `.yaml` file itself, all files in the `templatepath` directory, including any subdirectories, and all source files listed under `sources`.
 
-## Preparation
+## Howto
 
 It is easiest to explain how to use the tool by example. In the file-set you will find a 
 directory called `basic example` . This directory contains the following directories and 
