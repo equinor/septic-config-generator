@@ -132,11 +132,7 @@ fn render_template(
 ) -> Result<String, Box<dyn Error>> {
     let mut rendered = String::new();
 
-    if template.source.is_none() {
-        rendered = renderer.render(&template.name, ())?;
-    } else {
-        let src_name = &template.source.clone().unwrap();
-
+    if let Some(src_name) = &template.source {
         let keys: Vec<String> = source_data[src_name]
             .iter()
             .map(|(key, _row)| key.clone())
@@ -167,19 +163,23 @@ fn render_template(
                 rendered.push_str(&tmpl_rend);
             }
         }
+    } else {
+        rendered = renderer.render(&template.name, ())?;
     }
+
     if adjust_spacing {
         rendered = rendered.trim_end().to_string();
         rendered.push_str("\n\n");
     }
+
     Ok(rendered)
 }
 
 fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, Box<dyn Error>> {
     let f = PatchFormatter::new().with_color();
     print!("{}\n\nReplace original? [Y]es or [N]o: ", f.fmt_patch(diff));
-    let mut response = String::new();
     io::stdout().flush()?;
+    let mut response = String::new();
     io::stdin().read_line(&mut response)?;
     Ok(response.trim().eq_ignore_ascii_case("y"))
 }
