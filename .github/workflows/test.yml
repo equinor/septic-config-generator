@@ -22,7 +22,8 @@ jobs:
         run: cargo test
 
       - name: Coverage
-        uses: actions-rs/tarpaulin@v0.1
+        run: |
+          cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
       
       - name: Archive coverage results
         uses: actions/upload-artifact@v1
