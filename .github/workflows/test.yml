@@ -21,22 +21,21 @@ jobs:
       - name: 🧪 Cargo test
         run: cargo test
 
-
   coverage:
+    name: Coverage
     runs-on: ubuntu-latest
-    container:
-      image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
 
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
       - name: Generate code coverage
-        run: |
-          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
-      
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info      
+
       - name: Archive coverage results
         uses: actions/upload-artifact@v1
         with:
           name: code-coverage-report
-          path: cobertura.xml
+          path: lcov.info
