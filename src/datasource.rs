@@ -13,6 +13,14 @@ pub fn read(file: &PathBuf, sheet: &String) -> Result<DataSourceRow, Box<dyn Err
         .worksheet_range(sheet)
         .ok_or_else(|| format!("Cannot find sheet '{sheet}'"))??;
 
+    if range
+        .rows()
+        .skip(1)
+        .any(|row| row[0].get_string().is_none())
+    {
+        return Err("First column must contain strings only".into());
+    }
+
     let row_headers = range.rows().next().unwrap();
     let data = range
         .rows()
