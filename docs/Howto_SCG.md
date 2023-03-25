@@ -59,7 +59,7 @@ This command is used to generate an outputfile based on a configuration layout `
 `--var`: Used to add global variables that are available to all templates in the layout. Example:
 ```scg.exe make --var final true``` will create a variable called `final` with the boolean value `true`.
 
-`--ifchanged`: If this argument is provided, the `outputfile` will only be built if at least one of the input files is newer than the `outputfile`. Input files include the layout `.yaml` file itself, all files in the `templatepath` directory, including any subdirectories, and all source files listed under `sources`.
+`--ifchanged`: If this argument is provided, the `outputfile` will only be built if at least one of the input files is newer than the `outputfile`. Input files include the layout `.yaml` file itself, all files in the `templatepath` directory, including any subdirectories, and all source files listed under `sources`. (Added in v2.2)
 
 ## Howto
 
