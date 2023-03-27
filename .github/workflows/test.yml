@@ -35,11 +35,20 @@ jobs:
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info      
 
       - name: Report code coverage
-        uses: dethereum/github-actions-report-lcov@v1.0.0
+        uses: zgosalvez/github-actions-report-lcov@v3
         with:
           coverage-files: lcov.info
           minimum-coverage: 60
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          update-comment: true
+
+      # Error: Unable to locate executable file: genhtml
+      # - name: Report code coverage
+      #   uses: dethereum/github-actions-report-lcov@v1.0.0
+      #   with:
+      #     coverage-files: lcov.info
+      #     minimum-coverage: 60
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # - name: Publish Test Results
       #   uses: EnricoMi/publish-unit-test-result-action@v2
