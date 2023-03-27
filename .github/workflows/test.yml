@@ -19,6 +19,11 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component llvm-tools-preview
 
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "pr"
+
       - name: 🛠️ Cargo build
         run: cargo build --verbose
 
