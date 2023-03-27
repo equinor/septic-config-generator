@@ -15,6 +15,10 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v3
 
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component llvm-tools-preview
+
       - name: 🛠️ Cargo build
         run: cargo build --verbose
 
@@ -35,7 +39,7 @@ jobs:
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "somethingsomething"
+          shared-key: "pr"
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
