@@ -39,11 +39,13 @@ jobs:
 
       - name: lcov Code Coverage Report
         uses: JoA-MoS/lcov-reporter-action@v1.0.0-alpha.2
-        lcov-file: lcov.info
-        delete-old-comments: true
-        omit-branch-percentage: true
+        with:
+          lcov-file: lcov.info
+          delete-old-comments: true
+          omit-branch-percentage: true
+          title: Coverage results
 
-    # Too dotnetty and doesn't look too good
+      # Too dotnetty and doesn't look too good
       # - name: Setup .NET Core # Required to execute ReportGenerator
       #   uses: actions/setup-dotnet@v3
       #   with:
