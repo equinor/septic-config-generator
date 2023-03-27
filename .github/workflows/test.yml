@@ -40,7 +40,7 @@ jobs:
       - uses: kcjpop/coverage-comments@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          coverage-file: lcov.info
+          coverage-file-path: lcov.info
 
       # Works, boring output, branches always included
       # - uses: zgosalvez/github-actions-report-lcov@v3
