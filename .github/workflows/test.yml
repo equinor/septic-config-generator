@@ -32,24 +32,26 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate code coverage
-        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info      
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
       - name: Setup LCOV
         uses: hrishikesh-kadam/setup-lcov@v1
 
-    # Error: Unable to locate executable file: genhtml
-    # Apparently requires lcov itself to be installed
-      - name: Report code coverage
-        uses: zgosalvez/github-actions-report-lcov@v3
+      - uses: kcjpop/coverage-comments@v2
         with:
-          coverage-files: lcov.info
-          minimum-coverage: 60
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          update-comment: true
+          coverage-file: lcov.info
 
-      # Error: Unable to locate executable file: genhtml
-      # - name: Report code coverage
-      #   uses: dethereum/github-actions-report-lcov@v1.0.0
+      # Works, boring output, branches always included
+      # - uses: zgosalvez/github-actions-report-lcov@v3
+      #   with:
+      #     coverage-files: lcov.info
+      #     minimum-coverage: 60
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     update-comment: true
+
+      # Old, zgosalvez is newer
+      # - uses: dethereum/github-actions-report-lcov@v1.0.0
       #   with:
       #     coverage-files: lcov.info
       #     minimum-coverage: 60
