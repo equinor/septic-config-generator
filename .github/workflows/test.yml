@@ -37,9 +37,28 @@ jobs:
       - name: Setup LCOV
         uses: hrishikesh-kadam/setup-lcov@v1
 
-      - uses: livewing/lcov-job-summary@v1
+      - name: Setup .NET Core # Required to execute ReportGenerator
+        uses: actions/setup-dotnet@v3
         with:
-          lcov: lcov.info
+          dotnet-version: 6.x
+          dotnet-quality: 'ga'
+
+      - name: ReportGenerator
+        uses: danielpalme/ReportGenerator-GitHub-Action@5.1.19
+        with:
+          reports: lcov.info
+          targetdir: coveragereport
+          reporttypes: Html_Dark;Cobertura;MarkdownSummaryGithub
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: coverage_report
+          path: ./coveragereport/*
+
+      # Detailed info, but in action summary instead of in PR
+      # - uses: livewing/lcov-job-summary@v1
+      #   with:
+      #     lcov: lcov.info
 
       # Seems rather buggy
       # - uses: kcjpop/coverage-comments@v2
