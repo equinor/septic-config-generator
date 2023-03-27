@@ -37,10 +37,15 @@ jobs:
       - name: Setup LCOV
         uses: hrishikesh-kadam/setup-lcov@v1
 
-      - uses: kcjpop/coverage-comments@v2
+      - uses: livewing/lcov-job-summary@v1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          coverage-file-path: lcov.info
+          lcov: lcov.info
+
+      # Seems rather buggy
+      # - uses: kcjpop/coverage-comments@v2
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     coverage-file-path: lcov.info
 
       # Works, boring output, branches always included
       # - uses: zgosalvez/github-actions-report-lcov@v3
