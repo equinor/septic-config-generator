@@ -28,22 +28,14 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v3
 
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate code coverage
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
-
-      - name: Setup LCOV
-        uses: hrishikesh-kadam/setup-lcov@v1
-
-      - name: lcov Code Coverage Report
-        uses: JoA-MoS/lcov-reporter-action@v1.0.0-alpha.2
-        with:
-          lcov-file: lcov.info
-          delete-old-comments: true
-          omit-branch-percentage: true
-          title: Coverage results
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
@@ -51,7 +43,18 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
 
-      # Too dotnetty and doesn't look too good
+      # - name: Setup LCOV
+      #   uses: hrishikesh-kadam/setup-lcov@v1
+
+      # - name: lcov Code Coverage Report
+      #   uses: JoA-MoS/lcov-reporter-action@v1.0.0-alpha.2
+      #   with:
+      #     lcov-file: lcov.info
+      #     delete-old-comments: true
+      #     omit-branch-percentage: true
+
+
+      # Too dotnetty and doesn't look very good
       # - name: Setup .NET Core # Required to execute ReportGenerator
       #   uses: actions/setup-dotnet@v3
       #   with:
@@ -65,7 +68,7 @@ jobs:
       #     reporttypes: Html_Dark;Cobertura;MarkdownSummaryGithub
 
 
-      # Detailed info, but in action summary instead of in PR
+      # Detailed info in action summary
       # - uses: livewing/lcov-job-summary@v1
       #   with:
       #     lcov: lcov.info
