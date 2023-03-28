@@ -33,12 +33,18 @@ jobs:
         run: cargo nextest run --profile ci
 
       - name: Publish test results
-        uses: dorny/test-reporter@v1
-        if: success() || failure()    # run this step even if previous step failed
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
         with:
-          name: Test Report
-          path: target/nextest/ci/junit.xml
-          reporter: java-junit
+          files: target/nextest/ci/junit.xml
+
+        # Works fine
+        # uses: dorny/test-reporter@v1
+        # if: success() || failure()    # run this step even if previous step failed
+        # with:
+        #   name: Test Report
+        #   path: target/nextest/ci/junit.xml
+        #   reporter: java-junit
 
         # uses: mikepenz/action-junit-report@v3
         # if: success() || failure() # always run even if the previous step fails
