@@ -23,6 +23,9 @@ jobs:
         with:
           shared-key: "pr"
 
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+
       - name: 🛠️ Run cargo build
         run: cargo build --verbose
 
@@ -55,9 +58,6 @@ jobs:
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
-
-      - name: Install nextest
-        uses: taiki-e/install-action@nextest
 
       - name: ☂️ Run cargo llvm-cov
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
