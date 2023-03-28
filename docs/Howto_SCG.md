@@ -47,12 +47,28 @@ somewhere in your path.
 
 The tool has two commands (or modes of operation):
  - make: Generate complete config file based on templates
- - diff: Simply utility to show difference between two files.  
+ - diff: Simple utility to show difference between two files.  
 
 Type `scg.exe --help` to get basic help information for the tool. You can also get help
 for each command, e.g. `scg.exe make --help` .
 
-## Preparation
+### scg make
+
+This command is used to generate an outputfile based on a configuration layout `.yaml` file. The exit status is 0 if a file was output, 1 if no file was output and 2 if there was an error.
+
+`--var`: Used to add global variables that are available to all templates in the layout. Example:
+```scg.exe make --var final true``` will create a variable called `final` with the boolean value `true`.
+
+`--ifchanged`: *(Added in v2.2)* If this argument is provided, the `outputfile` will only be built if at least one of the input files is newer than the `outputfile`. 
+
+Input files include the layout `.yaml` file itself, all files in the `templatepath` directory, including any subdirectories, and all source files listed under `sources`. 
+This makes it possible to kill and restart applications only when their config file has changed:
+```bat
+> scg make --ifchanged MyApplication.yaml && taskkill /IM QtSeptic.exe /FI "WINDOWTITLE eq MyApplication*" > nul 2>&1
+```
+Here the taskkill command will only be executed if the exit status from scg is 0, which means that the config file was updated.
+
+## Howto
 
 It is easiest to explain how to use the tool by example. In the file-set you will find a 
 directory called `basic example` . This directory contains the following directories and 
