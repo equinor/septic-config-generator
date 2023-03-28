@@ -8,7 +8,7 @@ env:
 
 jobs:
   code_test:
-    name: '🛠️ Build & alembic Test'
+    name: 🧪 Test
     runs-on: ubuntu-latest
     
     steps:
