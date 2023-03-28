@@ -59,7 +59,14 @@ This command is used to generate an outputfile based on a configuration layout `
 `--var`: Used to add global variables that are available to all templates in the layout. Example:
 ```scg.exe make --var final true``` will create a variable called `final` with the boolean value `true`.
 
-`--ifchanged`: If this argument is provided, the `outputfile` will only be built if at least one of the input files is newer than the `outputfile`. Input files include the layout `.yaml` file itself, all files in the `templatepath` directory, including any subdirectories, and all source files listed under `sources`. (Added in v2.2)
+`--ifchanged`: *(Added in v2.2)* If this argument is provided, the `outputfile` will only be built if at least one of the input files is newer than the `outputfile`. 
+
+Input files include the layout `.yaml` file itself, all files in the `templatepath` directory, including any subdirectories, and all source files listed under `sources`. 
+This makes it possible to kill and restart applications only when their config file has changed:
+```bat
+> scg make --ifchanged MyApplication.yaml && taskkill /IM QtSeptic.exe /FI "WINDOWTITLE eq MyApplication*" > nul 2>&1
+```
+Here the taskkill command will only be executed if the exit status from scg is 0, which means that the config file was updated.
 
 ## Howto
 
