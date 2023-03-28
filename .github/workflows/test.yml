@@ -8,14 +8,62 @@ env:
 
 jobs:
   code_test:
-    name: '🛠️ Build & 🧪 Test'
+    name: 🧪 Test
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout source code
+        uses: actions/checkout@v3
 
-      - name: 🛠️ Cargo build
+      - name: 🦀 Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "pr"
+
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
+
+      - name: 🛠️ Run cargo build
         run: cargo build --verbose
 
-      - name: 🧪 Cargo test
-        run: cargo test
+      - name: 🧪 Run cargo test
+        run: cargo nextest run --profile ci
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: always()
+        with:
+          files: target/nextest/ci/junit.xml
+          # comment: failures
+
+  coverage:
+    name: ☂️ Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v3
+
+      - name: 🦀 Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "pr"
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: ☂️ Run cargo llvm-cov
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
