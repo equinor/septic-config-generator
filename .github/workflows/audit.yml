@@ -11,6 +11,7 @@ on:
 jobs:
   security_audit:
     name: 👺 Security audit
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
