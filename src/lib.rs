@@ -642,4 +642,9 @@ mod tests {
             .contains("No such file or directory"));
         Ok(())
     }
+
+    #[test]
+    fn test_a_failing_test() {
+        assert!(false);
+    }
 }
