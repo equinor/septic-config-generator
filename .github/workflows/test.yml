@@ -38,8 +38,8 @@ jobs:
         with:
           name: Test Report
           path: target/nextest/ci/junit.xml
-          reporter: jest-junit
-          
+          reporter: java-junit
+
         # uses: mikepenz/action-junit-report@v3
         # if: success() || failure() # always run even if the previous step fails
         # with:
