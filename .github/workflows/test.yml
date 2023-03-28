@@ -27,7 +27,14 @@ jobs:
         run: cargo build --verbose
 
       - name: 🧪 Run cargo test
-        run: cargo test
+        run: cargo nextest run --profile ci
+
+      - name: Publish test results
+        uses: mikepenz/action-junit-report@v3
+        if: success() || failure() # always run even if the previous step fails
+        with:
+          report_paths: 'target/nextest/ci/junit.xml'
+
 
   coverage:
     name: ☂️ Coverage
