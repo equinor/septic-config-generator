@@ -33,12 +33,19 @@ jobs:
         run: cargo nextest run --profile ci
 
       - name: Publish test results
-        uses: mikepenz/action-junit-report@v3
-        if: success() || failure() # always run even if the previous step fails
+        uses: dorny/test-reporter@v1
+        if: success() || failure()    # run this step even if previous step failed
         with:
-          report_paths: 'target/nextest/ci/junit.xml'
-          check_name: Test Report
-          detailed_summary: true
+          name: Test Report
+          path: target/nextest/ci/junit.xml
+          reporter: jest-junit
+          
+        # uses: mikepenz/action-junit-report@v3
+        # if: success() || failure() # always run even if the previous step fails
+        # with:
+        #   report_paths: 'target/nextest/ci/junit.xml'
+        #   check_name: Test Report
+        #   detailed_summary: true
 
 
   coverage:

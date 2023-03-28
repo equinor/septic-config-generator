@@ -10,3 +10,5 @@ failure-output = "immediate-final"
 [profile.ci.junit]
 # Test results reported in target/nextest/ci/junit.xml
 path = "junit.xml"
+store-success-output = true
+store-failure-output = true
