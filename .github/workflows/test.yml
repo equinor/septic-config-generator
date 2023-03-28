@@ -38,8 +38,7 @@ jobs:
         with:
           report_paths: 'target/nextest/ci/junit.xml'
           check_name: Test Report
-          annotate_notice: true
-          include_passed: true
+          detailed_summary: true
 
 
   coverage:
