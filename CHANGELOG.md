@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.2.0](https://github.com/equinor/septic-config-generator/compare/v2.1.0...v2.2.0) (2023-03-28)
+
+
+### 🧪 Tests
+
+* add more tests ([b8d92c3](https://github.com/equinor/septic-config-generator/commit/b8d92c3c1048e7fce14fa6c58ade5e3d1bb2d10f))
+
+
+### 👷 CI/CD
+
+* chmod +x before tar and attach to release ([3222540](https://github.com/equinor/septic-config-generator/commit/3222540db2db3a28fa9216f5974a03bfdd34e558))
+* don't perform cargo check ([b8d92c3](https://github.com/equinor/septic-config-generator/commit/b8d92c3c1048e7fce14fa6c58ade5e3d1bb2d10f))
+
+
+### ✨ Features
+
+* add arg to only build if input files changed ([#60](https://github.com/equinor/septic-config-generator/issues/60)) ([ad118bf](https://github.com/equinor/septic-config-generator/commit/ad118bf6044a5bca3b698bbdfbaefa1db841d908))
+
+
+### 🐛 Bug Fixes
+
+* ensure newline at EOF if adjustspacing=true ([b8d92c3](https://github.com/equinor/septic-config-generator/commit/b8d92c3c1048e7fce14fa6c58ade5e3d1bb2d10f))
+* error msg when unvalid source 1st column ([#71](https://github.com/equinor/septic-config-generator/issues/71)) ([90dec90](https://github.com/equinor/septic-config-generator/commit/90dec9080d8992802e10edbc1fc05e7cbfafc4fc))
+
+
+### 🧹 Chores
+
+* **deps:** bump minijinja from 0.30.6 to 0.30.7 ([#58](https://github.com/equinor/septic-config-generator/issues/58)) ([dc74ce3](https://github.com/equinor/septic-config-generator/commit/dc74ce32766aae014e8d25358a0555d50c09c703))
+
+
+### 🔨 Refactor
+
+* clean up cmd_make ([b8d92c3](https://github.com/equinor/septic-config-generator/commit/b8d92c3c1048e7fce14fa6c58ade5e3d1bb2d10f))
+* clean up confusing type names ([c485c7b](https://github.com/equinor/septic-config-generator/commit/c485c7bd4ac5d9ff3d36732ab7bedf757e6a2ed2))
+
 ## [2.1.0](https://github.com/equinor/septic-config-generator/compare/v2.0.0...v2.1.0) (2023-03-02)
 
 
