@@ -8,14 +8,14 @@ env:
 
 jobs:
   code_test:
-    name: '🛠️ Build & 🧪 Test'
+    name: '🛠️ Build & alembic Test'
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
 
-      - name: Install Rust
+      - name: 🦀 Install Rust
         run: |
           rustup toolchain install stable --profile minimal --component llvm-tools-preview
 
@@ -24,20 +24,20 @@ jobs:
         with:
           shared-key: "pr"
 
-      - name: 🛠️ Cargo build
+      - name: 🛠️ Run cargo build
         run: cargo build --verbose
 
-      - name: 🧪 Cargo test
+      - name: 🧪 Run cargo test
         run: cargo test
 
   coverage:
-    name: 🎁 Coverage
+    name: ☂️ Coverage
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
 
-      - name: Install Rust
+      - name: 🦀 Install Rust
         run: |
           rustup toolchain install stable --profile minimal --component llvm-tools-preview
 
@@ -49,7 +49,7 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
-      - name: Generate code coverage
+      - name: ☂️ Run cargo llvm-cov
         run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
       - name: Upload coverage reports to Codecov

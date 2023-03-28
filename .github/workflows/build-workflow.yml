@@ -26,7 +26,11 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v3
 
-      - name: Build
+      - name: 🦀 Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+
+      - name: 🛠️ Build
         run: cargo build --release --verbose
 
       - name: 'Set artifact name for Windows'
