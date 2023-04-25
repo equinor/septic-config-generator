@@ -158,7 +158,7 @@ fn render_template(
 
                 if adjust_spacing {
                     tmpl_rend = tmpl_rend.trim_end().to_string();
-                    tmpl_rend.push_str("\n\n");
+                    tmpl_rend.push_str("\r\n\r\n");
                 }
                 rendered.push_str(&tmpl_rend);
             }
@@ -169,7 +169,7 @@ fn render_template(
 
     if adjust_spacing {
         rendered = rendered.trim_end().to_string();
-        rendered.push_str("\n\n");
+        rendered.push_str("\r\n\r\n");
     }
 
     Ok(rendered)
@@ -521,12 +521,11 @@ mod tests {
         };
         let result_false = render_template(&renderer, &template, &HashMap::new(), false).unwrap();
         let result_true = render_template(&renderer, &template, &HashMap::new(), true).unwrap();
+        assert_eq!(&result_true[result_true.len() - 5..], ".\r\n\r\n");
         #[cfg(target_os = "windows")]
         assert_eq!(&result_false[result_false.len() - 4..], "c.\r\n");
-        assert_eq!(&result_true[result_true.len() - 3..], ".\n\n");
         #[cfg(not(target_os = "windows"))]
         assert_eq!(&result_false[result_false.len() - 3..], "c.\n");
-        assert_eq!(&result_true[result_true.len() - 3..], ".\n\n");
     }
 
     #[test]
