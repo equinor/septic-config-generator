@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.2.1](https://github.com/equinor/septic-config-generator/compare/v2.2.0...v2.2.1) (2023-04-25)
+
+
+### 📚 Documentation
+
+* update docs for v2.2 ([#70](https://github.com/equinor/septic-config-generator/issues/70)) ([483fc88](https://github.com/equinor/septic-config-generator/commit/483fc88892ce66f5d6add8ae871e8e26d0da6b26))
+
+
+### 👷 CI/CD
+
+* add security audit workflow ([#77](https://github.com/equinor/septic-config-generator/issues/77)) ([841677f](https://github.com/equinor/septic-config-generator/commit/841677f51f58b07258406f3ca16b876315325dfb))
+* add test and coverage reporting ([#73](https://github.com/equinor/septic-config-generator/issues/73)) ([f79ba30](https://github.com/equinor/septic-config-generator/commit/f79ba305a5148daa74b42fa92f95c291939d86bd))
+* improve workflows ([#79](https://github.com/equinor/septic-config-generator/issues/79)) ([8cfe092](https://github.com/equinor/septic-config-generator/commit/8cfe0922eab81510c1572efc33895fb565a8945e))
+
+
+### 🧪 Tests
+
+* make tests work in Windows environment ([#87](https://github.com/equinor/septic-config-generator/issues/87)) ([7679786](https://github.com/equinor/septic-config-generator/commit/76797866279f07d7a677af5e7765eec940ca972b))
+
+
+### 🐛 Bug Fixes
+
+* use crlf (\r\n) when adjusting spacing ([#88](https://github.com/equinor/septic-config-generator/issues/88)) ([b134fd0](https://github.com/equinor/septic-config-generator/commit/b134fd0104f32de4bb76d9b29598258feb16321e))
+
 ## [2.2.0](https://github.com/equinor/septic-config-generator/compare/v2.1.0...v2.2.0) (2023-03-28)
 
 

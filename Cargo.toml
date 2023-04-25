@@ -1,6 +1,6 @@
 [package]
 name = "septic-config-generator"
-version = "2.2.0"
+version = "2.2.1"
 edition = "2021"
 description = "A tool to generate SEPTIC config file from template files"
 license = "MIT"
