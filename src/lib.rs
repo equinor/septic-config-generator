@@ -393,10 +393,7 @@ mod tests {
     fn test_read_config_file_does_not_exist() {
         let result = read_config(&Path::new("nonexistent_file.yaml"));
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "No such file or directory (os error 2)"
-        );
+        assert!(result.unwrap_err().to_string().contains("(os error 2)"));
     }
 
     #[test]
@@ -407,13 +404,10 @@ mod tests {
             sheet: String::from("mysheet"),
         };
 
-        let relative_root = Path::new("somepath");
+        let relative_root = Path::new("./");
         let result = read_source_data(&source, relative_root);
         assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "I/O error: No such file or directory (os error 2)"
-        );
+        assert!(result.unwrap_err().to_string().contains("(os error 2"),);
     }
 
     #[test]
@@ -461,9 +455,12 @@ mod tests {
             ..Default::default()
         };
         let all_source_data = get_all_source_data();
-        let result = render_template(&renderer, &template, &all_source_data, true).unwrap();
+        let result = render_template(&renderer, &template, &all_source_data, true)
+            .unwrap()
+            .trim()
+            .replace('\r', "");
         assert_eq!(
-            result.trim_end(),
+            result,
             "String: one\nBool: true\nInteger: 1\nWhole float: 1\nFloat: 1.234\n\nString: two\nBool: false\nInteger: 2\nWhole float: 2\nFloat: 2.3456\n\nString: three\nBool: true\nInteger: 3\nWhole float: 3\nFloat: 34.56"
         );
     }
@@ -477,9 +474,12 @@ mod tests {
             ..Default::default()
         };
         let all_source_data = get_all_source_data();
-        let result = render_template(&renderer, &template, &all_source_data, true).unwrap();
+        let result = render_template(&renderer, &template, &all_source_data, true)
+            .unwrap()
+            .trim()
+            .replace('\r', "");
         assert_eq!(
-            result.trim_end(),
+            result,
             "Empty: >|none|<\nError: >|#DIV/0!|<\n\nEmpty: >||<\nError: >|#N/A|<\n\nEmpty: >|\"\"|<\nError: >|#NAME?|<\n\nEmpty: >|\"\"|<\nError: >|#NULL!|<\n\nEmpty: >|none|<\nError: >|#NUM!|<\n\nEmpty: >||<\nError: >|#REF!|<\n\nEmpty: >|\"\"|<\nError: >|#VALUE!|<"
         );
     }
@@ -505,7 +505,10 @@ mod tests {
             name: "06_encoding.tmpl".to_string(),
             ..Default::default()
         };
-        let result = render_template(&renderer, &template, &HashMap::new(), true).unwrap();
+        let result = render_template(&renderer, &template, &HashMap::new(), true)
+            .unwrap()
+            .trim()
+            .replace('\r', "");
         assert_eq!(result.trim_end(), "ae: æ\noe: ø\naa: å\ns^2: s²\nm^3: m³");
     }
 
@@ -518,6 +521,10 @@ mod tests {
         };
         let result_false = render_template(&renderer, &template, &HashMap::new(), false).unwrap();
         let result_true = render_template(&renderer, &template, &HashMap::new(), true).unwrap();
+        #[cfg(target_os = "windows")]
+        assert_eq!(&result_false[result_false.len() - 4..], "c.\r\n");
+        assert_eq!(&result_true[result_true.len() - 3..], ".\n\n");
+        #[cfg(not(target_os = "windows"))]
         assert_eq!(&result_false[result_false.len() - 3..], "c.\n");
         assert_eq!(&result_true[result_true.len() - 3..], ".\n\n");
     }
@@ -618,10 +625,7 @@ mod tests {
 
         let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("No such file or directory"));
+        assert!(result.unwrap_err().to_string().contains("(os error 2)"));
         Ok(())
     }
 
@@ -636,10 +640,7 @@ mod tests {
 
         let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("No such file or directory"));
+        assert!(result.unwrap_err().to_string().contains("(os error 2)"));
         Ok(())
     }
 }
