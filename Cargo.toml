@@ -5,6 +5,11 @@ edition = "2021"
 description = "A tool to generate SEPTIC config file from template files"
 license = "MIT"
 publish = false
+build = "build.rs"
+
+[package.metadata.winresource]
+LegalCopyRight="Copyright © Equinor ASA 2023"
+FileDescription="SEPTIC config generator"
 
 [[bin]]
 name = "scg"
@@ -26,10 +31,13 @@ diffy = "0.3.0"
 encoding_rs = "0.8.32"
 encoding_rs_io = "0.1.7"
 glob = "0.3.1"
-minijinja = { version = "0.30.6", features = ["source"] }
+minijinja = { version = "0.32.1", features = ["source"] }
 serde = { version = "1.0.156", features = ["derive"] }
 serde_yaml = "0.9.19"
 
 [dev-dependencies]
 regex = "1.7.1"
 tempfile = "3.4.0"
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1.15"
