@@ -6,4 +6,9 @@
 {{ now('%a %d %b %Y %H:%M:%S') }}
 {{ now() }}
 
+{{ bitstring(2**4 + 2**1) }}
+{{ (2**4 + 2**1) | bitstring }}
+{{ bitstring(2**4 + 2**1, 6) }}
+{{ (2**4 + 2**1) | bitstring(1) }}
+
 // Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }} 

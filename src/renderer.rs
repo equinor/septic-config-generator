@@ -8,6 +8,13 @@ use std::path::PathBuf;
 
 const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+fn bitstring(number: u32, length: Option<usize>) -> String {
+    let binary = format!("{:b}", number);
+    let padding_length = length.unwrap_or(31).saturating_sub(binary.len());
+    let padding = "0".repeat(padding_length);
+    format!("{}{}", padding, binary)
+}
+
 fn timestamp(format: Option<&str>) -> String {
     let fmt = format.unwrap_or("%Y-%m-%d %H:%M:%S");
     Local::now().format(fmt).to_string()
@@ -86,6 +93,8 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_global("gitcommit", gitcommit(false));
         renderer.env.add_global("gitcommitlong", gitcommit(true));
         renderer.env.add_function("now", timestamp);
+        renderer.env.add_function("bitstring", bitstring);
+        renderer.env.add_filter("bitstring", bitstring);
         renderer.env.set_formatter(erroring_formatter);
 
         let local_template_path = template_path.to_path_buf();
@@ -154,5 +163,12 @@ mod tests {
         let result = gitcommit(false);
         let re = Regex::new(r"^\w{7}$").unwrap();
         assert!(re.is_match(&result));
+    }
+
+    #[test]
+    fn test_customfunction_bitstring() {
+        let base: u32 = 2;
+        let result = bitstring(base.pow(16) + base.pow(1) + base.pow(0), Some(31));
+        assert!(result == "0000000000000010000000000000011");
     }
 }
