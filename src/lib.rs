@@ -391,7 +391,7 @@ mod tests {
 
     #[test]
     fn test_read_config_file_does_not_exist() {
-        let result = read_config(&Path::new("nonexistent_file.yaml"));
+        let result = read_config(Path::new("nonexistent_file.yaml"));
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("(os error 2)"));
     }
@@ -559,8 +559,8 @@ mod tests {
         let cfg = config::Config {
             outputfile: Some("outfile".to_string()),
             templatepath: String::from(dir.path().to_str().unwrap()),
-            sources: sources,
-            layout: layout,
+            sources,
+            layout,
             ..Default::default()
         };
 
