@@ -19,18 +19,23 @@ fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
         _ => {
             return Err(Error::new(
                 ErrorKind::InvalidOperation,
-                "Invalid value: must be a sequence or integer",
+                "input value must be a sequence of integers or an integer",
             ))
         }
     };
     for elem in seq.as_seq().unwrap().iter() {
-        let pos = usize::try_from(elem)?;
+        let pos = usize::try_from(elem).map_err(|_| {
+            Error::new(
+                ErrorKind::InvalidOperation,
+                "input value must be a sequence of integers or an integer",
+            )
+        })?;
         if pos <= mask_length {
             mask[mask_length - pos] = '1';
         } else {
             return Err(Error::new(
                 ErrorKind::InvalidOperation,
-                "Invalid value: larger than mask size",
+                format!("value is larger than mask size ({} > {})", pos, mask_length),
             ));
         }
     }
@@ -62,7 +67,7 @@ fn erroring_formatter(
     out: &mut minijinja::Output,
     state: &minijinja::State,
     value: &minijinja::value::Value,
-) -> Result<(), minijinja::Error> {
+) -> Result<(), Error> {
     // A crude way to stop execution when a variable is undefined.
     if value.is_undefined() {
         return Err(Error::from(ErrorKind::UndefinedError));
