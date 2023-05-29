@@ -1,5 +1,5 @@
 use chrono::Local;
-use minijinja::value::Value;
+use minijinja::value::{Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind, Source};
 use serde::Serialize;
 use std::fs::File;
@@ -9,23 +9,29 @@ use std::path::PathBuf;
 
 const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn bitmask(value: Value) -> String {
+fn bitmask(value: Value) -> Result<String, Error> {
     let mut mask = vec!['0'; 31];
 
-    if let Some(seq) = value.as_seq() {
-        for elem in seq.iter() {
-            let pos = usize::try_from(elem).unwrap();
-            if pos < 31 {
-                mask[31 - pos] = '1';
-            }
+    let seq = match value.kind() {
+        ValueKind::Number => Value::from(vec![value]),
+        ValueKind::Seq => value,
+        _ => {
+            return Err(Error::new(
+                ErrorKind::InvalidOperation,
+                "Invalid value: must be a sequence or integer",
+            ))
         }
-    } else {
-        mask[31 - usize::try_from(value).unwrap()] = '1';
+    };
+    for elem in seq.as_seq().unwrap().iter() {
+        let pos = usize::try_from(elem)?;
+        if pos <= 31 {
+            mask[31 - pos] = '1';
+        }
     }
-    mask.into_iter().collect()
+    Ok(mask.into_iter().collect())
 }
 
-fn bitstring(number: u32, length: Option<usize>) -> String {
+fn _bitstring(number: u32, length: Option<usize>) -> String {
     let binary = format!("{:b}", number);
     let padding_length = length.unwrap_or(31).saturating_sub(binary.len());
     let padding = "0".repeat(padding_length);
@@ -110,8 +116,7 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_global("gitcommit", gitcommit(false));
         renderer.env.add_global("gitcommitlong", gitcommit(true));
         renderer.env.add_function("now", timestamp);
-        renderer.env.add_function("bitstring", bitstring);
-        renderer.env.add_filter("bitstring", bitstring);
+        renderer.env.add_function("bitmask", bitmask);
         renderer.env.add_filter("bitmask", bitmask);
         renderer.env.set_formatter(erroring_formatter);
 
@@ -184,9 +189,12 @@ mod tests {
     }
 
     #[test]
-    fn test_customfunction_bitstring() {
-        let base: u32 = 2;
-        let result = bitstring(base.pow(16) + base.pow(1) + base.pow(0), Some(31));
-        assert!(result == "0000000000000010000000000000011");
+    fn test_customfunction_bitmask_integer() {
+        let result = bitmask(Value::from(1)).unwrap();
+        assert!(result == "0000000000000000000000000000001");
+        let result = bitmask(Value::from(31)).unwrap();
+        assert!(result == "1000000000000000000000000000000");
+        let result = bitmask(Value::from(vec![1, 3, 31])).unwrap();
+        assert!(result == "1000000000000000000000000000101");
     }
 }
