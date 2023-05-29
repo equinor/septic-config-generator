@@ -1,4 +1,5 @@
 use chrono::Local;
+use minijinja::value::Value;
 use minijinja::{Environment, Error, ErrorKind, Source};
 use serde::Serialize;
 use std::fs::File;
@@ -7,6 +8,22 @@ use std::path::Path;
 use std::path::PathBuf;
 
 const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+fn bitmask(value: Value) -> String {
+    let mut mask = vec!['0'; 31];
+
+    if let Some(seq) = value.as_seq() {
+        for elem in seq.iter() {
+            let pos = usize::try_from(elem).unwrap();
+            if pos < 31 {
+                mask[31 - pos] = '1';
+            }
+        }
+    } else {
+        mask[31 - usize::try_from(value).unwrap()] = '1';
+    }
+    mask.into_iter().collect()
+}
 
 fn bitstring(number: u32, length: Option<usize>) -> String {
     let binary = format!("{:b}", number);
@@ -95,6 +112,7 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_function("now", timestamp);
         renderer.env.add_function("bitstring", bitstring);
         renderer.env.add_filter("bitstring", bitstring);
+        renderer.env.add_filter("bitmask", bitmask);
         renderer.env.set_formatter(erroring_formatter);
 
         let local_template_path = template_path.to_path_buf();
