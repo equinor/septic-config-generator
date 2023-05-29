@@ -9,8 +9,9 @@ use std::path::PathBuf;
 
 const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-fn bitmask(value: Value) -> Result<String, Error> {
-    let mut mask = vec!['0'; 31];
+fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
+    let mask_length = length.unwrap_or(31);
+    let mut mask = vec!['0'; mask_length];
 
     let seq = match value.kind() {
         ValueKind::Number => Value::from(vec![value]),
@@ -24,18 +25,16 @@ fn bitmask(value: Value) -> Result<String, Error> {
     };
     for elem in seq.as_seq().unwrap().iter() {
         let pos = usize::try_from(elem)?;
-        if pos <= 31 {
-            mask[31 - pos] = '1';
+        if pos <= mask_length {
+            mask[mask_length - pos] = '1';
+        } else {
+            return Err(Error::new(
+                ErrorKind::InvalidOperation,
+                "Invalid value: larger than mask size",
+            ));
         }
     }
     Ok(mask.into_iter().collect())
-}
-
-fn _bitstring(number: u32, length: Option<usize>) -> String {
-    let binary = format!("{:b}", number);
-    let padding_length = length.unwrap_or(31).saturating_sub(binary.len());
-    let padding = "0".repeat(padding_length);
-    format!("{}{}", padding, binary)
 }
 
 fn timestamp(format: Option<&str>) -> String {
@@ -190,11 +189,13 @@ mod tests {
 
     #[test]
     fn test_customfunction_bitmask_integer() {
-        let result = bitmask(Value::from(1)).unwrap();
+        let result = bitmask(Value::from(1), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000001");
-        let result = bitmask(Value::from(31)).unwrap();
+        let result = bitmask(Value::from(31), Some(31)).unwrap();
         assert!(result == "1000000000000000000000000000000");
-        let result = bitmask(Value::from(vec![1, 3, 31])).unwrap();
+        let result = bitmask(Value::from(vec![1, 3, 31]), Some(31)).unwrap();
         assert!(result == "1000000000000000000000000000101");
+        let result = bitmask(Value::from(vec![1, 3]), Some(5)).unwrap();
+        assert!(result == "00101");
     }
 }
