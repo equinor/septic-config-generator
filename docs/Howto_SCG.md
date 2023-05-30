@@ -306,7 +306,7 @@ Try for example to add the following line at the top of the first template file:
 `// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
 
 #### `bitmask`
-Filter that converts an integer or a sequence of integers into a bitmask. Takes an optional argument that is the length of the bitmask.
+Filter that converts an integer or a sequence of integers into a bitmask. Takes an optional argument that is the length of the bitmask (defaults to 31).
 
 Examples:<br />
 `{{ 2 | bitmask }}` -> `0000000000000000000000000000010`<br />
