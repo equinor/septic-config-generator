@@ -13,7 +13,7 @@ fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
     let mask_length = length.unwrap_or(31);
     let mut mask = vec!['0'; mask_length];
 
-    let seq = match value.kind() {
+    let value = match value.kind() {
         ValueKind::Number => Value::from(vec![value]),
         ValueKind::Seq => value,
         _ => {
@@ -23,7 +23,7 @@ fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
             ))
         }
     };
-    for elem in seq.as_seq().unwrap().iter() {
+    for elem in value.as_seq().unwrap().iter() {
         let pos = usize::try_from(elem).map_err(|_| {
             Error::new(
                 ErrorKind::InvalidOperation,
