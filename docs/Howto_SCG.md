@@ -265,25 +265,54 @@ The parameter replacement performed by the `make` command uses the [MiniJinja](h
 [Jinja2](https://jinja.palletsprojects.com/) Python module which was used by scg 1.0. 
 MiniJinja is a very powerful templating engine that can do lots more than what has been 
 described above, such as expressions (e.g. calculate offsets for placing display elements based 
-on well id number), statements for inheriting or including other template files, conditionals and loops etc. This makes it possible to e.g. exclude use scg even for SEPTIC configs with non-similar wells, for example. 
+on well id number), statements for inheriting or including other template files, conditionals and loops etc. This makes scg very flexible and we can, for example, easily handle SEPTIC configs with non-similar wells. 
+
 For further information, please take a look at the 
 [MiniJinja documentation](https://docs.rs/minijinja/latest/minijinja/). In particular:
-* [Syntax](https://docs.rs/minijinja/latest/minijinja/syntax/index.html)
-* [Filters](https://docs.rs/minijinja/latest/minijinja/filters/index.html)
-* [Tests](https://docs.rs/minijinja/latest/minijinja/tests/index.html)
+* [Syntax documentation](https://docs.rs/minijinja/latest/minijinja/syntax/index.html)
+* [Filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html)
+* [Test functions](https://docs.rs/minijinja/latest/minijinja/tests/index.html)
 
-### Custom keywords and functions
+### Custom keywords, filters and functions
 
-In addition to the filters and tests included with MiniJinja, some custom functionality has
-been added:
- - `{{  now() }} `: Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S"`. The format can be modified by providing an [strftime string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) as function argument to customize the datestamp, e.g. `now("%a %d %b %Y %H:%M:%S")` to get `Thu 23 feb 2023 14:18:12`. 
- - `{{ gitcommit }}`: Global variable that inserts the GIT commit hash on short form.
- - `{{ gitcommitlong }}`: Global variable that inserts the GIT commit hash on long form.
- - `{{ scgversion }}`: Global variable that inserts the SCG version used to create the output file.
- - 
-Try adding the following line at the top of the first template file:
+In addition to the built-in [filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html#built-in-filters) and [global functions](https://docs.rs/minijinja/latest/minijinja/functions/index.html#functions) in MiniJinja, some custom functionality has been added.
 
-```
-// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }} 
-```
+#### `now()`
+Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S"`. The format can be modified by providing an [strftime string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) as function argument to customize the datestamp
+
+Examples: <br />
+`{{ now() }}` -> 2023-02-23 14:18:12 <br />
+`{{ now("%a %d %b %Y %H:%M:%S") }}` -> Thu 23 feb 2023 14:18:12
+
+#### `gitcommit`
+Global variable that inserts the Git commit hash on short form.
+
+Example: <br />
+`{{ gitcommit }}` -> 714e102
+
+#### `gitcommitlong`
+Global variable that inserts the Git commit hash on long form.
+
+Example: <br />
+`{{ gitcommitlong }}` -> 714e10261b59baf4a0257700f57c5e36a6e8c6c3
+
+#### `scgversion`
+Global variable that inserts the SCG version used to create the output file.
+
+Example: <br />
+`{{ scgversion }}` -> 2.2.1
+
+Try for example to add the following line at the top of the first template file:<br />
+`// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
+
+#### `bitmask`
+Filter that converts an integer or a sequence of integers into a bitmask. Takes an optional argument that is the length of the bitmask.
+
+Examples:<br />
+`{{ 2 | bitmask }}` -> `0000000000000000000000000000010`<br />
+`{{ [1, 3, 31] | bitmask }}` -> `1000000000000000000000000000101`<br />
+`{{ [1, 3] | bitmask(5) }}` -> `00101`
+
+
+
 
