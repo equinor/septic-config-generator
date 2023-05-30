@@ -10,9 +10,6 @@ use std::path::PathBuf;
 const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
-    let mask_length = length.unwrap_or(31);
-    let mut mask = vec!['0'; mask_length];
-
     let value = match value.kind() {
         ValueKind::Number => Value::from(vec![value]),
         ValueKind::Seq => value,
@@ -23,6 +20,9 @@ fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
             ))
         }
     };
+    let length = length.unwrap_or(31);
+
+    let mut mask = vec!['0'; length];
     for elem in value.as_seq().unwrap().iter() {
         let pos = usize::try_from(elem).map_err(|_| {
             Error::new(
@@ -30,15 +30,16 @@ fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
                 "input value must be a sequence of integers or an integer",
             )
         })?;
-        if pos <= mask_length {
-            mask[mask_length - pos] = '1';
+        if pos <= length {
+            mask[length - pos] = '1';
         } else {
             return Err(Error::new(
                 ErrorKind::InvalidOperation,
-                format!("value is larger than mask size ({} > {})", pos, mask_length),
+                format!("value is larger than mask size ({} > {})", pos, length),
             ));
         }
     }
+
     Ok(mask.into_iter().collect())
 }
 
