@@ -1,4 +1,5 @@
 use chrono::Local;
+use minijinja::value::{Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind, Source};
 use serde::Serialize;
 use std::fs::File;
@@ -7,6 +8,40 @@ use std::path::Path;
 use std::path::PathBuf;
 
 const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
+    let value = match value.kind() {
+        ValueKind::Number => Value::from(vec![value]),
+        ValueKind::Seq => value,
+        _ => {
+            return Err(Error::new(
+                ErrorKind::InvalidOperation,
+                "input value must be a sequence of integers or an integer",
+            ))
+        }
+    };
+    let length = length.unwrap_or(31);
+
+    let mut mask = vec!['0'; length];
+    for elem in value.as_seq().unwrap().iter() {
+        let pos = usize::try_from(elem).map_err(|_| {
+            Error::new(
+                ErrorKind::InvalidOperation,
+                "input value must be a sequence of integers or an integer",
+            )
+        })?;
+        if pos <= length {
+            mask[length - pos] = '1';
+        } else {
+            return Err(Error::new(
+                ErrorKind::InvalidOperation,
+                format!("value is larger than mask size ({} > {})", pos, length),
+            ));
+        }
+    }
+
+    Ok(mask.into_iter().collect())
+}
 
 fn timestamp(format: Option<&str>) -> String {
     let fmt = format.unwrap_or("%Y-%m-%d %H:%M:%S");
@@ -33,7 +68,7 @@ fn erroring_formatter(
     out: &mut minijinja::Output,
     state: &minijinja::State,
     value: &minijinja::value::Value,
-) -> Result<(), minijinja::Error> {
+) -> Result<(), Error> {
     // A crude way to stop execution when a variable is undefined.
     if value.is_undefined() {
         return Err(Error::from(ErrorKind::UndefinedError));
@@ -86,6 +121,7 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_global("gitcommit", gitcommit(false));
         renderer.env.add_global("gitcommitlong", gitcommit(true));
         renderer.env.add_function("now", timestamp);
+        renderer.env.add_filter("bitmask", bitmask);
         renderer.env.set_formatter(erroring_formatter);
 
         let local_template_path = template_path.to_path_buf();
@@ -154,5 +190,17 @@ mod tests {
         let result = gitcommit(false);
         let re = Regex::new(r"^\w{7}$").unwrap();
         assert!(re.is_match(&result));
+    }
+
+    #[test]
+    fn test_customfunction_bitmask_integer() {
+        let result = bitmask(Value::from(1), Some(31)).unwrap();
+        assert!(result == "0000000000000000000000000000001");
+        let result = bitmask(Value::from(31), Some(31)).unwrap();
+        assert!(result == "1000000000000000000000000000000");
+        let result = bitmask(Value::from(vec![1, 3, 31]), Some(31)).unwrap();
+        assert!(result == "1000000000000000000000000000101");
+        let result = bitmask(Value::from(vec![1, 3]), Some(5)).unwrap();
+        assert!(result == "00101");
     }
 }
