@@ -120,7 +120,6 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_global("gitcommit", gitcommit(false));
         renderer.env.add_global("gitcommitlong", gitcommit(true));
         renderer.env.add_function("now", timestamp);
-        renderer.env.add_function("bitmask", bitmask);
         renderer.env.add_filter("bitmask", bitmask);
         renderer.env.set_formatter(erroring_formatter);
 
