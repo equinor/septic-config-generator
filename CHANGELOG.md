@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.3.0](https://github.com/equinor/septic-config-generator/compare/v2.2.1...v2.3.0) (2023-05-31)
+
+
+### ✨ Features
+
+* add bitmask() filter function ([#97](https://github.com/equinor/septic-config-generator/issues/97)) ([308550b](https://github.com/equinor/septic-config-generator/commit/308550b557d8757a481415f4cd30fee6296aa8b1))
+
+
+### 🧹 Chores
+
+* **deps:** bump chrono from 0.4.24 to 0.4.25 ([#99](https://github.com/equinor/septic-config-generator/issues/99)) ([83e90b5](https://github.com/equinor/septic-config-generator/commit/83e90b5605601e9a4635fe79f6ca218639885016))
+* **deps:** bump clap from 4.1.8 to 4.3.0 ([#96](https://github.com/equinor/septic-config-generator/issues/96)) ([97e7de6](https://github.com/equinor/septic-config-generator/commit/97e7de6f072fd36aa4ed1bcb4408dfa7ce300e07))
+* **deps:** bump regex from 1.7.1 to 1.8.3 ([#98](https://github.com/equinor/septic-config-generator/issues/98)) ([6a1db7a](https://github.com/equinor/septic-config-generator/commit/6a1db7aaf36b2d3e51bb8b5af74f017a4a5917c1))
+* **deps:** bump serde_yaml from 0.9.19 to 0.9.21 ([#82](https://github.com/equinor/septic-config-generator/issues/82)) ([9ec4599](https://github.com/equinor/septic-config-generator/commit/9ec459929f0e508f94b394f291e5f6a91aac53ee))
+* **deps:** bump tempfile from 3.4.0 to 3.5.0 ([#81](https://github.com/equinor/septic-config-generator/issues/81)) ([05930a0](https://github.com/equinor/septic-config-generator/commit/05930a08b4f4d479d9a75622a46c795402e285dc))
+
+
+### 📚 Documentation
+
+* update documentation for 2.3.0 ([#100](https://github.com/equinor/septic-config-generator/issues/100)) ([3669c7d](https://github.com/equinor/septic-config-generator/commit/3669c7df5cf770aa5e7e32a4411a747cba54f89f))
+
 ## [2.2.1](https://github.com/equinor/septic-config-generator/compare/v2.2.0...v2.2.1) (2023-04-25)
 
 
