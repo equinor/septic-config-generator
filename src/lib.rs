@@ -367,7 +367,15 @@ fn check_outfile(rundir: &Path) -> Result<Vec<String>, Box<dyn Error>> {
             match pathvec.len() {
                 0 => return Err(format!("No .out file found in {:?}", &rundir).into()),
                 1 => {
-                    let regex_set = RegexSet::new([r"string1", r"string2"]).unwrap();
+                    let regex_set = RegexSet::new([
+                        r".*ERROR.*",
+                        r"^\*\*\ ILLEGAL",
+                        r"WARNING",
+                        r".*MISSING",
+                        r"No Xvr match",
+                        r"No matching XVR found",
+                    ])
+                    .unwrap();
                     let file_name = &pathvec[0];
                     let file = fs::File::open(file_name)?;
                     let reader = BufReader::new(file);
