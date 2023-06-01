@@ -193,9 +193,7 @@ mod tests {
     }
 
     #[test]
-    fn test_customfunction_bitmask_integer() {
-        let result = bitmask(Value::from(0), Some(31)).unwrap();
-        assert!(result == "0000000000000000000000000000000");
+    fn test_customfunction_bitmask_integer_valid() {
         let result = bitmask(Value::from(1), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000001");
         let result = bitmask(Value::from(31), Some(31)).unwrap();
@@ -205,12 +203,48 @@ mod tests {
     }
 
     #[test]
-    fn test_customfunction_bitmask_sequence() {
+    fn test_customfunction_bitmask_integer_oor() {
+        let result = bitmask(Value::from(-1), Some(31));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("input value must be "));
+        let result = bitmask(Value::from(0), Some(31)).unwrap();
+        assert!(result == "0000000000000000000000000000000");
+        let result = bitmask(Value::from(32), Some(31));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("value is larger than"));
+    }
+
+    #[test]
+    fn test_customfunction_bitmask_sequence_valid() {
         let result = bitmask(Value::from(vec![0, 1, 3]), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000101");
         let result = bitmask(Value::from(vec![1, 3, 31]), Some(31)).unwrap();
         assert!(result == "1000000000000000000000000000101");
         let result = bitmask(Value::from(vec![1, 3]), Some(5)).unwrap();
         assert!(result == "00101");
+    }
+
+    #[test]
+    fn test_customfunction_bitmask_sequence_oor() {
+        let result = bitmask(Value::from(vec![-1, 1, 3]), Some(31));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("input value must be "));
+        let result = bitmask(Value::from(vec![0, 1, 3]), Some(31)).unwrap();
+        assert!(result == "0000000000000000000000000000101");
+        let result = bitmask(Value::from(vec![1, 3, 32]), Some(31));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("value is larger than"));
     }
 }
