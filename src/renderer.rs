@@ -30,9 +30,9 @@ fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
                 "input value must be a sequence of integers or an integer",
             )
         })?;
-        if pos <= length {
+        if (1..=length).contains(&pos) {
             mask[length - pos] = '1';
-        } else {
+        } else if pos > length {
             return Err(Error::new(
                 ErrorKind::InvalidOperation,
                 format!("value is larger than mask size ({} > {})", pos, length),
@@ -194,10 +194,20 @@ mod tests {
 
     #[test]
     fn test_customfunction_bitmask_integer() {
+        let result = bitmask(Value::from(0), Some(31)).unwrap();
+        assert!(result == "0000000000000000000000000000000");
         let result = bitmask(Value::from(1), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000001");
         let result = bitmask(Value::from(31), Some(31)).unwrap();
         assert!(result == "1000000000000000000000000000000");
+        let result = bitmask(Value::from(vec![3]), Some(5)).unwrap();
+        assert!(result == "00100");
+    }
+
+    #[test]
+    fn test_customfunction_bitmask_sequence() {
+        let result = bitmask(Value::from(vec![0, 1, 3]), Some(31)).unwrap();
+        assert!(result == "0000000000000000000000000000101");
         let result = bitmask(Value::from(vec![1, 3, 31]), Some(31)).unwrap();
         assert!(result == "1000000000000000000000000000101");
         let result = bitmask(Value::from(vec![1, 3]), Some(5)).unwrap();
