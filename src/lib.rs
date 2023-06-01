@@ -359,49 +359,42 @@ fn check_cncfile(_rundir: &Path) -> bool {
 }
 
 fn check_outfile(rundir: &Path) -> Result<Vec<String>, Box<dyn Error>> {
-    let entries = glob(rundir.join("*.out").to_str().unwrap());
-    let mut result: Vec<String> = Vec::new();
-    match entries {
-        Ok(paths) => {
-            let pathvec: Vec<PathBuf> = paths.filter_map(Result::ok).collect();
-            match pathvec.len() {
-                0 => return Err(format!("No .out file found in {:?}", &rundir).into()),
-                1 => {
-                    let regex_set = RegexSet::new([
-                        r".*ERROR.*",
-                        r"^\*\*\ ILLEGAL",
-                        r"WARNING",
-                        r".*MISSING",
-                        r"No Xvr match",
-                        r"No matching XVR found",
-                    ])
-                    .unwrap();
-                    let file_name = &pathvec[0];
-                    let file = fs::File::open(file_name)?;
-                    let reader = BufReader::new(file);
-                    for (line_number, line) in reader.lines().enumerate() {
-                        let line = line?;
-                        let matches: Vec<_> = regex_set.matches(&line).into_iter().collect();
+    let entries = glob(rundir.join("*.out").to_str().unwrap())?;
+    let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
+    match pathvec.len() {
+        0 => Err(format!("No .out file found in {:?}", &rundir).into()),
+        1 => process_single_outfile(&pathvec[0]),
+        _ => Err(format!(
+            "More than one .out file found in {:?}: {:?}",
+            &rundir,
+            pathvec
+                .iter()
+                .map(|path| path.file_name().unwrap().to_string_lossy())
+                .collect::<Vec<_>>()
+        )
+        .into()),
+    }
+}
 
-                        if !matches.is_empty() {
-                            result.push(format!("{}: {}", line_number + 1, line));
-                        }
-                    }
-                }
-                _ => {
-                    let filenames: Vec<String> = pathvec
-                        .into_iter()
-                        .map(|path| path.file_name().unwrap().to_string_lossy().into_owned())
-                        .collect();
-                    return Err(format!(
-                        "More than one .out file found in {:?}: {:?}",
-                        &rundir, &filenames
-                    )
-                    .into());
-                }
-            }
+fn process_single_outfile(file_name: &Path) -> Result<Vec<String>, Box<dyn Error>> {
+    let regex_set = RegexSet::new([
+        r".*ERROR.*",
+        r"^\*\*\ ILLEGAL",
+        r"WARNING",
+        r".*MISSING",
+        r"No Xvr match",
+        r"No matching XVR found",
+    ])?;
+    let file = fs::File::open(file_name)?;
+    let reader = BufReader::new(file);
+    let mut result: Vec<String> = Vec::new();
+    for (line_number, line) in reader.lines().enumerate() {
+        let line = line?;
+        let matches: Vec<_> = regex_set.matches(&line).into_iter().collect();
+
+        if !matches.is_empty() {
+            result.push(format!("{}: {}", line_number + 1, line));
         }
-        Err(_) => todo!(),
     }
     Ok(result)
 }
