@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/equinor/septic-config-generator/compare/v2.3.0...v2.3.1) (2023-06-01)
+
+
+### 🐛 Bug Fixes
+
+* bitmask handles input value 0 ([#105](https://github.com/equinor/septic-config-generator/issues/105)) ([d0671cb](https://github.com/equinor/septic-config-generator/commit/d0671cbcfbecbdbbdd8077456c3ed8b9bbada41e))
+
 ## [2.3.0](https://github.com/equinor/septic-config-generator/compare/v2.2.1...v2.3.0) (2023-05-31)
 
 
