@@ -378,12 +378,14 @@ fn check_outfile(rundir: &Path) -> Result<Vec<String>, Box<dyn Error>> {
 
 fn process_single_outfile(file_name: &Path) -> Result<Vec<String>, Box<dyn Error>> {
     let regex_set = RegexSet::new([
-        r".*ERROR.*",
-        r"^\*\*\ ILLEGAL",
+        r"ERROR",
         r"WARNING",
-        r".*MISSING",
-        r"No Xvr match",
-        r"No matching XVR found",
+        r"ILLEGAL",
+        r"MISSING",
+        r"FMU error:",
+        r"^No Xvr match",
+        r"^No matching XVR found for SopcEvr",
+        r"INFO:",
     ])?;
     let file = fs::File::open(file_name)?;
     let reader = BufReader::new(file);
@@ -733,6 +735,6 @@ mod tests {
     #[test]
     fn test_check_outfile() {
         let result = check_outfile(Path::new(r"tests/testdata/rundir/"));
-        assert!(result.unwrap().len() == 1);
+        assert!(result.unwrap().len() == 27);
     }
 }

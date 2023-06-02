@@ -1,1 +1,32 @@
-something ERROR somethingelse
+// A selection of messages that should (?) be reported by check
+QP WARNING = 
+SQP WARNING =
+WARNING, avoid 
+WARNING, duplicate Xvr name found
+***WARNING*** : 
+Thu Jun  1 08:08:09 2023 N = 10: Calc WARNING
+WARNING: Type mismatch between SopcEvr: TestTvr and Xvr: TestTvr" 
+** WARNING: MULTIPLE models for SmpcAppl
+10: MVR TestMvr VALIDATION WARNING: 
+** ILLEGAL object type
+** ILLEGAL keyword
+
+10: FMU error: Could not get initial inputs
+10: FMU error: Could not get outputs 
+ERROR: Backup cnfg save failed at startup 
+** 'cvpred()' CALC ERROR: missing parameter
+Thu Jun  1 08:08:09 2023 N = 10: Calc ERROR TestCalc.Alg=
+** CALC ERROR for CalcPvr 'TestPvr.member'
+** CNFG ERROR missing/wring list for
+** FATAL ERROR, program will terminate: Missing model for SmpcAppl **
+
+** MISSING appl for SopcProc: TestSopcProc  **
+ ** MISSING appl for OPCProc: TestOPCProc  **
+** MISSING CalcModl for CalcPvr TestPvr **
+MISSING 'models' directory
+
+INFO: Validation tag is missing from SopcSampleTvrs!
+Thu Jun  1 08:08:09 2023 INFO: MODL message with unknown key at end
+
+No Xvr match for Pvr TestPvr
+No matching XVR found for SopcEvr: TestEvr
