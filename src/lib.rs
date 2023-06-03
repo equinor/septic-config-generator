@@ -377,19 +377,21 @@ fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>
     } else {
         rundir.to_owned()
     };
+    let regex_set = RegexSet::new([r"ERROR", r"UNABLE to connect"])?;
+
     let entries = glob(rundir.join("*.cnc").to_str().unwrap())?;
     let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
     match pathvec.len() {
         0 => Err(format!("No .cnc file found in {:?}", &rundir).into()),
         1 => {
             let path = pathvec[0].clone();
-            let lines = process_single_cncfile(&path)?;
+            let lines = process_single_startlog(&path, &regex_set)?;
             Ok((path, lines))
         }
         _ => {
             if let Some(newest_file) = get_newest_file(&pathvec) {
                 let path = newest_file.clone();
-                let lines = process_single_cncfile(&path)?;
+                let lines = process_single_startlog(&path, &regex_set)?;
                 Ok((path, lines))
             } else {
                 Err(format!("Failed to identify the newest .cnc file in {:?}", rundir).into())
@@ -398,8 +400,10 @@ fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>
     }
 }
 
-fn process_single_cncfile(file_name: &Path) -> Result<Vec<String>, Box<dyn Error>> {
-    let regex_set = RegexSet::new([r"ERROR", r"UNABLE to connect"])?;
+fn process_single_startlog(
+    file_name: &Path,
+    regex_set: &RegexSet,
+) -> Result<Vec<String>, Box<dyn Error>> {
     let file = fs::File::open(file_name)?;
     let reader = BufReader::new(file);
     let mut result: Vec<String> = Vec::new();
@@ -415,13 +419,23 @@ fn process_single_cncfile(file_name: &Path) -> Result<Vec<String>, Box<dyn Error
 }
 
 fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>> {
+    let regex_set = RegexSet::new([
+        r"ERROR",
+        r"WARNING",
+        r"ILLEGAL",
+        r"MISSING",
+        r"FMU error:",
+        r"^No Xvr match",
+        r"^No matching XVR found for SopcEvr",
+        r"INFO:",
+    ])?;
     let entries = glob(rundir.join("*.out").to_str().unwrap())?;
     let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
     match pathvec.len() {
         0 => Err(format!("No .out file found in {:?}", &rundir).into()),
         1 => {
             let path = pathvec[0].clone();
-            let lines = process_single_outfile(&path)?;
+            let lines = process_single_startlog(&path, &regex_set)?;
             Ok((path, lines))
         }
         _ => Err(format!(
@@ -436,44 +450,22 @@ fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>
     }
 }
 
-fn process_single_outfile(file_name: &Path) -> Result<Vec<String>, Box<dyn Error>> {
-    let regex_set = RegexSet::new([
-        r"ERROR",
-        r"WARNING",
-        r"ILLEGAL",
-        r"MISSING",
-        r"FMU error:",
-        r"^No Xvr match",
-        r"^No matching XVR found for SopcEvr",
-        r"INFO:",
-    ])?;
-    let file = fs::File::open(file_name)?;
-    let reader = BufReader::new(file);
-    let mut result: Vec<String> = Vec::new();
-    for (line_number, line) in reader.lines().enumerate() {
-        let line = line?;
-        let matches: Vec<_> = regex_set.matches(&line).into_iter().collect();
-
-        if !matches.is_empty() {
-            result.push(format!("[{}]: {}", line_number + 1, line));
-        }
-    }
-    Ok(result)
-}
-
 pub fn cmd_check(rundir: PathBuf) {
-    let (file, lines) = check_outfile(&rundir).unwrap();
-    let file = file.file_name().unwrap().to_str().unwrap();
+    let check_functions = [check_outfile, check_cncfile];
 
-    for line in &lines {
-        println!("{file} {line}");
-    }
-
-    let (file, lines) = check_cncfile(&rundir).unwrap();
-    let file = file.file_name().unwrap().to_str().unwrap();
-
-    for line in &lines {
-        println!("{file} {line}");
+    for check_fn in &check_functions {
+        match check_fn(&rundir) {
+            Ok((file, lines)) => {
+                let file_name = file.file_name().unwrap().to_str().unwrap();
+                for line in &lines {
+                    println!("{file_name} {line}");
+                }
+            }
+            Err(err) => {
+                eprintln!("Error checking file: {}", err);
+                process::exit(1);
+            }
+        }
     }
 }
 
