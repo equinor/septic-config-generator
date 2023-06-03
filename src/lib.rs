@@ -19,7 +19,6 @@ pub mod args;
 pub mod config;
 pub mod datasource;
 pub mod renderer;
-use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum CtxErrorType {
@@ -371,7 +370,7 @@ fn get_newest_file(files: &[PathBuf]) -> Option<&PathBuf> {
     newest_file
 }
 
-fn check_cncfile(rundir: &Path) -> Result<(Arc<PathBuf>, Vec<String>), Box<dyn Error>> {
+fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>> {
     let startlogs_dir = rundir.join("startlogs");
     let rundir = if startlogs_dir.exists() && startlogs_dir.is_dir() {
         startlogs_dir
@@ -383,13 +382,13 @@ fn check_cncfile(rundir: &Path) -> Result<(Arc<PathBuf>, Vec<String>), Box<dyn E
     match pathvec.len() {
         0 => Err(format!("No .cnc file found in {:?}", &rundir).into()),
         1 => {
-            let path = Arc::new(pathvec[0].clone());
+            let path = pathvec[0].clone();
             let lines = process_single_cncfile(&path)?;
             Ok((path, lines))
         }
         _ => {
             if let Some(newest_file) = get_newest_file(&pathvec) {
-                let path = Arc::new(newest_file.clone());
+                let path = newest_file.clone();
                 let lines = process_single_cncfile(&path)?;
                 Ok((path, lines))
             } else {
@@ -415,14 +414,13 @@ fn process_single_cncfile(file_name: &Path) -> Result<Vec<String>, Box<dyn Error
     Ok(result)
 }
 
-fn check_outfile(rundir: &Path) -> Result<(Arc<PathBuf>, Vec<String>), Box<dyn Error>> {
+fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>> {
     let entries = glob(rundir.join("*.out").to_str().unwrap())?;
     let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
     match pathvec.len() {
         0 => Err(format!("No .out file found in {:?}", &rundir).into()),
         1 => {
-            // TODO: Is it really necessary to use Arc etc here?
-            let path = Arc::new(pathvec[0].clone());
+            let path = pathvec[0].clone();
             let lines = process_single_outfile(&path)?;
             Ok((path, lines))
         }
@@ -465,7 +463,6 @@ fn process_single_outfile(file_name: &Path) -> Result<Vec<String>, Box<dyn Error
 
 pub fn cmd_check(rundir: PathBuf) {
     let (file, lines) = check_outfile(&rundir).unwrap();
-    let file = Arc::try_unwrap(file).unwrap();
     let file = file.file_name().unwrap().to_str().unwrap();
 
     for line in &lines {
@@ -473,7 +470,6 @@ pub fn cmd_check(rundir: PathBuf) {
     }
 
     let (file, lines) = check_cncfile(&rundir).unwrap();
-    let file = Arc::try_unwrap(file).unwrap();
     let file = file.file_name().unwrap().to_str().unwrap();
 
     for line in &lines {
@@ -806,7 +802,6 @@ mod tests {
     fn test_check_outfile() {
         let rundir = r"tests/testdata/rundir/";
         let (file, lines) = check_outfile(Path::new(rundir)).unwrap();
-        let file = Arc::try_unwrap(file).unwrap();
         assert_eq!(file, PathBuf::from(rundir.to_owned() + "septic.out"));
         assert_eq!(lines.len(), 27);
     }
@@ -814,7 +809,6 @@ mod tests {
     fn test_check_cncfile() {
         let rundir = r"tests/testdata/rundir/";
         let (file, lines) = check_cncfile(Path::new(rundir)).unwrap();
-        let file = Arc::try_unwrap(file).unwrap();
         assert_eq!(file, PathBuf::from(rundir.to_owned() + "septic.cnc"));
         assert_eq!(lines.len(), 2);
     }
