@@ -370,6 +370,38 @@ fn get_newest_file(files: &[PathBuf]) -> Option<&PathBuf> {
     newest_file
 }
 
+fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>> {
+    let regex_set = RegexSet::new([
+        r"ERROR",
+        r"WARNING",
+        r"ILLEGAL",
+        r"MISSING",
+        r"FMU error:",
+        r"^No Xvr match",
+        r"^No matching XVR found for SopcEvr",
+        r"INFO:",
+    ])?;
+    let entries = glob(rundir.join("*.out").to_str().unwrap())?;
+    let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
+    let path = match pathvec.len() {
+        0 => return Err(format!("No .out file found in {:?}", &rundir).into()),
+        1 => pathvec[0].clone(),
+        _ => {
+            return Err(format!(
+                "More than one .out file found in {:?}: {:?}",
+                &rundir,
+                pathvec
+                    .iter()
+                    .map(|path| path.file_name().unwrap().to_string_lossy())
+                    .collect::<Vec<_>>()
+            )
+            .into())
+        }
+    };
+    let lines = process_single_startlog(&path, &regex_set)?;
+    Ok((path, lines))
+}
+
 fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>> {
     let startlogs_dir = rundir.join("startlogs");
     let rundir = if startlogs_dir.exists() && startlogs_dir.is_dir() {
@@ -381,23 +413,22 @@ fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>
 
     let entries = glob(rundir.join("*.cnc").to_str().unwrap())?;
     let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
-    match pathvec.len() {
-        0 => Err(format!("No .cnc file found in {:?}", &rundir).into()),
-        1 => {
-            let path = pathvec[0].clone();
-            let lines = process_single_startlog(&path, &regex_set)?;
-            Ok((path, lines))
-        }
+    let path = match pathvec.len() {
+        0 => return Err(format!("No .cnc file found in {:?}", &rundir).into()),
+        1 => pathvec[0].clone(),
         _ => {
             if let Some(newest_file) = get_newest_file(&pathvec) {
-                let path = newest_file.clone();
-                let lines = process_single_startlog(&path, &regex_set)?;
-                Ok((path, lines))
+                newest_file.clone()
             } else {
-                Err(format!("Failed to identify the newest .cnc file in {:?}", rundir).into())
+                return Err(
+                    format!("Failed to identify the newest .cnc file in {:?}", rundir).into(),
+                );
             }
         }
-    }
+    };
+
+    let lines = process_single_startlog(&path, &regex_set)?;
+    Ok((path, lines))
 }
 
 fn process_single_startlog(
@@ -416,38 +447,6 @@ fn process_single_startlog(
         }
     }
     Ok(result)
-}
-
-fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>> {
-    let regex_set = RegexSet::new([
-        r"ERROR",
-        r"WARNING",
-        r"ILLEGAL",
-        r"MISSING",
-        r"FMU error:",
-        r"^No Xvr match",
-        r"^No matching XVR found for SopcEvr",
-        r"INFO:",
-    ])?;
-    let entries = glob(rundir.join("*.out").to_str().unwrap())?;
-    let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
-    match pathvec.len() {
-        0 => Err(format!("No .out file found in {:?}", &rundir).into()),
-        1 => {
-            let path = pathvec[0].clone();
-            let lines = process_single_startlog(&path, &regex_set)?;
-            Ok((path, lines))
-        }
-        _ => Err(format!(
-            "More than one .out file found in {:?}: {:?}",
-            &rundir,
-            pathvec
-                .iter()
-                .map(|path| path.file_name().unwrap().to_string_lossy())
-                .collect::<Vec<_>>()
-        )
-        .into()),
-    }
 }
 
 pub fn cmd_check(rundir: PathBuf) {
