@@ -460,7 +460,7 @@ fn process_single_startlog(
     Ok(result)
 }
 
-pub fn cmd_check(rundir: PathBuf) {
+pub fn cmd_check_logs(rundir: PathBuf) {
     let check_functions = [check_outfile, check_cncfile];
 
     for check_fn in &check_functions {
