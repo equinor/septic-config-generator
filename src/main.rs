@@ -1,5 +1,5 @@
 use clap::Parser;
-use septic_config_generator::{args, cmd_diff, cmd_make};
+use septic_config_generator::{args, cmd_check_logs, cmd_diff, cmd_make};
 
 fn main() {
     let args = args::Cli::parse();
@@ -14,6 +14,9 @@ fn main() {
         }
         args::Commands::Diff(diff_args) => {
             cmd_diff(&diff_args.file1, &diff_args.file2);
+        }
+        args::Commands::Checklogs(check_args) => {
+            cmd_check_logs(check_args.rundir);
         }
     }
 }
