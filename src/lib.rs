@@ -1,5 +1,6 @@
 use crate::config::Config;
 use crate::renderer::MiniJinja;
+use colored::*;
 use datasource::DataSourceRows;
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
@@ -19,6 +20,12 @@ pub mod args;
 pub mod config;
 pub mod datasource;
 pub mod renderer;
+
+#[derive(Debug)]
+struct ErrorLine {
+    line_num: u32,
+    content: String,
+}
 
 #[derive(Debug)]
 pub enum CtxErrorType {
@@ -370,7 +377,7 @@ fn get_newest_file(files: &[PathBuf]) -> Option<&PathBuf> {
     newest_file
 }
 
-fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>> {
+fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>), Box<dyn Error>> {
     let regex_set = RegexSet::new([
         r"ERROR",
         r"WARNING",
@@ -402,7 +409,7 @@ fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>
     Ok((path, lines))
 }
 
-fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>> {
+fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>), Box<dyn Error>> {
     let startlogs_dir = rundir.join("startlogs");
     let rundir = if startlogs_dir.exists() && startlogs_dir.is_dir() {
         startlogs_dir
@@ -434,16 +441,20 @@ fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<String>), Box<dyn Error>
 fn process_single_startlog(
     file_name: &Path,
     regex_set: &RegexSet,
-) -> Result<Vec<String>, Box<dyn Error>> {
+) -> Result<Vec<ErrorLine>, Box<dyn Error>> {
     let file = fs::File::open(file_name)?;
     let reader = BufReader::new(file);
-    let mut result: Vec<String> = Vec::new();
+    let mut result: Vec<ErrorLine> = Vec::new();
     for (line_number, line) in reader.lines().enumerate() {
         let line = line?;
         let matches: Vec<_> = regex_set.matches(&line).into_iter().collect();
 
         if !matches.is_empty() {
-            result.push(format!("[{}]: {}", line_number + 1, line));
+            let error_line = ErrorLine {
+                line_num: line_number as u32 + 1,
+                content: line,
+            };
+            result.push(error_line);
         }
     }
     Ok(result)
@@ -457,7 +468,13 @@ pub fn cmd_check(rundir: PathBuf) {
             Ok((file, lines)) => {
                 let file_name = file.file_name().unwrap().to_str().unwrap();
                 for line in &lines {
-                    println!("{file_name} {line}");
+                    let line_num = format!("[{}]", line.line_num);
+                    println!(
+                        "{}{}: {}",
+                        file_name.bright_green(),
+                        line_num.bright_green(),
+                        line.content.red()
+                    );
                 }
             }
             Err(err) => {
