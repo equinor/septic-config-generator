@@ -352,10 +352,60 @@ pub fn cmd_diff(file1: &Path, file2: &Path) {
     print!("{}", f.fmt_patch(&diff));
 }
 
-fn check_cncfile(_rundir: &Path) -> bool {
-    // check for existence of startlogs directory and change rootdir accordingly
-    // Find newest cnc file
-    true
+fn get_newest_file(files: &[PathBuf]) -> Option<&PathBuf> {
+    let mut newest_file: Option<&PathBuf> = None;
+    let mut newest_time: Option<std::time::SystemTime> = None;
+
+    for file in files {
+        if let Ok(metadata) = fs::metadata(file) {
+            if let Ok(modified_time) = metadata.modified() {
+                if newest_time.is_none() || modified_time > newest_time.unwrap() {
+                    newest_file = Some(file);
+                    newest_time = Some(modified_time);
+                }
+            }
+        }
+    }
+
+    newest_file
+}
+
+fn check_cncfile(rundir: &Path) -> Result<Vec<String>, Box<dyn Error>> {
+    let startlogs_dir = rundir.join("startlogs");
+    let rundir = if startlogs_dir.exists() && startlogs_dir.is_dir() {
+        startlogs_dir
+    } else {
+        rundir.to_owned()
+    };
+    let entries = glob(rundir.join("*.cnc").to_str().unwrap())?;
+    let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
+    match pathvec.len() {
+        0 => Err(format!("No .cnc file found in {:?}", &rundir).into()),
+        1 => process_single_cncfile(&pathvec[0]),
+        _ => {
+            if let Some(newest_file) = get_newest_file(&pathvec) {
+                process_single_cncfile(newest_file)
+            } else {
+                Err(format!("Failed to identify the newest .cnc file in {:?}", rundir).into())
+            }
+        }
+    }
+}
+
+fn process_single_cncfile(file_name: &Path) -> Result<Vec<String>, Box<dyn Error>> {
+    let regex_set = RegexSet::new([r"ERROR", r"UNABLE to connect"])?;
+    let file = fs::File::open(file_name)?;
+    let reader = BufReader::new(file);
+    let mut result: Vec<String> = Vec::new();
+    for (line_number, line) in reader.lines().enumerate() {
+        let line = line?;
+        let matches: Vec<_> = regex_set.matches(&line).into_iter().collect();
+
+        if !matches.is_empty() {
+            result.push(format!("{}: {}", line_number + 1, line));
+        }
+    }
+    Ok(result)
 }
 
 fn check_outfile(rundir: &Path) -> Result<Vec<String>, Box<dyn Error>> {
@@ -408,7 +458,10 @@ pub fn cmd_check(rundir: PathBuf) {
         println!("{line}");
     }
 
-    check_cncfile(&rundir);
+    let results = check_cncfile(&rundir).unwrap();
+    for line in results.iter() {
+        println!("{line}");
+    }
 }
 
 #[cfg(test)]
