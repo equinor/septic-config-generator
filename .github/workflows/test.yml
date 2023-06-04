@@ -20,14 +20,11 @@ jobs:
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "pr"
 
       - name: Install nextest
-        uses: taiki-e/install-action@nextest
-
-      - name: 🛠️ Run cargo build
-        run: cargo build --verbose
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
 
       - name: 🧪 Run cargo test
         run: cargo nextest run --profile ci
@@ -53,8 +50,6 @@ jobs:
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "pr"
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
