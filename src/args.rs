@@ -14,6 +14,8 @@ pub enum Commands {
     Make(MakeArguments),
     /// Show difference between two text files
     Diff(DiffArguments),
+    /// Check septic .out and .cnc files for error messages
+    Checklogs(ChecklogsArguments),
 }
 
 #[derive(Parser, Debug)]
@@ -38,4 +40,13 @@ pub struct MakeArguments {
 pub struct DiffArguments {
     pub file1: PathBuf,
     pub file2: PathBuf,
+}
+
+#[derive(Parser, Debug)]
+pub struct ChecklogsArguments {
+    #[arg(
+        value_name = "RUNDIR",
+        help = "The SEPTIC rundir to search for outfiles"
+    )]
+    pub rundir: PathBuf,
 }
