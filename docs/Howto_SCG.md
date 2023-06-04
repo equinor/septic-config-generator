@@ -47,7 +47,7 @@ somewhere in your path.
 
 The tool has three commands (or modes of operation):
  - make: Generate complete config file based on templates
- - checklogs: Inspect SEPTIC log files and reports errors. *(Added in 2.4)*
+ - checklogs: Inspect SEPTIC log files and report errors. *(Added in 2.4)*
  - diff: Simple utility to show difference between two files.
 
 Type `scg.exe --help` to get basic help information for the tool. You can also get help
