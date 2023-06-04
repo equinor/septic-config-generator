@@ -20,8 +20,6 @@ jobs:
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "pr"
 
       - name: Install nextest
         uses: taiki-e/install-action@nextest
@@ -53,8 +51,6 @@ jobs:
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "pr"
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov

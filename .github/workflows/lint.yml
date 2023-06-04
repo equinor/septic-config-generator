@@ -24,8 +24,6 @@ jobs:
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: "pr"
 
       - name: ✨ Run cargo fmt
         run: cargo fmt --all -- --check
