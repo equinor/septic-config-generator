@@ -22,10 +22,9 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Install nextest
-        uses: taiki-e/install-action@nextest
-
-      # - name: 🛠️ Run cargo build
-      #   run: cargo build --verbose
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
 
       - name: 🧪 Run cargo test
         run: cargo nextest run --profile ci
