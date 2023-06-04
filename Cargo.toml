@@ -8,8 +8,9 @@ publish = false
 build = "build.rs"
 
 [package.metadata.winresource]
-LegalCopyRight="Copyright © Equinor ASA 2023"
-FileDescription="SEPTIC config generator"
+FileDescription = "SEPTIC config generator"
+OriginalFilename = "scg.exe"
+LegalCopyright = "Copyright © Equinor ASA 2023"
 
 [[bin]]
 name = "scg"
