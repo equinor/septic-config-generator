@@ -45,16 +45,17 @@ somewhere in your path.
 
 ## Basic usage
 
-The tool has two commands (or modes of operation):
+The tool has three commands (or modes of operation):
  - make: Generate complete config file based on templates
- - diff: Simple utility to show difference between two files.  
+ - checklogs: Inspect SEPTIC log files and reports errors. *(Added in 2.4)*
+ - diff: Simple utility to show difference between two files.
 
 Type `scg.exe --help` to get basic help information for the tool. You can also get help
 for each command, e.g. `scg.exe make --help` .
 
 ### scg make
 
-This command is used to generate an outputfile based on a configuration layout `.yaml` file. The exit status is 0 if a file was output, 1 if no file was output and 2 if there was an error.
+This command is used to generate an output file based on a configuration layout `.yaml` file. The exit status is 0 if a file was output, 1 if no file was output and 2 if there was an error.
 
 `--var`: Used to add global variables that are available to all templates in the layout. Example:
 ```scg.exe make --var final true``` will create a variable called `final` with the boolean value `true`.
@@ -67,6 +68,16 @@ This makes it possible to kill and restart applications only when their config f
 > scg make --ifchanged MyApplication.yaml && taskkill /IM QtSeptic.exe /FI "WINDOWTITLE eq MyApplication*" > nul 2>&1
 ```
 Here the taskkill command will only be executed if the exit status from scg is 0, which means that the config file was updated.
+
+### scg checklogs
+
+This command is used to inspect the .out-file and the newest (by timestamp) .cnc-file in the specified run directory and report any error or warning found. It will search for the .cnc file inside the `startlogs` directory if it exists in the run directory.
+
+```bat
+> scg checklogs ..\run_main
+MYAPP.out[21]: No Xvr match for Pvr TestPvr
+MYAPP.cnc[51]: ERROR adding Item: SomeTag
+```
 
 ## Howto
 
@@ -306,7 +317,7 @@ Try for example to add the following line at the top of the first template file:
 `// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
 
 #### `bitmask`
-Filter that converts an integer or a sequence of integers into a bitmask. Takes an optional argument that is the length of the bitmask (defaults to 31).
+Filter that converts a non-negative integer or a sequence of non-negative integers into a bitmask. Each integer will be translated into a 1 in the bitmask that is otherwise 0. Takes an optional argument that is the length of the bitmask (defaults to 31).
 
 Examples:<br />
 `{{ 2 | bitmask }}` -> `0000000000000000000000000000010`<br />
