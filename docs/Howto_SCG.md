@@ -71,12 +71,12 @@ Here the taskkill command will only be executed if the exit status from scg is 0
 
 ### scg checklogs
 
-This command is used to inspect the `.out`-file and the newest (by timestamp) `.cnc`-file in the specified run directory and report any error or warning found. If the run directory contains a `startlogs` directory (in use since SEPTIC v2.84), it will be searched for `.cnc` files.
+This command is used to inspect the `.out`-file and the newest (by timestamp) `.cnc`-file in the specified run directory and report any error or warning found. If the run directory contains a `startlogs` directory (in use since SEPTIC v2.85), it will be searched for `.cnc` files.
 
 ```bat
 > scg checklogs ..\run_main
 MYAPP.out[21]: No Xvr match for Pvr TestPvr
-MYAPP.cnc[51]: ERROR adding Item: SomeTag
+MYAPP_20230601_1415.cnc[51]: ERROR adding Item: SomeTag
 ```
 
 ## Howto
