@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::renderer::MiniJinja;
 use colored::*;
-use datasource::DataSourceRows;
+use datasource::{DataSourceReader, DataSourceRows, ExcelSourceReader};
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
 use regex::RegexSet;
@@ -121,16 +121,6 @@ fn read_config(cfg_file: &Path) -> Result<(Config, PathBuf), Box<dyn Error>> {
     let cfg = Config::new(cfg_file)?;
 
     Ok((cfg, relative_root))
-}
-
-fn read_source_data(
-    source: &config::Source,
-    relative_root: &Path,
-) -> Result<DataSourceRows, Box<dyn Error>> {
-    let path = relative_root.join(&source.filename);
-    let source_data = datasource::read(&path, &source.sheet)?;
-
-    Ok(source_data)
 }
 
 fn render_template(
@@ -268,7 +258,9 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         .sources
         .iter()
         .map(|source| {
-            let source_data = read_source_data(source, &relative_root).unwrap_or_else(|e| {
+            let reader =
+                ExcelSourceReader::new(&source.filename, &relative_root, Some(&source.sheet));
+            let source_data = reader.read().unwrap_or_else(|e| {
                 eprintln!("Problem reading source file '{}': {e}", source.filename);
                 process::exit(2);
             });
@@ -499,6 +491,31 @@ mod tests {
     use std::fs::File;
     use tempfile::tempdir;
 
+    fn get_all_source_data() -> HashMap<String, DataSourceRows> {
+        let mut all_source_data: HashMap<String, DataSourceRows> = HashMap::new();
+        let source_main = config::Source {
+            filename: "test.xlsx".to_string(),
+            id: "main".to_string(),
+            sheet: "Normals".to_string(),
+        };
+        let source_errors = config::Source {
+            filename: "test.xlsx".to_string(),
+            id: "errors".to_string(),
+            sheet: "Specials".to_string(),
+        };
+        for source in [source_main, source_errors] {
+            let reader = ExcelSourceReader::new(
+                &source.filename,
+                Path::new("tests/testdata/"),
+                Some(&source.sheet),
+            );
+
+            let source_data = reader.read().unwrap();
+            all_source_data.insert(source.id.to_string(), source_data);
+        }
+        all_source_data
+    }
+
     #[test]
     fn test_ensure_has_extension() {
         let before = Path::new("file.extension");
@@ -547,8 +564,9 @@ mod tests {
             sheet: String::from("mysheet"),
         };
 
-        let relative_root = Path::new("./");
-        let result = read_source_data(&source, relative_root);
+        let reader = ExcelSourceReader::new(&source.filename, Path::new("./"), Some(&source.sheet));
+
+        let result = reader.read();
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("(os error 2"),);
     }
@@ -561,32 +579,18 @@ mod tests {
             sheet: String::from("nonexistent_sheet"),
         };
 
-        let relative_root = Path::new("tests/testdata");
-        let result = read_source_data(&source, relative_root);
+        let reader = ExcelSourceReader::new(
+            &source.filename,
+            Path::new("tests/testdata"),
+            Some(&source.sheet),
+        );
+
+        let result = reader.read();
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
             .to_string()
             .contains("Cannot find sheet"));
-    }
-
-    fn get_all_source_data() -> HashMap<String, DataSourceRows> {
-        let mut all_source_data: HashMap<String, DataSourceRows> = HashMap::new();
-        let source_main = config::Source {
-            filename: "test.xlsx".to_string(),
-            id: "main".to_string(),
-            sheet: "Normals".to_string(),
-        };
-        let source_errors = config::Source {
-            filename: "test.xlsx".to_string(),
-            id: "errors".to_string(),
-            sheet: "Specials".to_string(),
-        };
-        for source in [source_main, source_errors] {
-            let source_data = read_source_data(&source, Path::new("tests/testdata/")).unwrap();
-            all_source_data.insert(source.id.to_string(), source_data);
-        }
-        all_source_data
     }
 
     #[test]
