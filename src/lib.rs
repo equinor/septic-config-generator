@@ -1,7 +1,7 @@
 use crate::config::Config;
 use crate::renderer::MiniJinja;
 use colored::*;
-use datasource::{DataSourceReader, DataSourceRows, ExcelSourceReader};
+use datasource::{CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader};
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
 use regex::RegexSet;
@@ -252,8 +252,29 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         .sources
         .iter()
         .map(|source| {
-            let reader =
-                ExcelSourceReader::new(&source.filename, &relative_root, source.sheet.as_deref());
+            let reader = match Path::new(&source.filename).extension() {
+                Some(ext) if ext == "xlsx" => {
+                    let reader = ExcelSourceReader::new(
+                        &source.filename,
+                        &relative_root,
+                        source.sheet.as_deref(),
+                    );
+                    Box::new(reader) as Box<dyn DataSourceReader>
+                }
+                Some(ext) if ext == "csv" => {
+                    let delimiter = source.delimiter.unwrap_or(';');
+                    let reader =
+                        CsvSourceReader::new(&source.filename, &relative_root, Some(delimiter));
+                    Box::new(reader) as Box<dyn DataSourceReader>
+                }
+                _ => {
+                    eprintln!(
+                        "Unsupported file extension for source file '{}'",
+                        source.filename
+                    );
+                    process::exit(2);
+                }
+            };
             let source_data = reader.read().unwrap_or_else(|e| {
                 eprintln!("Problem reading source file '{}': {e}", source.filename);
                 process::exit(2);
