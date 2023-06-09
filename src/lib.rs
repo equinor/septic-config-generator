@@ -463,6 +463,8 @@ fn process_single_startlog(
 pub fn cmd_check_logs(rundir: PathBuf) {
     let check_functions = [check_outfile, check_cncfile];
 
+    let mut found_warnings = false;
+
     for check_fn in &check_functions {
         match check_fn(&rundir) {
             Ok((file, lines)) => {
@@ -476,12 +478,16 @@ pub fn cmd_check_logs(rundir: PathBuf) {
                         line.content.red()
                     );
                 }
+                found_warnings = true;
             }
             Err(err) => {
                 eprintln!("Error checking file: {}", err);
-                process::exit(1);
+                process::exit(2);
             }
         }
+    }
+    if found_warnings {
+        process::exit(1);
     }
 }
 
