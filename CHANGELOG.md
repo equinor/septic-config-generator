@@ -1,5 +1,39 @@
 # Changelog
 
+## [2.4.0](https://github.com/equinor/septic-config-generator/compare/v2.3.1...v2.4.0) (2023-06-09)
+
+
+### 🧪 Tests
+
+* better tests for bitmask() ([#107](https://github.com/equinor/septic-config-generator/issues/107)) ([da13074](https://github.com/equinor/septic-config-generator/commit/da13074a8d78d0bb7201ceffe1aa59b0b4cbc873))
+
+
+### 👷 CI/CD
+
+* caching in GitHub workflows not working properly ([4b6e695](https://github.com/equinor/septic-config-generator/commit/4b6e695a155d524b60d83f93939f26d607bdbc60))
+
+
+### ✨ Features
+
+* add command 'checklogs' ([#61](https://github.com/equinor/septic-config-generator/issues/61)) ([d38f5ac](https://github.com/equinor/septic-config-generator/commit/d38f5ac41240bfc268dbad05a29f27a42baf7569))
+* embed Windows metadata ([#90](https://github.com/equinor/septic-config-generator/issues/90)) ([8b578f9](https://github.com/equinor/septic-config-generator/commit/8b578f9c0c3a65edb7136c9c28e157cf4385bc87))
+
+
+### 🐛 Bug Fixes
+
+* checklogs exit w/code 1 on match, 2 on error ([#117](https://github.com/equinor/septic-config-generator/issues/117)) ([515f010](https://github.com/equinor/septic-config-generator/commit/515f010d9900f7ffa1fd086420181fb18ba66b9a))
+* potential segfault in the time crate [RUSTSEC-2020-0071] ([#109](https://github.com/equinor/septic-config-generator/issues/109)) ([752c85d](https://github.com/equinor/septic-config-generator/commit/752c85dd96b2879a7024f046897074b09a55a5aa))
+
+
+### 📚 Documentation
+
+* update documentation for 2.4.0 ([#114](https://github.com/equinor/septic-config-generator/issues/114)) ([ff847ea](https://github.com/equinor/septic-config-generator/commit/ff847ea2eabb31bab53d46e68a59e6e79a77f6a1))
+
+
+### 🧹 Chores
+
+* **deps:** bump clap from 4.3.0 to 4.3.1 ([#115](https://github.com/equinor/septic-config-generator/issues/115)) ([dead684](https://github.com/equinor/septic-config-generator/commit/dead68482353372977533f68ef7654b1ed007cef))
+
 ## [2.3.1](https://github.com/equinor/septic-config-generator/compare/v2.3.0...v2.3.1) (2023-06-01)
 
 
