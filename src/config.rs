@@ -9,6 +9,7 @@ const fn _default_true() -> bool {
 }
 
 #[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Config {
     pub outputfile: Option<String>,
     pub templatepath: String,
@@ -74,6 +75,7 @@ fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
 }
 
 #[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Source {
     pub filename: String,
     pub id: String,
@@ -82,6 +84,7 @@ pub struct Source {
 }
 
 #[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Template {
     pub name: String,
     pub source: Option<String>,
