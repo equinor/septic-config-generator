@@ -200,6 +200,39 @@ key2;value2;2.2;2;2"#;
         assert_eq!(values.get("mix"), Some(&CtxDataType::Int(2)));
     }
 
+
+    #[test]
+    fn test_csvsource_empty_cell_is_empty() {
+        let csv_content = r#"keys;header1;header2;header3
+    key1;value1;;value3"#;
+        let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file, "{}", csv_content).unwrap();
+
+        let reader = CsvSourceReader::new(
+            tmp_file.path().to_str().unwrap(),
+            std::path::Path::new(""),
+            Some(';'),
+        );
+
+        let result = reader.read();
+
+        assert!(result.is_ok());
+
+        let data = result.unwrap();
+        assert_eq!(data.len(), 1);
+
+        let (_, values) = &data[0];
+        assert_eq!(
+            values.get("header1"),
+            Some(&CtxDataType::String("value1".to_string()))
+        );
+        assert_eq!(values.get("header2"), Some(&CtxDataType::Empty));
+        assert_eq!(
+            values.get("header3"),
+            Some(&CtxDataType::String("value3".to_string()))
+        );
+    }
+
     #[test]
     fn test_read_source_file_does_not_exist() {
         let reader =
