@@ -259,7 +259,7 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         .iter()
         .map(|source| {
             let reader =
-                ExcelSourceReader::new(&source.filename, &relative_root, Some(&source.sheet));
+                ExcelSourceReader::new(&source.filename, &relative_root, source.sheet.as_deref());
             let source_data = reader.read().unwrap_or_else(|e| {
                 eprintln!("Problem reading source file '{}': {e}", source.filename);
                 process::exit(2);
@@ -496,18 +496,18 @@ mod tests {
         let source_main = config::Source {
             filename: "test.xlsx".to_string(),
             id: "main".to_string(),
-            sheet: "Normals".to_string(),
+            sheet: Some("Normals".to_string()),
         };
         let source_errors = config::Source {
             filename: "test.xlsx".to_string(),
             id: "errors".to_string(),
-            sheet: "Specials".to_string(),
+            sheet: Some("Specials".to_string()),
         };
         for source in [source_main, source_errors] {
             let reader = ExcelSourceReader::new(
                 &source.filename,
                 Path::new("tests/testdata/"),
-                Some(&source.sheet),
+                source.sheet.as_deref(),
             );
 
             let source_data = reader.read().unwrap();
@@ -561,10 +561,11 @@ mod tests {
         let source = config::Source {
             filename: String::from("nonexistent_file.xlsx"),
             id: String::from("myid"),
-            sheet: String::from("mysheet"),
+            sheet: Some(String::from("mysheet")),
         };
 
-        let reader = ExcelSourceReader::new(&source.filename, Path::new("./"), Some(&source.sheet));
+        let reader =
+            ExcelSourceReader::new(&source.filename, Path::new("./"), source.sheet.as_deref());
 
         let result = reader.read();
         assert!(result.is_err());
@@ -576,13 +577,13 @@ mod tests {
         let source = config::Source {
             filename: String::from("test.xlsx"),
             id: String::from("myid"),
-            sheet: String::from("nonexistent_sheet"),
+            sheet: Some(String::from("nonexistent_sheet")),
         };
 
         let reader = ExcelSourceReader::new(
             &source.filename,
             Path::new("tests/testdata"),
-            Some(&source.sheet),
+            source.sheet.as_deref(),
         );
 
         let result = reader.read();

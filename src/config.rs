@@ -33,7 +33,7 @@ impl Config {
 pub struct Source {
     pub filename: String,
     pub id: String,
-    pub sheet: String,
+    pub sheet: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Default)]
