@@ -158,7 +158,7 @@ mod tests {
     use std::io::Write;
 
     #[test]
-    fn test_csv_source_reader() {
+    fn test_csvsource_parses_textfloatint() {
         let csv_content = r#"keys;text;float;int;mix
 key1;value1;1.1;1;1.0
 # Ignore this line
@@ -179,8 +179,8 @@ key2;value2;2.2;2;2"#;
         let data = result.unwrap();
         assert_eq!(data.len(), 2);
 
-        let (header, values) = &data[0];
-        assert_eq!(header, "key1");
+        let (key, values) = &data[0];
+        assert_eq!(key, "key1");
         assert_eq!(
             values.get("text"),
             Some(&CtxDataType::String("value1".to_string()))
@@ -189,8 +189,8 @@ key2;value2;2.2;2;2"#;
         assert_eq!(values.get("int"), Some(&CtxDataType::Int(1)));
         assert_eq!(values.get("mix"), Some(&CtxDataType::Float(1.0)));
 
-        let (header, values) = &data[1];
-        assert_eq!(header, "key2");
+        let (key, values) = &data[1];
+        assert_eq!(key, "key2");
         assert_eq!(
             values.get("text"),
             Some(&CtxDataType::String("value2".to_string()))
@@ -231,6 +231,29 @@ key2;value2;2.2;2;2"#;
             values.get("header3"),
             Some(&CtxDataType::String("value3".to_string()))
         );
+    }
+
+    #[test]
+    fn test_csvsource_error_on_invalid_row() {
+        let csv_content = r#"keys;header1;header2
+key1;value1a;value1b
+key2;value2a"#;
+        let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file, "{}", csv_content).unwrap();
+
+        let reader = CsvSourceReader::new(
+            tmp_file.path().to_str().unwrap(),
+            std::path::Path::new(""),
+            Some(';'),
+        );
+
+        let result = reader.read();
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("CSV error: record 2"));
     }
 
     #[test]
