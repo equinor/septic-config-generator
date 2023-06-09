@@ -1,4 +1,4 @@
-use crate::config::Config;
+use crate::config::{read_config, Config};
 use crate::renderer::MiniJinja;
 use colored::*;
 use datasource::{DataSourceReader, DataSourceRows, ExcelSourceReader};
@@ -114,13 +114,6 @@ fn ensure_has_extension(filename: &Path, extension: &str) -> PathBuf {
     }
 
     file
-}
-
-fn read_config(cfg_file: &Path) -> Result<(Config, PathBuf), Box<dyn Error>> {
-    let relative_root = PathBuf::from(cfg_file.parent().unwrap());
-    let cfg = Config::new(cfg_file)?;
-
-    Ok((cfg, relative_root))
 }
 
 fn render_template(
@@ -522,38 +515,6 @@ mod tests {
         assert_eq!(before, ensure_has_extension(before, "extension"));
         assert_eq!(before, ensure_has_extension(Path::new("file"), "extension"));
         assert!(ensure_has_extension(before, "other") == before);
-    }
-
-    #[test]
-    fn test_read_config_invalid_content() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.yaml");
-        let mut file = File::create(&file_path).unwrap();
-
-        // let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, "random").unwrap();
-        let result = read_config(&file_path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("invalid type"));
-    }
-    #[test]
-    fn test_read_config_invalid_yaml() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.yaml");
-        let mut file = File::create(&file_path).unwrap();
-
-        // let mut file = NamedTempFile::new().unwrap();
-        writeln!(file, "random: ").unwrap();
-        let result = read_config(&file_path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("missing field"));
-    }
-
-    #[test]
-    fn test_read_config_file_does_not_exist() {
-        let result = read_config(Path::new("nonexistent_file.yaml"));
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("(os error 2)"));
     }
 
     #[test]
