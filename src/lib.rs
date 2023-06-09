@@ -1,4 +1,4 @@
-use crate::config::{read_config, Config};
+use crate::config::Config;
 use crate::renderer::MiniJinja;
 use colored::*;
 use datasource::{DataSourceReader, DataSourceRows, ExcelSourceReader};
@@ -223,7 +223,8 @@ fn timestamps_newer_than(
 
 pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     let cfg_file = ensure_has_extension(cfg_file, "yaml");
-    let (cfg, relative_root) = read_config(&cfg_file).unwrap_or_else(|e| {
+    let relative_root = PathBuf::from(cfg_file.parent().unwrap());
+    let cfg = Config::new(&cfg_file).unwrap_or_else(|e| {
         eprintln!("Problem reading config file '{}: {e}", cfg_file.display());
         process::exit(2);
     });
@@ -490,11 +491,13 @@ mod tests {
             filename: "test.xlsx".to_string(),
             id: "main".to_string(),
             sheet: Some("Normals".to_string()),
+            ..Default::default()
         };
         let source_errors = config::Source {
             filename: "test.xlsx".to_string(),
             id: "errors".to_string(),
             sheet: Some("Specials".to_string()),
+            ..Default::default()
         };
         for source in [source_main, source_errors] {
             let reader = ExcelSourceReader::new(
