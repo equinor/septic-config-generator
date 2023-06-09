@@ -71,7 +71,9 @@ Here the taskkill command will only be executed if the exit status from scg is 0
 
 ### scg checklogs
 
-This command is used to inspect the `.out`-file and the newest (by timestamp) `.cnc`-file in the specified run directory and report any error or warning found. If the run directory contains a `startlogs` directory (in use since SEPTIC v2.85), it will be searched for `.cnc` files.
+This command is used to inspect the `.out`-file and the newest (by timestamp) `.cnc`-file in the specified run directory and report any error or warning found. The exit status is 0 if everything went fine, 1 if one or more errors or warnings were found and 2 if the check encountered an error (e.g. unable to read a .out or .cnc file).
+
+If the run directory contains a `startlogs` directory (in use since SEPTIC v2.85), it will be searched for `.cnc` files.
 
 ```bat
 > scg checklogs ..\run_main
