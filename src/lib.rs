@@ -557,44 +557,6 @@ mod tests {
     }
 
     #[test]
-    fn test_read_source_file_does_not_exist() {
-        let source = config::Source {
-            filename: String::from("nonexistent_file.xlsx"),
-            id: String::from("myid"),
-            sheet: Some(String::from("mysheet")),
-        };
-
-        let reader =
-            ExcelSourceReader::new(&source.filename, Path::new("./"), source.sheet.as_deref());
-
-        let result = reader.read();
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("(os error 2"),);
-    }
-
-    #[test]
-    fn test_read_source_file_sheet_does_not_exist() {
-        let source = config::Source {
-            filename: String::from("test.xlsx"),
-            id: String::from("myid"),
-            sheet: Some(String::from("nonexistent_sheet")),
-        };
-
-        let reader = ExcelSourceReader::new(
-            &source.filename,
-            Path::new("tests/testdata"),
-            source.sheet.as_deref(),
-        );
-
-        let result = reader.read();
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Cannot find sheet"));
-    }
-
-    #[test]
     fn test_render_template_with_normals() {
         let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
         let template = config::Template {

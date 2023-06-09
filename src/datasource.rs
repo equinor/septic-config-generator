@@ -89,3 +89,34 @@ impl DataSourceReader for ExcelSourceReader {
         Ok(data)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_read_source_file_does_not_exist() {
+        let reader =
+            ExcelSourceReader::new("nonexistent_file.xlsx", Path::new("./"), Some("mysheet"));
+
+        let result = reader.read();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("(os error 2"),);
+    }
+
+    #[test]
+    fn test_read_source_file_sheet_does_not_exist() {
+        let reader = ExcelSourceReader::new(
+            "test.xlsx",
+            Path::new("tests/testdata"),
+            Some("nonexistent_sheet"),
+        );
+
+        let result = reader.read();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot find sheet"));
+    }
+}
