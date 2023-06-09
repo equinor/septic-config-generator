@@ -469,6 +469,9 @@ pub fn cmd_check_logs(rundir: PathBuf) {
         match check_fn(&rundir) {
             Ok((file, lines)) => {
                 let file_name = file.file_name().unwrap().to_str().unwrap();
+                if !lines.is_empty() {
+                    found_warnings = true;
+                }
                 for line in &lines {
                     let line_num = format!("[{}]", line.line_num);
                     println!(
@@ -478,7 +481,6 @@ pub fn cmd_check_logs(rundir: PathBuf) {
                         line.content.red()
                     );
                 }
-                found_warnings = true;
             }
             Err(err) => {
                 eprintln!("Error checking file: {}", err);
