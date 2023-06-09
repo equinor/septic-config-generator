@@ -127,17 +127,17 @@ mod tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("invalid type"));
     }
+
     #[test]
     fn test_read_config_invalid_yaml() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("test.yaml");
         let mut file = File::create(&file_path).unwrap();
 
-        // let mut file = NamedTempFile::new().unwrap();
         writeln!(file, "random: ").unwrap();
         let result = Config::new(&file_path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("missing field"));
+        assert!(result.unwrap_err().to_string().contains("unknown field"));
     }
 
     #[test]
