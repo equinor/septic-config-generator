@@ -27,7 +27,7 @@ struct ErrorLine {
     content: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CtxErrorType {
     /// Division by 0 error
     Div0,
@@ -47,7 +47,7 @@ pub enum CtxErrorType {
     GettingData,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CtxDataType {
     Int(i64),
     Float(f64),

@@ -1,5 +1,6 @@
 use crate::{CtxDataType, CtxErrorType};
 use calamine::{open_workbook, CellErrorType, DataType, Reader, Xlsx};
+use csv;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -9,6 +10,67 @@ pub trait DataSourceReader {
     fn read(&self) -> Result<DataSourceRows, Box<dyn Error>>;
 }
 
+#[derive(Debug, Default)]
+pub struct CsvSourceReader {
+    file_path: PathBuf,
+    delimiter: char,
+}
+
+impl CsvSourceReader {
+    pub fn new(file_name: &str, relative_root: &Path, delimiter: Option<char>) -> Self {
+        CsvSourceReader {
+            file_path: relative_root.join(file_name),
+            delimiter: delimiter.unwrap_or(';'),
+        }
+    }
+}
+
+impl DataSourceReader for CsvSourceReader {
+    fn read(&self) -> Result<DataSourceRows, Box<dyn Error>> {
+        let mut reader = csv::ReaderBuilder::new()
+            .delimiter(self.delimiter as u8)
+            .flexible(false)
+            .comment(Some(b'#'))
+            .from_path(&self.file_path)?;
+
+        let headers = reader.headers()?.clone();
+
+        let rows = reader
+            .records()
+            .enumerate()
+            .map(|(_, record_result)| {
+                let record =
+                    record_result.map_err(|e| format!("Error reading CSV record: {}", e))?;
+
+                let mut data = HashMap::new();
+                for (i, value) in record.iter().enumerate() {
+                    if let Some(header_field) = headers.get(i) {
+                        let converted_value = match value {
+                            "" => CtxDataType::Empty,
+                            _ => {
+                                if let Ok(int_value) = value.parse::<i64>() {
+                                    CtxDataType::Int(int_value)
+                                } else if let Ok(float_value) = value.parse::<f64>() {
+                                    CtxDataType::Float(float_value)
+                                } else if let Ok(bool_value) = value.parse::<bool>() {
+                                    CtxDataType::Bool(bool_value)
+                                } else {
+                                    CtxDataType::String(value.to_string())
+                                }
+                            }
+                        };
+                        data.insert(header_field.to_string(), converted_value);
+                    }
+                }
+                Ok::<_, Box<dyn Error>>((record[0].to_string(), data))
+            })
+            .collect::<Result<_, Box<dyn Error>>>()?;
+
+        Ok(rows)
+    }
+}
+
+#[derive(Debug)]
 pub struct ExcelSourceReader {
     file_path: PathBuf,
     sheet: Option<String>,
@@ -93,6 +155,50 @@ impl DataSourceReader for ExcelSourceReader {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn test_csv_source_reader() {
+        let csv_content = r#"keys;text;float;int;mix
+key1;value1;1.1;1;1.0
+# Ignore this line
+key2;value2;2.2;2;2"#;
+        let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file, "{}", csv_content).unwrap();
+
+        let reader = CsvSourceReader::new(
+            tmp_file.path().to_str().unwrap(),
+            std::path::Path::new(""),
+            Some(';'),
+        );
+
+        let result = reader.read();
+
+        assert!(result.is_ok());
+
+        let data = result.unwrap();
+        assert_eq!(data.len(), 2);
+
+        let (header, values) = &data[0];
+        assert_eq!(header, "key1");
+        assert_eq!(
+            values.get("text"),
+            Some(&CtxDataType::String("value1".to_string()))
+        );
+        assert_eq!(values.get("float"), Some(&CtxDataType::Float(1.1)));
+        assert_eq!(values.get("int"), Some(&CtxDataType::Int(1)));
+        assert_eq!(values.get("mix"), Some(&CtxDataType::Float(1.0)));
+
+        let (header, values) = &data[1];
+        assert_eq!(header, "key2");
+        assert_eq!(
+            values.get("text"),
+            Some(&CtxDataType::String("value2".to_string()))
+        );
+        assert_eq!(values.get("float"), Some(&CtxDataType::Float(2.2)));
+        assert_eq!(values.get("int"), Some(&CtxDataType::Int(2)));
+        assert_eq!(values.get("mix"), Some(&CtxDataType::Int(2)));
+    }
 
     #[test]
     fn test_read_source_file_does_not_exist() {
