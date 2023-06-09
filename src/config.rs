@@ -40,30 +40,24 @@ fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
     match extension {
         Some(ext) if ext == "xlsx" => {
             if source.sheet.is_none() {
-                return Err(format!(
-                    "missing field 'sheet' for .xlsx file with source id '{}'",
-                    source.id
-                )
-                .into());
+                return Err("missing field 'sheet' for .xlsx source".into());
             }
             if source.delimiter.is_some() {
-                return Err(format!(
-                    "field 'delimiter' cannot be specified for .xlsx file with source id '{}'",
-                    source.id
-                )
-                .into());
+                return Err("field 'delimiter' cannot be specified for .xlsx source".into());
+            }
+            if source.decimal_point.is_some() {
+                return Err("field 'decimal_point' invalid for .xlsx source".into());
             }
         }
         Some(ext) if ext == "csv" => {
             if source.sheet.is_some() {
-                return Err(format!(
-                    "field 'sheet' cannot be specified for .csv file with source id '{}'",
-                    source.id
-                )
-                .into());
+                return Err("field 'sheet' invalid for .csv source".into());
             }
             if source.delimiter.is_none() {
                 source.delimiter = Some(';');
+            }
+            if source.decimal_point.is_none() {
+                source.decimal_point = Some('.');
             }
         }
         _ => {
@@ -81,6 +75,7 @@ pub struct Source {
     pub id: String,
     pub sheet: Option<String>,
     pub delimiter: Option<char>,
+    pub decimal_point: Option<char>,
 }
 
 #[derive(Deserialize, Debug, Default)]
