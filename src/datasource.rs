@@ -1,6 +1,6 @@
 use crate::{CtxDataType, CtxErrorType};
 use calamine::{open_workbook, CellErrorType, DataType, Reader, Xlsx};
-use csv;
+use csv::{self, Trim};
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
@@ -31,6 +31,7 @@ impl DataSourceReader for CsvSourceReader {
             .delimiter(self.delimiter as u8)
             .flexible(false)
             .comment(Some(b'#'))
+            .trim(Trim::All)
             .from_path(&self.file_path)?;
 
         let headers = reader.headers()?.clone();
@@ -200,6 +201,68 @@ key2;value2;2.2;2;2"#;
         assert_eq!(values.get("mix"), Some(&CtxDataType::Int(2)));
     }
 
+    #[test]
+    fn test_csvsource_parses_textfloatint_when_padded() {
+        let csv_content = r#"keys ;  text   ;  float ; int  
+key1  ;   value1  ;    1.1 ; 1  "#;
+        let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file, "{}", csv_content).unwrap();
+
+        let reader = CsvSourceReader::new(
+            tmp_file.path().to_str().unwrap(),
+            std::path::Path::new(""),
+            Some(';'),
+        );
+
+        let result = reader.read();
+
+        assert!(result.is_ok());
+
+        let data = result.unwrap();
+        assert_eq!(data.len(), 1);
+
+        let (key, values) = &data[0];
+        assert_eq!(key, "key1");
+        assert_eq!(
+            values.get("text"),
+            Some(&CtxDataType::String("value1".to_string()))
+        );
+        assert_eq!(values.get("float"), Some(&CtxDataType::Float(1.1)));
+        assert_eq!(values.get("int"), Some(&CtxDataType::Int(1)));
+    }
+
+    // Currently doesn't distinguish between 1.234 and "1.234" and turn both into float,
+    // thus failing test.
+    //     #[test]
+    //     fn test_csvsource_quoted_number_is_text() {
+    //         let csv_content = r#"keys;text;textfloat;textint
+    // key1;value1;"1.234";1.234"#;
+
+    //         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
+    //         write!(tmp_file, "{}", csv_content).unwrap();
+
+    //         let reader = CsvSourceReader::new(
+    //             tmp_file.path().to_str().unwrap(),
+    //             std::path::Path::new(""),
+    //             Some(';'),
+    //         );
+
+    //         let result = reader.read();
+    //         assert!(result.is_ok());
+
+    //         let data = result.unwrap();
+    //         assert_eq!(data.len(), 1);
+
+    //         let (_, values) = &data[0];
+    //         assert_eq!(
+    //             values.get("textfloat"),
+    //             Some(&CtxDataType::String("1.234".to_string()))
+    //         );
+    //         assert_eq!(
+    //             values.get("textint"),
+    //             Some(&CtxDataType::String("1".to_string()))
+    //         );
+    //     }
 
     #[test]
     fn test_csvsource_empty_cell_is_empty() {
