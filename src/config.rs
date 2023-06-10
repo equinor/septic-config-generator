@@ -43,7 +43,7 @@ fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
                 return Err("missing field 'sheet' for .xlsx source".into());
             }
             if source.delimiter.is_some() {
-                return Err("field 'delimiter' cannot be specified for .xlsx source".into());
+                return Err("field 'delimiter' invalid for .xlsx source".into());
             }
             if source.decimal_point.is_some() {
                 return Err("field 'decimal_point' invalid for .xlsx source".into());
@@ -61,7 +61,7 @@ fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
             }
         }
         _ => {
-            return Err("Invalid file extension".into());
+            return Err(format!("Invalid file extension for source {}", source.filename).into());
         }
     }
 
@@ -111,12 +111,11 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn test_read_config_invalid_content() {
+    fn read_errors_on_invalid_content() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("test.yaml");
         let mut file = File::create(&file_path).unwrap();
 
-        // let mut file = NamedTempFile::new().unwrap();
         writeln!(file, "random").unwrap();
         let result = Config::new(&file_path);
         assert!(result.is_err());
@@ -124,7 +123,7 @@ mod tests {
     }
 
     #[test]
-    fn test_read_config_invalid_yaml() {
+    fn read_errors_on_invalid_yaml() {
         let dir = tempdir().unwrap();
         let file_path = dir.path().join("test.yaml");
         let mut file = File::create(&file_path).unwrap();
@@ -136,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    fn test_read_config_file_does_not_exist() {
+    fn read_errors_on_missing_config_file() {
         let result = Config::new(Path::new("nonexistent_file.yaml"));
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("(os error 2)"));

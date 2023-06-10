@@ -107,7 +107,7 @@ fn bubble_error(pretext: &str, err: Box<dyn Error>) {
     }
 }
 
-fn ensure_has_extension(filename: &Path, extension: &str) -> PathBuf {
+fn set_extension_if_missing(filename: &Path, extension: &str) -> PathBuf {
     let mut file = filename.to_path_buf();
     if file.extension().is_none() {
         file.set_extension(extension);
@@ -222,7 +222,7 @@ fn timestamps_newer_than(
 }
 
 pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
-    let cfg_file = ensure_has_extension(cfg_file, "yaml");
+    let cfg_file = set_extension_if_missing(cfg_file, "yaml");
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
     let cfg = Config::new(&cfg_file).unwrap_or_else(|e| {
         eprintln!("Problem reading config file '{}: {e}", cfg_file.display());
@@ -540,15 +540,18 @@ mod tests {
     }
 
     #[test]
-    fn test_ensure_has_extension() {
+    fn ensure_has_extension_works() {
         let before = Path::new("file.extension");
-        assert_eq!(before, ensure_has_extension(before, "extension"));
-        assert_eq!(before, ensure_has_extension(Path::new("file"), "extension"));
-        assert!(ensure_has_extension(before, "other") == before);
+        assert_eq!(before, set_extension_if_missing(before, "extension"));
+        assert_eq!(
+            before,
+            set_extension_if_missing(Path::new("file"), "extension")
+        );
+        assert!(set_extension_if_missing(before, "other") == before);
     }
 
     #[test]
-    fn test_render_template_with_normals() {
+    fn render_with_normal_values() {
         let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
         let template = config::Template {
             name: "01_normals.tmpl".to_string(),
@@ -567,7 +570,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_template_with_specials() {
+    fn render_with_special_values() {
         let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
         let template = config::Template {
             name: "02_specials.tmpl".to_string(),
@@ -586,7 +589,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_template_with_global() {
+    fn render_with_global_variables() {
         let globals = ["glob".to_string(), "globvalue".to_string()];
         let renderer = MiniJinja::new(&globals, Path::new("tests/testdata/templates/"));
         let template = config::Template {
@@ -600,7 +603,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_template_encoding() {
+    fn render_uses_latin1_encoding() {
         let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
         let template = config::Template {
             name: "06_encoding.tmpl".to_string(),
@@ -614,7 +617,7 @@ mod tests {
     }
 
     #[test]
-    fn test_render_template_adjustspacing() {
+    fn render_adjusts_spacing() {
         let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
         let template = config::Template {
             name: "00_plaintext.tmpl".to_string(),
@@ -630,7 +633,7 @@ mod tests {
     }
 
     #[test]
-    fn test_collect_file_list() {
+    fn collect_file_list_works() {
         let sources = vec![
             config::Source {
                 filename: "source1".to_string(),
@@ -685,7 +688,7 @@ mod tests {
     }
 
     #[test]
-    fn test_timestamps_newer_than() -> Result<(), Box<dyn Error>> {
+    fn timestamps_newer_than_works() -> Result<(), Box<dyn Error>> {
         let dir = tempdir()?;
 
         let file1_path = dir.path().join("file1.txt");
@@ -715,7 +718,7 @@ mod tests {
     }
 
     #[test]
-    fn test_timestamps_newer_than_file_outfile_not_exists() -> Result<(), Box<dyn Error>> {
+    fn timestamps_newer_than_errors_on_missing_outfile() -> Result<(), Box<dyn Error>> {
         let dir = tempdir()?;
         let file1_path = dir.path().join("file1.txt");
         let mut file1 = File::create(&file1_path)?;
@@ -730,7 +733,7 @@ mod tests {
     }
 
     #[test]
-    fn test_timestamps_newer_than_file_infile_not_exists() -> Result<(), Box<dyn Error>> {
+    fn timestamps_newer_than_errors_on_missing_infile() -> Result<(), Box<dyn Error>> {
         let dir = tempdir()?;
         let file1_path = dir.path().join("file1.txt");
 
@@ -745,7 +748,7 @@ mod tests {
     }
 
     #[test]
-    fn test_check_outfile_not_unique_file() {
+    fn check_outfile_errors_on_nonunique_file() {
         let dir = tempdir().unwrap();
 
         // With empty dir
@@ -773,14 +776,14 @@ mod tests {
     }
 
     #[test]
-    fn test_check_outfile() {
+    fn check_outfile_detects_all_known_warnings() {
         let rundir = r"tests/testdata/rundir/";
         let (file, lines) = check_outfile(Path::new(rundir)).unwrap();
         assert_eq!(file, PathBuf::from(rundir.to_owned() + "septic.out"));
         assert_eq!(lines.len(), 27);
     }
     #[test]
-    fn test_check_cncfile() {
+    fn check_cncfile_detects_all_known_warnings() {
         let rundir = r"tests/testdata/rundir/";
         let (file, lines) = check_cncfile(Path::new(rundir)).unwrap();
         assert_eq!(file, PathBuf::from(rundir.to_owned() + "septic.cnc"));

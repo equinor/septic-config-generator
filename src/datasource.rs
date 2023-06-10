@@ -176,12 +176,12 @@ impl DataSourceReader for ExcelSourceReader {
 }
 
 #[cfg(test)]
-mod tests {
+mod csvtests {
     use super::*;
     use std::io::Write;
 
     #[test]
-    fn test_csvsource_parses_textfloatint() {
+    fn csv_parses_text_float_int() {
         let csv_content = r#"keys;text;float;int;mix
 key1;value1;1.1;1;1.0
 # Ignore this line
@@ -225,7 +225,7 @@ key2;value2;2.2;2;2"#;
     }
 
     #[test]
-    fn test_csvsource_parses_textfloatint_when_padded() {
+    fn csv_parses_padded_text_float_int() {
         let csv_content = r#"keys ;  text   ;  float ; int  
 key1  ;   value1  ;    1.1 ; 1  "#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
@@ -257,39 +257,41 @@ key1  ;   value1  ;    1.1 ; 1  "#;
 
     // Currently doesn't distinguish between 1.234 and "1.234" and turn both into float,
     // thus failing test.
-    //     #[test]
-    //     fn test_csvsource_quoted_number_is_text() {
-    //         let csv_content = r#"keys;text;textfloat;textint
-    // key1;value1;"1.234";1.234"#;
+    #[test]
+    #[ignore]
+    fn csv_parses_quoted_number_as_text() {
+        let csv_content = r#"keys;text;textfloat;textint
+    key1;value1;"1.234";1.234"#;
 
-    //         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
-    //         write!(tmp_file, "{}", csv_content).unwrap();
+        let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file, "{}", csv_content).unwrap();
 
-    //         let reader = CsvSourceReader::new(
-    //             tmp_file.path().to_str().unwrap(),
-    //             std::path::Path::new(""),
-    //             Some(';'),
-    //         );
+        let reader = CsvSourceReader::new(
+            tmp_file.path().to_str().unwrap(),
+            std::path::Path::new(""),
+            Some(';'),
+            Some('.'),
+        );
 
-    //         let result = reader.read();
-    //         assert!(result.is_ok());
+        let result = reader.read();
+        assert!(result.is_ok());
 
-    //         let data = result.unwrap();
-    //         assert_eq!(data.len(), 1);
+        let data = result.unwrap();
+        assert_eq!(data.len(), 1);
 
-    //         let (_, values) = &data[0];
-    //         assert_eq!(
-    //             values.get("textfloat"),
-    //             Some(&CtxDataType::String("1.234".to_string()))
-    //         );
-    //         assert_eq!(
-    //             values.get("textint"),
-    //             Some(&CtxDataType::String("1".to_string()))
-    //         );
-    //     }
+        let (_, values) = &data[0];
+        assert_eq!(
+            values.get("textfloat"),
+            Some(&CtxDataType::String("1.234".to_string()))
+        );
+        assert_eq!(
+            values.get("textint"),
+            Some(&CtxDataType::String("1".to_string()))
+        );
+    }
 
     #[test]
-    fn test_csvsource_empty_cell_is_empty() {
+    fn csv_parses_empty_cell_as_empty() {
         let csv_content = r#"keys;header1;header2;header3
     key1;value1;;value3"#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
@@ -322,7 +324,7 @@ key1  ;   value1  ;    1.1 ; 1  "#;
     }
 
     #[test]
-    fn test_csvsource_error_on_invalid_row() {
+    fn csv_read_errors_on_invalid_row() {
         let csv_content = r#"keys;header1;header2
 key1;value1a;value1b
 key2;value2a"#;
@@ -346,33 +348,7 @@ key2;value2a"#;
     }
 
     #[test]
-    fn test_read_source_file_does_not_exist() {
-        let reader =
-            ExcelSourceReader::new("nonexistent_file.xlsx", Path::new("./"), Some("mysheet"));
-
-        let result = reader.read();
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("(os error 2"),);
-    }
-
-    #[test]
-    fn test_read_source_file_sheet_does_not_exist() {
-        let reader = ExcelSourceReader::new(
-            "test.xlsx",
-            Path::new("tests/testdata"),
-            Some("nonexistent_sheet"),
-        );
-
-        let result = reader.read();
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Cannot find sheet"));
-    }
-
-    #[test]
-    fn test_csvsource_require_first_column_string() {
+    fn csv_read_errors_on_first_column_not_string() {
         let csv_content = r#"keys;text;float;int
 key1;value1;1.1;1
 2;value2;2.2;2"#;
@@ -396,7 +372,7 @@ key1;value1;1.1;1
     }
 
     #[test]
-    fn test_csvsource_require_first_column_string_with_length() {
+    fn csv_read_errors_on_first_column_empty_string() {
         let csv_content = r#"keys;text;float;int
 key1;value1;1.1;1
   ;value2;2.2;2"#;
@@ -417,5 +393,36 @@ key1;value1;1.1;1
             .unwrap_err()
             .to_string()
             .contains("First column must contain strings only"));
+    }
+}
+
+#[cfg(test)]
+mod xlsxtests {
+    use super::*;
+
+    #[test]
+    fn xlsx_read_errors_on_missing_source_file() {
+        let reader =
+            ExcelSourceReader::new("nonexistent_file.xlsx", Path::new("./"), Some("mysheet"));
+
+        let result = reader.read();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("(os error 2"),);
+    }
+
+    #[test]
+    fn xlsx_read_errors_on_missing_sheet() {
+        let reader = ExcelSourceReader::new(
+            "test.xlsx",
+            Path::new("tests/testdata"),
+            Some("nonexistent_sheet"),
+        );
+
+        let result = reader.read();
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Cannot find sheet"));
     }
 }
