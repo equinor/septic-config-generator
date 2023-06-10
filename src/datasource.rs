@@ -74,9 +74,22 @@ impl DataSourceReader for CsvSourceReader {
                 }
                 Ok::<_, Box<dyn Error>>((record[0].to_string(), data))
             })
-            .collect::<Result<_, Box<dyn Error>>>()?;
+            .collect::<Result<Vec<_>, Box<dyn Error>>>();
 
-        Ok(rows)
+        let first_column_name = headers.get(0).map(ToString::to_string).unwrap_or_default();
+
+        if let Ok(rows) = &rows {
+            if rows.iter().any(|(column_name, data)| {
+                column_name != &first_column_name
+                    && match data.get(&first_column_name) {
+                        Some(CtxDataType::String(val)) => val.trim().is_empty(),
+                        _ => true,
+                    }
+            }) {
+                return Err("First column must contain strings only".into());
+            }
+        }
+        rows
     }
 }
 
@@ -356,5 +369,53 @@ key2;value2a"#;
             .unwrap_err()
             .to_string()
             .contains("Cannot find sheet"));
+    }
+
+    #[test]
+    fn test_csvsource_require_first_column_string() {
+        let csv_content = r#"keys;text;float;int
+key1;value1;1.1;1
+2;value2;2.2;2"#;
+        let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file, "{}", csv_content).unwrap();
+
+        let reader = CsvSourceReader::new(
+            tmp_file.path().to_str().unwrap(),
+            std::path::Path::new(""),
+            Some(';'),
+            Some('.'),
+        );
+
+        let result = reader.read();
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("First column must contain strings only"));
+    }
+
+    #[test]
+    fn test_csvsource_require_first_column_string_with_length() {
+        let csv_content = r#"keys;text;float;int
+key1;value1;1.1;1
+  ;value2;2.2;2"#;
+        let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file, "{}", csv_content).unwrap();
+
+        let reader = CsvSourceReader::new(
+            tmp_file.path().to_str().unwrap(),
+            std::path::Path::new(""),
+            Some(';'),
+            Some('.'),
+        );
+
+        let result = reader.read();
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("First column must contain strings only"));
     }
 }
