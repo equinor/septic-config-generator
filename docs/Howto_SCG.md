@@ -10,8 +10,8 @@ using 1.0 to 2.x, expect having to change a few lines in your templates and YAML
 ## About
 
 SEPTIC config generator (scg) is a tool to generate SEPTIC configs based on one or more templates files, one or more
-Excel-tables containing substitution values, and a config file that defines how the templates should be combined by
-inserting values from the Excel tables in uniquely identified locations.
+tables in Excel- or CSV format containing substitution values, and a config file that defines how the templates should
+be combined by inserting values from the Excel tables in uniquely identified locations.
 
 ## Introduction
 
@@ -111,7 +111,7 @@ Regarding file naming:
 - It is also a good idea, although not required, to indicate in the file names which of the files contain parameters to
   be substituted from a source file. In the example, those files end with `_well` .
 
-## The Excel file
+## The source file
 
 The file `example.xlsx` contains a single worksheet with a simple table. This is the file from which we will fetch
 values to insert into the templates.
@@ -166,7 +166,8 @@ remove one trailing newline from the end of the file automatically on parsing. I
 sure that there is exactly one newline after the last non-whitespace character in the template. This is `true` by
 default since that is probably what most people want.
 
-The next section defines an Excel file that shall be used to substitute values in the template files:
+The next section defines the source file(s) to be used for substituting values in the template files. In this example
+there is just one Excel file:
 
 ```yaml
 sources:
@@ -180,11 +181,25 @@ The path to the file is relative to the directory containing `example.yaml`.
 
 If there are other groups of elements that you wish to create templates and substitutions for, e.g. multiple flowlines
 or separator trains, or to distinguish between non-similar groups of wells such as production wells and injection wells,
-simply create another sheet (in the same or a new Excel sheet) and define the new source similarly with a unique id.
+simply create another sheet (in the same or a new Excel file) and define the new source similarly with a unique id.
+
+Starting with SCG v2.4 it is also possible to use CSV files as source. The advantage to using CSV files is that they are
+well suited for source control. The primary disadvantage is that they can only contain values, as opposed to Excel files
+that can include calculations and various advanced operations on values.
+
+To add a CSV source, use the following schema in the YAML config file:
+
+```yaml
+sources:
+  - filename: example.csv
+    id: main
+    delimiter: "," # Optional, default value is "."
+    decimal_point: "," # Optional, default value is "."
+```
 
 A template file can only use one source, so in some cases it may be necessary to repeat information on two or more
-sheets. To ensure consistency, it may be a good idea to maintain one set of values in one sheet and reference the
-corresponding cells from the other sheets.
+sources. If using Excel files, it may be a good idea to maintain one complete set of values in one sheet and reference
+the corresponding cells from the other sheets.
 
 Finally we have the layout definition:
 
