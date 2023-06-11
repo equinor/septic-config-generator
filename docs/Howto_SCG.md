@@ -1,4 +1,4 @@
-# SEPTIC config generator
+# SEPTIC config generator <!-- omit in toc -->
 
 This is the documentation for the Rust-based SCG 2.x. If you are looking for documentation for the legacy Python-based
 1.x version, please go [here](docs/HOWTO_SCG_legacy.md).
@@ -6,6 +6,31 @@ This is the documentation for the Rust-based SCG 2.x. If you are looking for doc
 Although the functionality of 2.x is quite similar to 1.0, there are some minor differences. When transitioning from
 using 1.0 to 2.x, expect having to change a few lines in your templates and YAML config file. The differences between
 1.0 and 2.0, and what you need to change, are documented [here](docs/Changes_1.0_2.0.md).
+
+## Table of contents <!-- omit in toc -->
+
+- [About](#about)
+- [Introduction](#introduction)
+- [Installation](#installation)
+- [Usage overview](#usage-overview)
+- [scg make](#scg-make)
+  - [The configuration file](#the-configuration-file)
+  - [Command-line options](#command-line-options)
+    - [`--var <name> <value>`](#--var-name-value)
+    - [`--ifchanged`](#--ifchanged)
+  - [The template engine](#the-template-engine)
+  - [Custom keywords, filters and functions](#custom-keywords-filters-and-functions)
+    - [`now()`](#now)
+    - [`gitcommit`](#gitcommit)
+    - [`gitcommitlong`](#gitcommitlong)
+    - [`scgversion`](#scgversion)
+    - [`bitmask`](#bitmask)
+- [scg checklogs](#scg-checklogs)
+- [Howto/tutorial](#howtotutorial)
+  - [The template files](#the-template-files)
+  - [The source file](#the-source-file)
+  - [The config file](#the-config-file)
+  - [Generate a config](#generate-a-config)
 
 ## About
 
@@ -37,7 +62,7 @@ identifier tags, this tool can recombine the templates into a fully working SEPT
 
 Download the latest version from the Releases-section on GitHub and extract scg.exe to somewhere in your path.
 
-## Basic usage
+## Usage overview
 
 The tool has three commands (or modes of operation):
 
@@ -48,16 +73,112 @@ The tool has three commands (or modes of operation):
 Type `scg.exe --help` to get basic help information for the tool. You can also get help for each command, e.g.
 `scg.exe make --help` .
 
-### scg make
+## scg make
 
-This command is used to generate an output file based on a configuration layout `.yaml` file. The exit status is 0 if a
-file was output, 1 if no file was output and 2 if there was an error.
+This command is used to generate an output file based on a configuration layout `.yaml` file.
 
-`--var` : Used to add global variables that are available to all templates in the layout. Example:
-`` `scg.exe make --var final true` `` will create a variable called `final` with the boolean value `true`.
+The exit status is 0 if a file was output, 1 if no file was output and 2 if there was an error.
 
-`--ifchanged` : _(Added in v2.2)_ If this argument is provided, the `outputfile` will only be built if at least one of
-the input files is newer than the `outputfile` .
+Example:<br /> `scg make MyApplication.yaml`
+
+### The configuration file
+
+SCG uses a configuration file in the YAML format to define its behavior. The configuration file should follow the format
+in the example below:
+
+```yaml
+outputfile: example.cnfg
+templatepath: templates
+adjustsspacing: true
+verifycontent: true
+sources:
+  - filename: example.xlsx
+    id: wells
+    sheet: Sheet1
+  - filename: example.csv
+    id: flowlines
+    delimiter: ";"
+    decimal_point: "."
+layout:
+  - name: 010_System.cnfg
+  - name: 020_SopcProc.cnfg
+  - name: 030_SopcProc_well.cnfg
+    source: wells
+    include:
+      - D01
+      - D02
+  - name: 040_SopcProc_flowline.cnfg
+    source: flowlines
+```
+
+- `outputfile` (optional string): The file that will be generated. Writes to stdout if not provided.
+- `templatepath` (string): The directory that contains all template files.
+- `adjustspacing` (boolean, default: true): Specifies whether to ensure exactly one newline between rendered template
+  files. If `false`, then the rendering will default to
+  [MiniJinja's behaviour](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#trailing-newlines).
+- `verifycontent` (boolean, default: true): Specifies whether to report differences from the previous to the newly
+  rendered outputfile before asking whether it is ok to replace the original. If you don't want to be bothered with this
+  question, you can set this value to `false`.
+- `sources` (list of `source` structs): Contains a list of source file configurations.
+- `layout` (list of `template` structs): Contains a list of templates in the order they should be rendered.
+
+All file names and paths are relative to the location of the configuration file.
+
+The `source` struct represents a file that is used for replacing values in the templates. The file can be either an
+Excel file or a CSV file (_since v2.5_), where the file type is identified by the extension (`.xlsx` or `.csv`).
+
+The advantage to using CSV files is that they are plain text files. This means they are well suited for source control.
+The primary disadvantage is that CSV files can only contain values, as opposed to Excel files that can include
+calculations and various advanced operations on values. Advanced users may consider generating CSV files by e.g.
+extracting information from Excel files or other sources.
+
+The structure has the following fields:
+
+- `id` (string): A unique id used to reference the source file from the layout section.
+- `filename` (string): The file name that contains the substitution values. The extension must be either `.xlsx` or
+  `.csv` _(since v2.5)_.
+- `sheet` (string): The name of the sheet where the substitution values are found. Only valid for Excel files.
+- `delimiter` (optional character, default: ';'): The delimiter character for CSV files.
+- `decimal_point` (optional character, default: '.'): The character used for separating integers from decimal values
+  when parsing values. Can be set to `,` for Norwegian number format. Only valid for CSV files.
+
+The `layout` section contains one or more `template` structs that each represent a template file and how it should be
+rendered to the `outputfile`. It has the following fields:
+
+- `name` (string): The name of the template file. It should be located in the directory pointed to by the `templatepath`
+  field.
+- `source` (optional string): If provided, will iterate over each row in the source file with the provided id and render
+  once per iteration.
+- `include` (optional list of strings): The template will be rendered only for the rows listed.
+- `exclude` (optional list of strings): The template will be rendered for all rows in the source file except those
+  listed.
+
+Combining `include` and `exclude` will render the template only for rows listed under `include` and not listed under
+`exclude`.
+
+The templates will be rendered in the order they are listed.
+
+### Command-line options
+
+#### `--var <name> <value>`
+
+Add a global variable that can be used by all templates in the layout. The value will be parsed to integer, float,
+boolean or string.
+
+Example:<br />
+
+```bat
+scg.exe make --var simulation true --var size 2.3 --var version 1.2.3 example.yaml
+```
+
+The value of `simulation` will be boolean `true`, `size` will be a float with value `2.3` while `version` will be a
+string with value `1.2.3`. The values can be used by inserting `{{ simulation }}` , `{{ size }}` and `{{ version }}` in
+template files.
+
+#### `--ifchanged`
+
+_(Added in v2.2)_ If this argument is provided, the `outputfile` will only be built if at least one of the input files
+is newer than the `outputfile` .
 
 Input files include the layout `.yaml` file itself, all files in the `templatepath` directory, including any
 subdirectories, and all source files listed under `sources`. This makes it possible to kill and restart applications
@@ -70,13 +191,77 @@ scg make --ifchanged MyApplication.yaml && taskkill /IM QtSeptic.exe /FI "WINDOW
 Here the taskkill command will only be executed if the exit status from scg is 0, which means that the config file was
 updated.
 
-### scg checklogs
+### The template engine
 
-This command is used to inspect the `.out` -file and the newest (by timestamp) `.cnc` -file in the specified run
-directory and report any error or warning found. The exit status is 0 if everything went fine, 1 if one or more errors
-or warnings were found and 2 if the check encountered an error (e.g. unable to read a .cnc or .out file).
+To fully make use of all the possibilities offered by `scg make`, it is important to understand a bit about the
+underlying mechanisms that are used. The parameter replacement performed by the `make` command uses the
+[MiniJinja](https://crates.io/crates/minijinja) Rust crate. MiniJinja is based on the
+[Jinja2](https://jinja.palletsprojects.com/) Python module which was used by scg 1.0. MiniJinja is a very powerful
+templating engine that can do lots more than simply replacing variable names with values. Some examples are expressions
+(e.g. calculate offsets for placing display elements based on well id number), statements for inheriting or including
+other template files, conditionals and loops etc. This makes scg very flexible. We can, for example, easily handle
+SEPTIC configs with non-similar wells by wrapping selected lines in conditionals.
 
-If the run directory contains a `startlogs` directory (in use since SEPTIC v2.85), it will be searched for `.cnc` files.
+For further information, please take a look at the
+[MiniJinja documentation](https://docs.rs/minijinja/latest/minijinja/). In particular:
+
+- [Syntax documentation](https://docs.rs/minijinja/latest/minijinja/syntax/index.html)
+- [Filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html)
+- [Test functions](https://docs.rs/minijinja/latest/minijinja/tests/index.html)
+
+### Custom keywords, filters and functions
+
+In addition to the built-in
+[filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html#built-in-filters) and
+[global functions](https://docs.rs/minijinja/latest/minijinja/functions/index.html#functions) in MiniJinja, some custom
+functionality has been added.
+
+#### `now()`
+
+Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S"`. The format can be customized by providing
+an [strftime string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) as function argument.
+
+Examples: <br /> `{{ now() }}` -> 2023-02-23 14:18:12 <br /> `{{ now("%a %d %b %Y %H:%M:%S") }}` -> Thu 23 feb 2023
+14:18:12
+
+#### `gitcommit`
+
+Global variable that inserts the Git commit hash on short form.
+
+Example: <br /> `{{ gitcommit }}` -> 714e102
+
+#### `gitcommitlong`
+
+Global variable that inserts the Git commit hash on long form.
+
+Example: <br /> `{{ gitcommitlong }}` -> 714e10261b59baf4a0257700f57c5e36a6e8c6c3
+
+#### `scgversion`
+
+Global variable that inserts the SCG version used to create the output file.
+
+Example: <br /> `{{ scgversion }}` -> 2.2.1
+
+Try for example to add the following line at the top of the first template file:<br />
+`// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
+
+#### `bitmask`
+
+Filter that converts a non-negative integer or a sequence of non-negative integers into a bitmask. Each integer will be
+translated into a 1 in the bitmask that is otherwise 0. Takes an optional argument that is the length of the bitmask
+(defaults to 31, the number of available groups).
+
+Examples:<br /> `{{ 2 | bitmask }}` -> `0000000000000000000000000000010` <br /> `{{ [1, 3, 31] | bitmask }}` ->
+`1000000000000000000000000000101` <br /> `{{ [1, 3] | bitmask(5) }}` -> `00101`
+
+## scg checklogs
+
+This command is used to inspect the `.out` file and the newest (by timestamp) `.cnc` file in the specified run directory
+and report any errors or warnings found. If the run directory contains a `startlogs` directory (in use since SEPTIC
+v2.85), `scg checklogs` will look there for `.cnc` files.
+
+The exit status is 0 if everything went fine, 1 if one or more errors or warnings were found, and 2 if the check
+encountered an error (e.g. unable to find or read a .cnc or .out file).
 
 ```bat
 scg checklogs ..\run_main
@@ -84,10 +269,10 @@ MYAPP.out[21]: No Xvr match for Pvr TestPvr
 MYAPP_20230601_1415.cnc[51]: ERROR adding Item: SomeTag
 ```
 
-## Howto
+## Howto/tutorial
 
-It is easiest to explain how to use the tool by example. In the file-set you will find a directory called
-`basic example` . This directory contains the following directories and files:
+It may be easier to understand how to use the tool by example. In the file-set in this repository, you will find a
+directory called `basic example`. This directory contains the following directories and files:
 
 - templates: A directory containing the templates that make up a SEPTIC config file.
 - example.yaml: Defines how the template files should be combined to create example_final.conf
@@ -96,7 +281,7 @@ It is easiest to explain how to use the tool by example. In the file-set you wil
 
 Download and copy the entire directory called `basic example` to `C:\Appl\SEPTIC` .
 
-## The template files
+### The template files
 
 Take a look in the templates directory. You will find a number of template files that can be combined to create a final
 `example.cnfg`.
@@ -111,7 +296,7 @@ Regarding file naming:
 - It is also a good idea, although not required, to indicate in the file names which of the files contain parameters to
   be substituted from a source file. In the example, those files end with `_well` .
 
-## The source file
+### The source file
 
 The file `example.xlsx` contains a single worksheet with a simple table. This is the file from which we will fetch
 values to insert into the templates.
@@ -134,17 +319,14 @@ Please note:
 - The use of formulas and any kind of text formatting is allowed. Only the resulting unformatted value will be used by
   scg.
 
-## The config file
+### The config file
 
 Inspect the config file `example.yaml` . It starts out by defining a number of paths:
 
 ```yaml
 outputfile: example.cnfg
-
 templatepath: templates
-
 verifycontent: true
-
 adjustspacing: true
 ```
 
@@ -158,7 +340,7 @@ SCG looks for template files in the `templatepath` directory.
 When generating a config file, the default behaviour is to present any difference between a previously generated config
 file and the new config as a [unified diff](https://en.wikipedia.org/wiki/Diff#Unified_format) before asking whether it
 is ok to replace the original. The original config will be renamed with the extension '.bak' before being replaced. If
-you don't want to be bothered with this question, you can set `verifycontent` to `false` .
+you don't want to be bothered with this question, you can set `verifycontent` to `false`.
 
 If `adjustspacing` is set to `false`, then the rendering will default to
 [MiniJinja's behaviour](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#trailing-newlines), which is to
@@ -182,20 +364,6 @@ The path to the file is relative to the directory containing `example.yaml`.
 If there are other groups of elements that you wish to create templates and substitutions for, e.g. multiple flowlines
 or separator trains, or to distinguish between non-similar groups of wells such as production wells and injection wells,
 simply create another sheet (in the same or a new Excel file) and define the new source similarly with a unique id.
-
-Starting with SCG v2.4 it is also possible to use CSV files as source. The advantage to using CSV files is that they are
-well suited for source control. The primary disadvantage is that they can only contain values, as opposed to Excel files
-that can include calculations and various advanced operations on values.
-
-To add a CSV source, use the following schema in the YAML config file:
-
-```yaml
-sources:
-  - filename: example.csv
-    id: main
-    delimiter: "," # Optional, default value is "."
-    decimal_point: "," # Optional, default value is "."
-```
 
 A template file can only use one source, so in some cases it may be necessary to repeat information on two or more
 sources. If using Excel files, it may be a good idea to maintain one complete set of values in one sheet and reference
@@ -233,7 +401,7 @@ which will only be generated for `D01` and `D03`. It is also possible to use the
 skip specific rows from the source. If both `include` and `exclude` are defined, then only rows that are part of
 `include` and not in `exclude` are included.
 
-## Generate a config
+### Generate a config
 
 Now that you know how the files are used, let's try to generate a config. Start by making a copy of `example.cnfg`.
 Rename the copy to `example_original.cnfg`. Make sure that scg.exe is somewhere in your path, open a command line and
@@ -259,82 +427,3 @@ Try to make a change to one of the template files and regenerate the config. Sin
 ask whether you want to replace the existing `example.cnfg`. Changes are shown as unified diff between the two files.
 
 Type `scg.exe make --help` for more options to the `make` command.
-
-### Global variables
-
-It is possible to define global replacement variables on the command line using the `--var` option. The option takes two
-arguments: `name` and `value`. Global variables can be used in any template file, also files without a defined source,
-using the same format as for variables defined in the Excel sheet. SCG will try to convert the value to boolean, integer
-or float and fall back to string as default type.
-
-Example:
-
-```bat
-scg.exe make --var simulation true --var size 2.3 --var version 1.2.3 example.yaml
-```
-
-Here `{{ simulation }}` , `{{ size }}` and `{{ version }}` will be available for use in all template files. The value of
-`simulation` will be boolean `true`, `size` will be a float with value `2.3` while `version` will be a string with value
-`1.2.3`.
-
-## The template engine
-
-The parameter replacement performed by the `make` command uses the [MiniJinja](https://crates.io/crates/minijinja) Rust
-crate. MiniJinja is based on the [Jinja2](https://jinja.palletsprojects.com/) Python module which was used by scg 1.0.
-MiniJinja is a very powerful templating engine that can do lots more than what has been described above, such as
-expressions (e.g. calculate offsets for placing display elements based on well id number), statements for inheriting or
-including other template files, conditionals and loops etc. This makes scg very flexible. We can, for example, easily
-handle SEPTIC configs with non-similar wells.
-
-For further information, please take a look at the
-[MiniJinja documentation](https://docs.rs/minijinja/latest/minijinja/). In particular:
-
-- [Syntax documentation](https://docs.rs/minijinja/latest/minijinja/syntax/index.html)
-- [Filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html)
-- [Test functions](https://docs.rs/minijinja/latest/minijinja/tests/index.html)
-
-### Custom keywords, filters and functions
-
-In addition to the built-in
-[filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html#built-in-filters) and
-[global functions](https://docs.rs/minijinja/latest/minijinja/functions/index.html#functions) in MiniJinja, some custom
-functionality has been added.
-
-#### `now()`
-
-Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S"` . The format can be modified by providing
-an [strftime string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) as function argument to customize
-the datestamp
-
-Examples: <br /> `{{ now() }}` -> 2023-02-23 14:18:12 <br /> `{{ now("%a %d %b %Y %H:%M:%S") }}` -> Thu 23 feb 2023
-14:18:12
-
-#### `gitcommit`
-
-Global variable that inserts the Git commit hash on short form.
-
-Example: <br /> `{{ gitcommit }}` -> 714e102
-
-#### `gitcommitlong`
-
-Global variable that inserts the Git commit hash on long form.
-
-Example: <br /> `{{ gitcommitlong }}` -> 714e10261b59baf4a0257700f57c5e36a6e8c6c3
-
-#### `scgversion`
-
-Global variable that inserts the SCG version used to create the output file.
-
-Example: <br /> `{{ scgversion }}` -> 2.2.1
-
-Try for example to add the following line at the top of the first template file:<br />
-`// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
-
-#### `bitmask`
-
-Filter that converts a non-negative integer or a sequence of non-negative integers into a bitmask. Each integer will be
-translated into a 1 in the bitmask that is otherwise 0. Takes an optional argument that is the length of the bitmask
-(defaults to 31).
-
-Examples:<br /> `{{ 2 | bitmask }}` -> `0000000000000000000000000000010` <br /> `{{ [1, 3, 31] | bitmask }}` ->
-`1000000000000000000000000000101` <br /> `{{ [1, 3] | bitmask(5) }}` -> `00101`
