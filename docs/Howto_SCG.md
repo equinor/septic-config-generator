@@ -15,6 +15,9 @@ using 1.0 to 2.x, expect having to change a few lines in your templates and YAML
 - [Usage overview](#usage-overview)
 - [scg make](#scg-make)
   - [The configuration file](#the-configuration-file)
+  - [The source files](#the-source-files)
+    - [Excel source](#excel-source)
+    - [CSV source](#csv-source)
   - [Command-line options](#command-line-options)
     - [`--var <name> <value>`](#--var-name-value)
     - [`--ifchanged`](#--ifchanged)
@@ -79,7 +82,8 @@ This command is used to generate an output file based on a configuration layout 
 
 The exit status is 0 if a file was output, 1 if no file was output and 2 if there was an error.
 
-Example:<br /> `scg make MyApplication.yaml`
+Example:  
+`scg make MyApplication.yaml`
 
 ### The configuration file
 
@@ -98,7 +102,6 @@ sources:
   - filename: example.csv
     id: flowlines
     delimiter: ";"
-    decimal_point: "."
 layout:
   - name: 010_System.cnfg
   - name: 020_SopcProc.cnfg
@@ -127,20 +130,13 @@ All file names and paths are relative to the location of the configuration file.
 The `source` struct represents a file that is used for replacing values in the templates. The file can be either an
 Excel file or a CSV file (_since v2.5_), where the file type is identified by the extension (`.xlsx` or `.csv`).
 
-The advantage to using CSV files is that they are plain text files. This means they are well suited for source control.
-The primary disadvantage is that CSV files can only contain values, as opposed to Excel files that can include
-calculations and various advanced operations on values. Advanced users may consider generating CSV files by e.g.
-extracting information from Excel files or other sources.
-
 The structure has the following fields:
 
 - `id` (string): A unique id used to reference the source file from the layout section.
 - `filename` (string): The file name that contains the substitution values. The extension must be either `.xlsx` or
   `.csv` _(since v2.5)_.
 - `sheet` (string): The name of the sheet where the substitution values are found. Only valid for Excel files.
-- `delimiter` (optional character, default: ';'): The delimiter character for CSV files.
-- `decimal_point` (optional character, default: '.'): The character used for separating integers from decimal values
-  when parsing values. Can be set to `,` for Norwegian number format. Only valid for CSV files.
+- `delimiter` (optional character, default: ';'): The delimiter used a CSV file.
 
 The `layout` section contains one or more `template` structs that each represent a template file and how it should be
 rendered to the `outputfile`. It has the following fields:
@@ -158,6 +154,58 @@ Combining `include` and `exclude` will render the template only for rows listed 
 
 The templates will be rendered in the order they are listed.
 
+### The source files
+
+The source files referenced in the configuration file contain data tables used by the templates. SCG accepts two file
+formats:
+
+- Excel files with extension `.xlsx`
+- CSV files with extension `.csv`
+
+SCG will determine which file format is in use based on the extension in the `source.filename` field.
+
+The format used by both Excel and CSV files is similar: The first row contains header labels, and the first column
+contains row labels. The header labels are the values that are referenced in the templates, and are replaced by the
+corresponding value found in each row. The row label identifies the row, and can be used to explicitly include or
+exclude rows in the layout definition for a template.
+
+#### Excel source
+
+When using Excel files as source tables, multiple sheets in the same file can be used as unique sources. Cells that
+contain expressions will result in the calculated value being used when rendering the template. This way all the
+information about all replacement values can be contained in one single file. The disadvantage to using Excel is that it
+is a binary format what is not well suited for version control. This can easily create merge conflicts that need to be
+manually resolved by opening both versions of the files and comparing them visually.
+
+Cell value types is preserved. E.g. a text cell will be treated as text when rendering templates. Excel does not
+distinguish between integers and floats. Therefore a numerical value that deviates less than an epsilon from an integer
+will be converted to an integer instead of to a float. Cells that contain errors will be rendered with an error text
+string, e.g. "#DIV/0!" or "#N/A".
+
+#### CSV source
+
+The advantage to using CSV files as source is that they are plain text files. This means they are very well suited for
+source control. The primary disadvantage is that CSV files can only contain static values. And since they can only
+contain one table, it may be necessary to use two or more CSV files, for instance one for iterating over wells and one
+for iterating over flowlines, separator trains or something else. Advanced users may consider generating CSV files by
+e.g. crating Python scripts to extract information from Excel files that are not part of their repository or via other
+sources.
+
+Any row starts with '#' will be ignored.
+
+As opposed to Excel files, cell values in CSV files are always text. However, SCG will try to parse and convert the
+values as follows:
+
+- Empty value
+- Integer
+- Float
+- Boolean
+
+String is the fallback type. When parsing floats, both ',' and '.' are valid decimal separators.
+
+All cell values are trimmed before parsing. This means that `a;1.0;2` and ` a ; 1.0 ; 2` are equivalent. Which again
+means that "proper-looking" tables can be created: Set delimiter to `|` and keep maintain constant column width.
+
 ### Command-line options
 
 #### `--var <name> <value>`
@@ -165,7 +213,7 @@ The templates will be rendered in the order they are listed.
 Add a global variable that can be used by all templates in the layout. The value will be parsed to integer, float,
 boolean or string.
 
-Example:<br />
+Example:
 
 ```bat
 scg.exe make --var simulation true --var size 2.3 --var version 1.2.3 example.yaml
@@ -221,28 +269,32 @@ functionality has been added.
 Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S"`. The format can be customized by providing
 an [strftime string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) as function argument.
 
-Examples: <br /> `{{ now() }}` -> 2023-02-23 14:18:12 <br /> `{{ now("%a %d %b %Y %H:%M:%S") }}` -> Thu 23 feb 2023
-14:18:12
+Examples:  
+`{{ now() }}` -> 2023-02-23 14:18:12  
+`{{ now("%a %d %b %Y %H:%M:%S") }}` -> Thu 23 feb 2023 14:18:12
 
 #### `gitcommit`
 
 Global variable that inserts the Git commit hash on short form.
 
-Example: <br /> `{{ gitcommit }}` -> 714e102
+Example:  
+`{{ gitcommit }}` -> 714e102
 
 #### `gitcommitlong`
 
 Global variable that inserts the Git commit hash on long form.
 
-Example: <br /> `{{ gitcommitlong }}` -> 714e10261b59baf4a0257700f57c5e36a6e8c6c3
+Example:  
+`{{ gitcommitlong }}` -> 714e10261b59baf4a0257700f57c5e36a6e8c6c3
 
 #### `scgversion`
 
 Global variable that inserts the SCG version used to create the output file.
 
-Example: <br /> `{{ scgversion }}` -> 2.2.1
+Example:  
+`{{ scgversion }}` -> 2.2.1
 
-Try for example to add the following line at the top of the first template file:<br />
+Try for example to add the following line at the top of the first template file:  
 `// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
 
 #### `bitmask`
@@ -251,8 +303,10 @@ Filter that converts a non-negative integer or a sequence of non-negative intege
 translated into a 1 in the bitmask that is otherwise 0. Takes an optional argument that is the length of the bitmask
 (defaults to 31, the number of available groups).
 
-Examples:<br /> `{{ 2 | bitmask }}` -> `0000000000000000000000000000010` <br /> `{{ [1, 3, 31] | bitmask }}` ->
-`1000000000000000000000000000101` <br /> `{{ [1, 3] | bitmask(5) }}` -> `00101`
+Examples:  
+`{{ 2 | bitmask }}` -> `0000000000000000000000000000010`  
+`{{ [1, 3, 31] | bitmask }}` -> `1000000000000000000000000000101`  
+`{{ [1, 3] | bitmask(5) }}` -> `00101`
 
 ## scg checklogs
 
