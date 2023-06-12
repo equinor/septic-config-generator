@@ -12,6 +12,9 @@ jobs:
   security_audit:
     name: 👺 Security audit
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      checks: write
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
