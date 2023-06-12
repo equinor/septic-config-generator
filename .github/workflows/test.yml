@@ -10,6 +10,9 @@ jobs:
   code_test:
     name: 🧪 Test
     runs-on: ubuntu-latest
+    permissions: 
+      contents: read
+      checks: write
     
     steps:
       - name: Checkout source code
