@@ -1,4 +1,4 @@
-name: '🧪 Test code'
+name: "🧪 Test code"
 on:
   workflow_dispatch:
   workflow_call:
@@ -10,11 +10,11 @@ jobs:
   code_test:
     name: 🧪 Test
     runs-on: ubuntu-latest
-    permissions: 
+    permissions:
       contents: read
       checks: write
-      issues: write
-    
+      pull-requests: write
+
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
