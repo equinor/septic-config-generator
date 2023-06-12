@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.5.0](https://github.com/equinor/septic-config-generator/compare/v2.4.0...v2.5.0) (2023-06-12)
+
+
+### ✨ Features
+
+* use csv file as data source ([2f5f9b0](https://github.com/equinor/septic-config-generator/commit/2f5f9b06132783c5795a80ba273a4a2c32c4f48d))
+
+
+### 🧪 Tests
+
+* reorganize and rename tests ([2f5f9b0](https://github.com/equinor/septic-config-generator/commit/2f5f9b06132783c5795a80ba273a4a2c32c4f48d))
+
+
+### 🐛 Bug Fixes
+
+* do not accept unknown yaml fields ([2f5f9b0](https://github.com/equinor/septic-config-generator/commit/2f5f9b06132783c5795a80ba273a4a2c32c4f48d))
+
+
+### 👷 CI/CD
+
+* create codecov.yml ([#123](https://github.com/equinor/septic-config-generator/issues/123)) ([cccf4f8](https://github.com/equinor/septic-config-generator/commit/cccf4f84cc71a950b8a5565be29434d5a972c4b0))
+* grant permissions for Dependabot and security audit ([#128](https://github.com/equinor/septic-config-generator/issues/128)) ([7fdbfc7](https://github.com/equinor/septic-config-generator/commit/7fdbfc79cb395ecda47b43229d653ac154fa5505))
+
+
+### 🧹 Chores
+
+* **deps:** bump clap from 4.3.1 to 4.3.3 ([#125](https://github.com/equinor/septic-config-generator/issues/125)) ([e2d1433](https://github.com/equinor/septic-config-generator/commit/e2d14336cf136c061b0b4ae83079975cb4e6f5b6))
+* **deps:** bump regex from 1.8.3 to 1.8.4 ([#126](https://github.com/equinor/septic-config-generator/issues/126)) ([6414af9](https://github.com/equinor/septic-config-generator/commit/6414af9bab233ae6c2659bd464c10594a250c07e))
+* **deps:** bump tempfile from 3.5.0 to 3.6.0 ([#127](https://github.com/equinor/septic-config-generator/issues/127)) ([63eaf36](https://github.com/equinor/septic-config-generator/commit/63eaf36566c67ae3e0e4c188497a52a0dc190b08))
+
+
+### 📚 Documentation
+
+* update documentation for 2.5 ([#120](https://github.com/equinor/septic-config-generator/issues/120)) ([ca673ab](https://github.com/equinor/septic-config-generator/commit/ca673ab688f0deb4c1bfe60147c3b3b1cb37baf7))
+
 ## [2.4.0](https://github.com/equinor/septic-config-generator/compare/v2.3.1...v2.4.0) (2023-06-09)
 
 
