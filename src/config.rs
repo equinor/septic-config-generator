@@ -45,9 +45,6 @@ fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
             if source.delimiter.is_some() {
                 return Err("field 'delimiter' invalid for .xlsx source".into());
             }
-            if source.decimal_point.is_some() {
-                return Err("field 'decimal_point' invalid for .xlsx source".into());
-            }
         }
         Some(ext) if ext == "csv" => {
             if source.sheet.is_some() {
@@ -55,9 +52,6 @@ fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
             }
             if source.delimiter.is_none() {
                 source.delimiter = Some(';');
-            }
-            if source.decimal_point.is_none() {
-                source.decimal_point = Some('.');
             }
         }
         _ => {
@@ -75,7 +69,6 @@ pub struct Source {
     pub id: String,
     pub sheet: Option<String>,
     pub delimiter: Option<char>,
-    pub decimal_point: Option<char>,
 }
 
 #[derive(Deserialize, Debug, Default)]

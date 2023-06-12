@@ -14,20 +14,13 @@ pub trait DataSourceReader {
 pub struct CsvSourceReader {
     file_path: PathBuf,
     delimiter: char,
-    decimal_point: char,
 }
 
 impl CsvSourceReader {
-    pub fn new(
-        file_name: &str,
-        relative_root: &Path,
-        delimiter: Option<char>,
-        decimal_point: Option<char>,
-    ) -> Self {
+    pub fn new(file_name: &str, relative_root: &Path, delimiter: Option<char>) -> Self {
         CsvSourceReader {
             file_path: relative_root.join(file_name),
             delimiter: delimiter.unwrap_or(';'),
-            decimal_point: decimal_point.unwrap_or('.'),
         }
     }
 }
@@ -59,7 +52,7 @@ impl DataSourceReader for CsvSourceReader {
                                 if let Ok(int_value) = value.parse::<i64>() {
                                     CtxDataType::Int(int_value)
                                 } else if let Ok(float_value) =
-                                    value.replace(self.decimal_point, ".").parse::<f64>()
+                                    value.replace(',', ".").parse::<f64>()
                                 {
                                     CtxDataType::Float(float_value)
                                 } else if let Ok(bool_value) = value.parse::<bool>() {
@@ -193,7 +186,6 @@ key2;value2;2.2;2;2"#;
             tmp_file.path().to_str().unwrap(),
             std::path::Path::new(""),
             Some(';'),
-            Some('.'),
         );
 
         let result = reader.read();
@@ -235,7 +227,6 @@ key1  ;   value1  ;    1.1 ; 1  "#;
             tmp_file.path().to_str().unwrap(),
             std::path::Path::new(""),
             Some(';'),
-            Some('.'),
         );
 
         let result = reader.read();
@@ -270,7 +261,6 @@ key1  ;   value1  ;    1.1 ; 1  "#;
             tmp_file.path().to_str().unwrap(),
             std::path::Path::new(""),
             Some(';'),
-            Some('.'),
         );
 
         let result = reader.read();
@@ -301,7 +291,6 @@ key1  ;   value1  ;    1.1 ; 1  "#;
             tmp_file.path().to_str().unwrap(),
             std::path::Path::new(""),
             Some(';'),
-            Some('.'),
         );
 
         let result = reader.read();
@@ -335,7 +324,6 @@ key2;value2a"#;
             tmp_file.path().to_str().unwrap(),
             std::path::Path::new(""),
             Some(';'),
-            Some('.'),
         );
 
         let result = reader.read();
@@ -359,7 +347,6 @@ key1;value1;1.1;1
             tmp_file.path().to_str().unwrap(),
             std::path::Path::new(""),
             Some(';'),
-            Some('.'),
         );
 
         let result = reader.read();
@@ -383,7 +370,6 @@ key1;value1;1.1;1
             tmp_file.path().to_str().unwrap(),
             std::path::Path::new(""),
             Some(';'),
-            Some('.'),
         );
 
         let result = reader.read();

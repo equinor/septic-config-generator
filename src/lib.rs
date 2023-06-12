@@ -263,14 +263,9 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
                 }
                 Some(ext) if ext == "csv" => {
                     let delimiter = source.delimiter.unwrap_or(';');
-                    let decimal_point = source.decimal_point.unwrap_or('.');
 
-                    let reader = CsvSourceReader::new(
-                        &source.filename,
-                        &relative_root,
-                        Some(delimiter),
-                        Some(decimal_point),
-                    );
+                    let reader =
+                        CsvSourceReader::new(&source.filename, &relative_root, Some(delimiter));
                     Box::new(reader) as Box<dyn DataSourceReader>
                 }
                 _ => {
