@@ -19,15 +19,8 @@ using 1.0 to 2.x, expect having to change a few lines in your templates and YAML
     - [Excel source](#excel-source)
     - [CSV source](#csv-source)
   - [Command-line options](#command-line-options)
-    - [`--var <name> <value>`](#--var-name-value)
-    - [`--ifchanged`](#--ifchanged)
   - [The template engine](#the-template-engine)
-  - [Custom keywords, filters and functions](#custom-keywords-filters-and-functions)
-    - [`now()`](#now)
-    - [`gitcommit`](#gitcommit)
-    - [`gitcommitlong`](#gitcommitlong)
-    - [`scgversion`](#scgversion)
-    - [`bitmask`](#bitmask)
+    - [Custom keywords, filters and functions](#custom-keywords-filters-and-functions)
 - [scg checklogs](#scg-checklogs)
 - [Howto/tutorial](#howtotutorial)
   - [The template files](#the-template-files)
@@ -208,7 +201,7 @@ means that "proper-looking" tables can be created: Set delimiter to `|` and keep
 
 ### Command-line options
 
-#### `--var <name> <value>`
+#### `--var <name> <value>` <!-- omit in toc -->
 
 Add a global variable that can be used by all templates in the layout. The value will be parsed to integer, float,
 boolean or string.
@@ -223,7 +216,7 @@ The value of `simulation` will be boolean `true`, `size` will be a float with va
 string with value `1.2.3`. The values can be used by inserting `{{ simulation }}` , `{{ size }}` and `{{ version }}` in
 template files.
 
-#### `--ifchanged`
+#### `--ifchanged` <!-- omit in toc -->
 
 _(Added in v2.2)_ If this argument is provided, the `outputfile` will only be built if at least one of the input files
 is newer than the `outputfile` .
@@ -257,47 +250,14 @@ For further information, please take a look at the
 - [Filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html)
 - [Test functions](https://docs.rs/minijinja/latest/minijinja/tests/index.html)
 
-### Custom keywords, filters and functions
+#### Custom keywords, filters and functions
 
 In addition to the built-in
 [filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html#built-in-filters) and
 [global functions](https://docs.rs/minijinja/latest/minijinja/functions/index.html#functions) in MiniJinja, some custom
 functionality has been added.
 
-#### `now()`
-
-Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S"`. The format can be customized by providing
-an [strftime string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) as function argument.
-
-Examples:  
-`{{ now() }}` -> 2023-02-23 14:18:12  
-`{{ now("%a %d %b %Y %H:%M:%S") }}` -> Thu 23 feb 2023 14:18:12
-
-#### `gitcommit`
-
-Global variable that inserts the Git commit hash on short form.
-
-Example:  
-`{{ gitcommit }}` -> 714e102
-
-#### `gitcommitlong`
-
-Global variable that inserts the Git commit hash on long form.
-
-Example:  
-`{{ gitcommitlong }}` -> 714e10261b59baf4a0257700f57c5e36a6e8c6c3
-
-#### `scgversion`
-
-Global variable that inserts the SCG version used to create the output file.
-
-Example:  
-`{{ scgversion }}` -> 2.2.1
-
-Try for example to add the following line at the top of the first template file:  
-`// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
-
-#### `bitmask`
+##### `bitmask` <!-- omit in toc -->
 
 Filter that converts a non-negative integer or a sequence of non-negative integers into a bitmask. Each integer will be
 translated into a 1 in the bitmask that is otherwise 0. Takes an optional argument that is the length of the bitmask
@@ -307,6 +267,39 @@ Examples:
 `{{ 2 | bitmask }}` -> `0000000000000000000000000000010`  
 `{{ [1, 3, 31] | bitmask }}` -> `1000000000000000000000000000101`  
 `{{ [1, 3] | bitmask(5) }}` -> `00101`
+
+##### `gitcommit` <!-- omit in toc -->
+
+Global variable that inserts the Git commit hash on short form.
+
+Example:  
+`{{ gitcommit }}` -> 714e102
+
+##### `gitcommitlong` <!-- omit in toc -->
+
+Global variable that inserts the Git commit hash on long form.
+
+Example:  
+`{{ gitcommitlong }}` -> 714e10261b59baf4a0257700f57c5e36a6e8c6c3
+
+##### `now()` <!-- omit in toc -->
+
+Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S"`. The format can be customized by providing
+an [strftime string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) as function argument.
+
+Examples:  
+`{{ now() }}` -> 2023-02-23 14:18:12  
+`{{ now("%a %d %b %Y %H:%M:%S") }}` -> Thu 23 feb 2023 14:18:12
+
+##### `scgversion` <!-- omit in toc -->
+
+Global variable that inserts the SCG version used to create the output file.
+
+Example:  
+`{{ scgversion }}` -> 2.2.1 <!-- omit in toc -->
+
+Try for example to add the following line at the top of the first template file:  
+`// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
 
 ## scg checklogs
 
