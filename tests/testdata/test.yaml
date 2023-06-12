@@ -7,9 +7,12 @@ adjustspacing: true
 verifycontent: true
 
 sources:
-  - filename: test.xlsx
+  # - filename: test.xlsx
+  #   id: main
+  #   sheet: Normals
+  - filename: test.csv
     id: main
-    sheet: Normals
+    delimiter: "|"
     # Col1, Col2_str, Col3_int, Col4_float_whole, Col5_float, Col6_bool
   - filename: test.xlsx
     id: errors
@@ -30,11 +33,11 @@ layout:
       - two
   - name: 02_specials.tmpl
     source: errors
-  - name: 03_globals.tmpl    
+  - name: 03_globals.tmpl
   - name: 04_include.tmpl
   - name: 05_expressions.tmpl
     source: main
-    include: 
+    include:
       - one
   - name: 06_encoding.tmpl
   - name: 07_functions.tmpl

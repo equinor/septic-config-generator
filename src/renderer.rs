@@ -173,7 +173,7 @@ mod tests {
     use regex::Regex;
 
     #[test]
-    fn test_customfunction_timestamp() {
+    fn customfunction_timestamp_works() {
         let result = timestamp(None);
         let re = Regex::new(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$").unwrap();
         assert!(re.is_match(&result));
@@ -183,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    fn test_customfunction_gitcommit() {
+    fn customfunction_gitcommit_works() {
         let result = gitcommit(true);
         let re = Regex::new(r"^\w{40}$").unwrap();
         assert!(re.is_match(&result));
@@ -193,7 +193,7 @@ mod tests {
     }
 
     #[test]
-    fn test_customfunction_bitmask_integer_valid() {
+    fn customfunction_bitmask_on_valid_integer() {
         let result = bitmask(Value::from(1), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000001");
         let result = bitmask(Value::from(31), Some(31)).unwrap();
@@ -203,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn test_customfunction_bitmask_integer_oor() {
+    fn customfunction_bitmask_errors_on_integer_oor() {
         let result = bitmask(Value::from(-1), Some(31));
         assert!(result.is_err());
         assert!(result
@@ -221,7 +221,7 @@ mod tests {
     }
 
     #[test]
-    fn test_customfunction_bitmask_sequence_valid() {
+    fn customfunction_bitmask_on_valid_sequence() {
         let result = bitmask(Value::from(vec![0, 1, 3]), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000101");
         let result = bitmask(Value::from(vec![1, 3, 31]), Some(31)).unwrap();
@@ -231,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn test_customfunction_bitmask_sequence_oor() {
+    fn customfunction_bitmask_errors_on_sequence_oor() {
         let result = bitmask(Value::from(vec![-1, 1, 3]), Some(31));
         assert!(result.is_err());
         assert!(result
