@@ -50,9 +50,6 @@ fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
             if source.sheet.is_some() {
                 return Err("field 'sheet' invalid for .csv source".into());
             }
-            if source.delimiter.is_none() {
-                source.delimiter = Some(';');
-            }
         }
         _ => {
             return Err(format!("Invalid file extension for source {}", source.filename).into());
