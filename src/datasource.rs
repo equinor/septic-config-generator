@@ -1,13 +1,14 @@
 use crate::{CtxDataType, CtxErrorType};
+use anyhow::{bail, Context, Result};
 use calamine::{open_workbook, CellErrorType, DataType, Reader, Xlsx};
 use csv::{self, Trim};
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::{Path, PathBuf};
+
 pub type DataSourceRows = Vec<(String, HashMap<String, CtxDataType>)>;
 
 pub trait DataSourceReader {
-    fn read(&self) -> Result<DataSourceRows, Box<dyn Error>>;
+    fn read(&self) -> Result<DataSourceRows>;
 }
 
 #[derive(Debug, Default)]
@@ -26,7 +27,7 @@ impl CsvSourceReader {
 }
 
 impl DataSourceReader for CsvSourceReader {
-    fn read(&self) -> Result<DataSourceRows, Box<dyn Error>> {
+    fn read(&self) -> Result<DataSourceRows> {
         let mut reader = csv::ReaderBuilder::new()
             .delimiter(self.delimiter as u8)
             .flexible(false)
@@ -40,8 +41,7 @@ impl DataSourceReader for CsvSourceReader {
             .records()
             .enumerate()
             .map(|(_, record_result)| {
-                let record =
-                    record_result.map_err(|e| format!("Error reading CSV record: {}", e))?;
+                let record = record_result?;
 
                 let mut data = HashMap::new();
                 for (i, value) in record.iter().enumerate() {
@@ -65,9 +65,9 @@ impl DataSourceReader for CsvSourceReader {
                         data.insert(header_field.to_string(), converted_value);
                     }
                 }
-                Ok::<_, Box<dyn Error>>((record[0].to_string(), data))
+                Ok((record[0].to_string(), data))
             })
-            .collect::<Result<Vec<_>, Box<dyn Error>>>();
+            .collect::<Result<Vec<_>>>();
 
         let first_column_name = headers.get(0).map(ToString::to_string).unwrap_or_default();
 
@@ -79,7 +79,7 @@ impl DataSourceReader for CsvSourceReader {
                         _ => true,
                     }
             }) {
-                return Err("First column must contain strings only".into());
+                bail!("First column must contain strings only");
             }
         }
         rows
@@ -105,20 +105,20 @@ impl DataSourceReader for ExcelSourceReader {
     #[allow(clippy::missing_errors_doc)]
     #[allow(clippy::missing_panics_doc)]
     #[allow(clippy::cast_possible_truncation)]
-    fn read(&self) -> Result<DataSourceRows, Box<dyn Error>> {
+    fn read(&self) -> Result<DataSourceRows> {
         let mut workbook: Xlsx<_> = open_workbook(&self.file_path)?;
         let sheet = self.sheet.as_ref().unwrap();
 
         let range = workbook
             .worksheet_range(sheet)
-            .ok_or_else(|| format!("Cannot find sheet '{sheet}'"))??;
+            .context(format!("Cannot find sheet '{sheet}'"))??;
 
         if range
             .rows()
             .skip(1)
             .any(|row| row[0].get_string().is_none())
         {
-            return Err("First column must contain strings only".into());
+            bail!("First column must contain strings only");
         }
 
         let row_headers = range.rows().next().unwrap();

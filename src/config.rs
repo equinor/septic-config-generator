@@ -1,6 +1,6 @@
+use anyhow::{bail, Result};
 use serde::Deserialize;
 use std::collections::HashSet;
-use std::error::Error;
 use std::fs;
 use std::path::Path;
 
@@ -23,7 +23,7 @@ pub struct Config {
 
 impl Config {
     #[allow(clippy::missing_errors_doc)]
-    pub fn new(filename: &Path) -> Result<Self, Box<dyn Error>> {
+    pub fn new(filename: &Path) -> Result<Self> {
         let content = fs::read_to_string(filename)?;
         let mut cfg: Self = serde_yaml::from_str(&content)?;
 
@@ -35,24 +35,24 @@ impl Config {
     }
 }
 
-fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
+fn validate_source(source: &mut Source) -> Result<()> {
     let extension = Path::new(&source.filename).extension();
     match extension {
         Some(ext) if ext == "xlsx" => {
             if source.sheet.is_none() {
-                return Err("missing field 'sheet' for .xlsx source".into());
+                bail!("missing field 'sheet' for .xlsx source");
             }
             if source.delimiter.is_some() {
-                return Err("field 'delimiter' invalid for .xlsx source".into());
+                bail!("field 'delimiter' invalid for .xlsx source");
             }
         }
         Some(ext) if ext == "csv" => {
             if source.sheet.is_some() {
-                return Err("field 'sheet' invalid for .csv source".into());
+                bail!("field 'sheet' invalid for .csv source");
             }
         }
         _ => {
-            return Err(format!("Invalid file extension for source {}", source.filename).into());
+            bail!("Invalid file extension for source {}", source.filename);
         }
     }
 
