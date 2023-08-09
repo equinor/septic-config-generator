@@ -16,7 +16,7 @@ fn main() {
             cmd_diff(&diff_args.file1, &diff_args.file2);
         }
         args::Commands::Checklogs(check_args) => {
-            cmd_check_logs(check_args.rundir);
+            cmd_check_logs(&check_args.rundir);
         }
     }
 }

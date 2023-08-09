@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::renderer::MiniJinja;
-use colored::*;
+use colored::Colorize;
 use datasource::{CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader};
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
@@ -23,11 +23,11 @@ pub mod renderer;
 
 #[derive(Debug)]
 struct ErrorLine {
-    line_num: u32,
+    line_num: usize,
     content: String,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CtxErrorType {
     /// Division by 0 error
     Div0,
@@ -198,7 +198,7 @@ fn collect_file_list(
     // All sources
     for source in &config.sources {
         let source_path = relative_root.join(Path::new(&source.filename));
-        files.insert(source_path.to_path_buf());
+        files.insert(source_path.clone());
     }
     Ok(files)
 }
@@ -436,7 +436,7 @@ fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>), Box<dyn Err
                 newest_file.clone()
             } else {
                 return Err(
-                    format!("Failed to identify the newest .cnc file in {:?}", rundir).into(),
+                    format!("Failed to identify the newest .cnc file in {rundir:?}").into(),
                 );
             }
         }
@@ -455,11 +455,10 @@ fn process_single_startlog(
     let mut result: Vec<ErrorLine> = Vec::new();
     for (line_number, line) in reader.lines().enumerate() {
         let line = line?;
-        let matches: Vec<_> = regex_set.matches(&line).into_iter().collect();
 
-        if !matches.is_empty() {
+        if regex_set.is_match(&line) {
             let error_line = ErrorLine {
-                line_num: line_number as u32 + 1,
+                line_num: line_number + 1,
                 content: line,
             };
             result.push(error_line);
@@ -468,13 +467,13 @@ fn process_single_startlog(
     Ok(result)
 }
 
-pub fn cmd_check_logs(rundir: PathBuf) {
+pub fn cmd_check_logs(rundir: &Path) {
     let check_functions = [check_outfile, check_cncfile];
 
     let mut found_warnings = false;
 
     for check_fn in &check_functions {
-        match check_fn(&rundir) {
+        match check_fn(rundir) {
             Ok((file, lines)) => {
                 let file_name = file.file_name().unwrap().to_str().unwrap();
                 if !lines.is_empty() {
@@ -491,7 +490,7 @@ pub fn cmd_check_logs(rundir: PathBuf) {
                 }
             }
             Err(err) => {
-                eprintln!("Error checking file: {}", err);
+                eprintln!("Error checking file: {err}");
                 process::exit(2);
             }
         }
