@@ -28,7 +28,7 @@ impl Config {
         let mut cfg: Self = serde_yaml::from_str(&content)?;
 
         for source in &mut cfg.sources {
-            validate_source(source)?
+            validate_source(source)?;
         }
 
         Ok(cfg)

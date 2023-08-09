@@ -18,7 +18,7 @@ pub struct CsvSourceReader {
 
 impl CsvSourceReader {
     pub fn new(file_name: &str, relative_root: &Path, delimiter: Option<char>) -> Self {
-        CsvSourceReader {
+        Self {
             file_path: relative_root.join(file_name),
             delimiter: delimiter.unwrap_or(';'),
         }
@@ -40,27 +40,17 @@ impl DataSourceReader for CsvSourceReader {
             .records()
             .enumerate()
             .map(|(_, record_result)| {
-                let record =
-                    record_result.map_err(|e| format!("Error reading CSV record: {}", e))?;
+                let record = record_result.map_err(|e| format!("Error reading CSV record: {e}"))?;
 
                 let mut data = HashMap::new();
                 for (i, value) in record.iter().enumerate() {
                     if let Some(header_field) = headers.get(i) {
                         let converted_value = match value {
                             "" => CtxDataType::Empty,
-                            _ => {
-                                if let Ok(int_value) = value.parse::<i64>() {
-                                    CtxDataType::Int(int_value)
-                                } else if let Ok(float_value) =
-                                    value.replace(',', ".").parse::<f64>()
-                                {
-                                    CtxDataType::Float(float_value)
-                                } else if let Ok(bool_value) = value.parse::<bool>() {
-                                    CtxDataType::Bool(bool_value)
-                                } else {
-                                    CtxDataType::String(value.to_string())
-                                }
-                            }
+                            v if v.parse::<i64>().is_ok() => CtxDataType::Int(v.parse().unwrap()),
+                            v if v.parse::<bool>().is_ok() => CtxDataType::Bool(v.parse().unwrap()),
+                            v if v.parse::<f64>().is_ok() => CtxDataType::Float(v.parse().unwrap()),
+                            _ => CtxDataType::String(value.to_string()),
                         };
                         data.insert(header_field.to_string(), converted_value);
                     }
@@ -94,9 +84,9 @@ pub struct ExcelSourceReader {
 
 impl ExcelSourceReader {
     pub fn new(file_name: &str, relative_root: &Path, sheet: Option<&str>) -> Self {
-        ExcelSourceReader {
+        Self {
             file_path: relative_root.join(file_name),
-            sheet: sheet.map(|s| s.to_owned()),
+            sheet: sheet.map(std::borrow::ToOwned::to_owned),
         }
     }
 }

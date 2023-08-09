@@ -35,7 +35,7 @@ fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
         } else if pos > length {
             return Err(Error::new(
                 ErrorKind::InvalidOperation,
-                format!("value is larger than mask size ({} > {})", pos, length),
+                format!("value is larger than mask size ({pos} > {length})"),
             ));
         }
     }
