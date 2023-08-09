@@ -3,13 +3,14 @@ name: "🧪 Test code"
 on:
   workflow_dispatch:
   workflow_call:
+  schedule: [cron: "40 1 * * *"]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   test:
-    name: 🧪 Test ${{matrix.rust}}
+    name: 🧪 Test ${{ matrix.rust }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -23,10 +24,10 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v3
 
-      - name: 🦀 Install Rust
+      - name: 🦀 Install Rust (${{ matrix.rust }})
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{matrix.rust}}
+          toolchain: ${{ matrix.rust }}
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
