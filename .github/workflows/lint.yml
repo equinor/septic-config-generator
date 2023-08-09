@@ -1,4 +1,5 @@
-name: '💎 Code quality'
+name: "💎 Code quality"
+
 on:
   workflow_dispatch:
   workflow_call:

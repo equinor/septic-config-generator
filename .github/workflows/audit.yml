@@ -1,12 +1,13 @@
-name: '🕵️ Security audit'
+name: "🕵️ Security audit"
+
 on:
   workflow_dispatch:
   schedule:
-    - cron: '27 3 * * 1'
+    - cron: "27 3 * * 1"
   push:
     paths:
-      - '**/Cargo.toml'
-      - '**/Cargo.lock'
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
 
 jobs:
   security_audit:
@@ -23,4 +24,4 @@ jobs:
         uses: rustsec/audit-check@v1
 
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}       
+          token: ${{ secrets.GITHUB_TOKEN }}

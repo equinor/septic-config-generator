@@ -1,26 +1,33 @@
 name: "🧪 Test code"
+
 on:
   workflow_dispatch:
   workflow_call:
+  schedule: [cron: "40 1 * * *"]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  code_test:
-    name: 🧪 Test
+  test:
+    name: 🧪 Test ${{ matrix.rust }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       checks: write
       pull-requests: write
-
+    strategy:
+      fail-fast: false
+      matrix:
+        rust: [nightly, beta, stable]
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
 
-      - name: 🦀 Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - name: 🦀 Install Rust (${{ matrix.rust }})
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
@@ -30,7 +37,7 @@ jobs:
         with:
           tool: nextest
 
-      - name: 🧪 Run cargo test
+      - name: 🧪 Run cargo nextest
         run: cargo nextest run --profile ci
 
       - name: Publish test results
@@ -38,31 +45,3 @@ jobs:
         if: always()
         with:
           files: target/nextest/ci/junit.xml
-          # comment: failures
-
-  coverage:
-    name: ☂️ Coverage
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout source code
-        uses: actions/checkout@v3
-
-      - name: 🦀 Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          components: llvm-tools-preview
-
-      - name: Rust cache
-        uses: Swatinem/rust-cache@v2
-
-      - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
-
-      - name: ☂️ Run cargo llvm-cov
-        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: lcov.info
