@@ -1,4 +1,4 @@
-name: 🔍️ PR Name Validation
+name: 🔍️ PR name validation
 
 on:
   pull_request:
