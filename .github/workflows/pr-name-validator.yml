@@ -1,4 +1,5 @@
 name: 🔍️ PR Name Validation
+
 on:
   pull_request:
     types:
@@ -8,7 +9,8 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  PR_LABEL: 'invalid_PR_title'
+  PR_LABEL: "invalid_PR_title"
+
 jobs:
   lint-pr:
     name: Lint pull request title
