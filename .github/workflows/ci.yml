@@ -1,9 +1,10 @@
-name: ➕ Pull Request
+name: 🎡 CI
 
 on:
-  pull_request:
+  push:
     branches:
       - main
+  pull_request:
 
 concurrency:
   group: ${{ github.head_ref || github.run_id }}
@@ -11,9 +12,15 @@ concurrency:
 
 jobs:
   lint:
-    name: "💎 Code Quality"
+    name: "💎 Code quality"
     uses: ./.github/workflows/lint.yml
+
   test:
-    name: "🧪 Test Code"
+    name: "🧪 Test code"
     uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+  coverage:
+    name: "☂️ Code coverage"
+    uses: ./.github/workflows/coverage.yml
     secrets: inherit
