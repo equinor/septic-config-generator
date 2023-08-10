@@ -1,6 +1,6 @@
 use chrono::Local;
 use minijinja::value::{Value, ValueKind};
-use minijinja::{Environment, Error, ErrorKind, Source};
+use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
 use std::fs::File;
 use std::io::Read;
@@ -126,9 +126,9 @@ impl<'a> MiniJinja<'a> {
 
         let local_template_path = template_path.to_path_buf();
 
-        renderer.env.set_source(Source::with_loader(move |name| {
-            load_template(&local_template_path, name)
-        }));
+        renderer
+            .env
+            .set_loader(move |name| load_template(&local_template_path, name));
         renderer
     }
 
