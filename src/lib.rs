@@ -559,7 +559,7 @@ mod tests {
             .replace('\r', "");
         assert_eq!(
             result,
-            "String: one\nBool: true\nInteger: 1\nWhole float: 1\nFloat: 1.234\n\nString: two\nBool: false\nInteger: 2\nWhole float: 2\nFloat: 2.3456\n\nString: three\nBool: true\nInteger: 3\nWhole float: 3\nFloat: 34.56"
+            "String: one\nString: one\nBool: true\nInteger: 1\nWhole float: 1\nFloat: 1.234\n\nString: two\nString: two\nBool: false\nInteger: 2\nWhole float: 2\nFloat: 2.3456\n\nString: three\nString: three\nBool: true\nInteger: 3\nWhole float: 3\nFloat: 34.56"
         );
     }
 

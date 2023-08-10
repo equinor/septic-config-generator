@@ -47,12 +47,18 @@ impl DataSourceReader for CsvSourceReader {
                     if let Some(header_field) = headers.get(i) {
                         let converted_value = match value {
                             "" => CtxDataType::Empty,
-                            v if v.parse::<i64>().is_ok() => CtxDataType::Int(v.parse().unwrap()),
-                            v if v.parse::<bool>().is_ok() => CtxDataType::Bool(v.parse().unwrap()),
+                            v if v.parse::<i64>().is_ok() => {
+                                if v.starts_with('0') && v != "0" {
+                                    CtxDataType::String(value.to_string())
+                                } else {
+                                    CtxDataType::Int(v.parse().unwrap())
+                                }
+                            }
                             v if v.parse::<f64>().is_ok() => CtxDataType::Float(v.parse().unwrap()),
                             v if v.replace(',', ".").parse::<f64>().is_ok() => {
                                 CtxDataType::Float(v.replace(',', ".").parse().unwrap())
                             }
+                            v if v.parse::<bool>().is_ok() => CtxDataType::Bool(v.parse().unwrap()),
                             _ => CtxDataType::String(value.to_string()),
                         };
                         data.insert(header_field.to_string(), converted_value);

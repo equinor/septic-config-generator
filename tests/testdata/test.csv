@@ -1,4 +1,4 @@
 ﻿Col1 | Col2_str | Col3_int | Col4_float_whole | Col5_float | Col6_bool
-one  | one      |     1    |            1,0   |      1,234 |   TRUE
-two  | two      |     2    |            2,0   |     2,3456 |  FALSE
-three| three    |     3    |            3,0   |   3,46E+01 |   TRUE
+one  |    00   |     1    |            1,0   |      1,234 |   TRUE
+two  |    02   |     2    |            2,0   |     2,3456 |  FALSE
+three|   030   |     3    |            3,0   |   3,46E+01 |   TRUE
