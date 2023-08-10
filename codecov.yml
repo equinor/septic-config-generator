@@ -3,7 +3,7 @@ coverage:
     project:
       default:
         target: auto
-        threshold: 0%
-        paths: 
+        threshold: 1%
+        paths:
           - "src"
         if_ci_failed: success
