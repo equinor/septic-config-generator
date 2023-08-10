@@ -1,5 +1,33 @@
 # Changelog
 
+## [2.5.1](https://github.com/equinor/septic-config-generator/compare/v2.5.0...v2.5.1) (2023-08-10)
+
+
+### 🧹 Chores
+
+* **deps:** bump calamine from 1.19.1 to 1.21.2 ([#147](https://github.com/equinor/septic-config-generator/issues/147)) ([22d9593](https://github.com/equinor/septic-config-generator/commit/22d95934f71bae790fd76a54264781758dc7344e))
+* **deps:** bump clap from 4.3.3 to 4.3.19 ([#139](https://github.com/equinor/septic-config-generator/issues/139)) ([26eec98](https://github.com/equinor/septic-config-generator/commit/26eec98252852676aebf3d8cc16b2c8727bb0a9b))
+* **deps:** bump colored from 2.0.0 to 2.0.4 ([#134](https://github.com/equinor/septic-config-generator/issues/134)) ([7b11eca](https://github.com/equinor/septic-config-generator/commit/7b11eca75b0f9208741129a223a2f53f20c9f518))
+* **deps:** bump minijinja from 0.30.7 to 1.0.5 ([#148](https://github.com/equinor/septic-config-generator/issues/148)) ([859787b](https://github.com/equinor/septic-config-generator/commit/859787b8620b193098ac9552220796702c65f374))
+* **deps:** bump winresource from 0.1.15 to 0.1.16 ([#138](https://github.com/equinor/septic-config-generator/issues/138)) ([4713238](https://github.com/equinor/septic-config-generator/commit/471323851a18d6d91c66511c7b07632224891bc5))
+
+
+### 👷 CI/CD
+
+* fix codecov threshold ([#146](https://github.com/equinor/septic-config-generator/issues/146)) ([ee3a654](https://github.com/equinor/septic-config-generator/commit/ee3a65416428266ff47e523babbe423a311528a0))
+* test + cov for push and pr, test before build ([#143](https://github.com/equinor/septic-config-generator/issues/143)) ([7b1e8e8](https://github.com/equinor/septic-config-generator/commit/7b1e8e891647fb4e88c2ed95f7cc86e7996b7683))
+
+
+### 🐛 Bug Fixes
+
+* comma as decimal separator in csv ([#145](https://github.com/equinor/septic-config-generator/issues/145)) ([37be222](https://github.com/equinor/septic-config-generator/commit/37be222060b8fe319c80225d9b1ebe7e5c498b49))
+* **csv:** parse 01, 02 etc as string ([#149](https://github.com/equinor/septic-config-generator/issues/149)) ([d4691e4](https://github.com/equinor/septic-config-generator/commit/d4691e49c0742f7ec55ddf4b4f34567e11345732))
+
+
+### 🔨 Refactor
+
+* make clippy pass all nursery lints ([#144](https://github.com/equinor/septic-config-generator/issues/144)) ([c25e09c](https://github.com/equinor/septic-config-generator/commit/c25e09c3057ddb3824752d1b83a4e3b7b01dff44))
+
 ## [2.5.0](https://github.com/equinor/septic-config-generator/compare/v2.4.0...v2.5.0) (2023-06-12)
 
 
