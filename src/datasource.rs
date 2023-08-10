@@ -150,6 +150,11 @@ impl DataSourceReader for ExcelSourceReader {
                                     CtxDataType::Error(CtxErrorType::GettingData)
                                 }
                             },
+                            DataType::Duration(_)
+                            | DataType::DateTimeIso(_)
+                            | DataType::DurationIso(_) => {
+                                panic!("Unhandled datatype for {cell})"); // Should never happen
+                            }
                         };
                         (header_str, value)
                     })
