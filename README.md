@@ -8,7 +8,7 @@
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/equinor/septic-config-generator/latest/total)
 
 SEPTIC config generator (scg) is a tool to generate SEPTIC configs based on one or more 
-templates files, one or more Excel-tables containing substitution values, and a config 
+template files, one or more Excel-tables containing substitution values, and a config 
 file that defines how the templates should be combined by inserting values from the
 Excel tables in uniquely identified locations.
 
