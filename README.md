@@ -2,7 +2,6 @@
 
 ![Build status](https://img.shields.io/github/actions/workflow/status/equinor/septic-config-generator/ci.yml)
 ![Codecov](https://img.shields.io/codecov/c/github/equinor/septic-config-generator)
-![License](https://img.shields.io/github/license/equinor/septic-config-generator)
 ![GitHub all releases](https://img.shields.io/github/downloads/equinor/septic-config-generator/total)
 ![GitHub tag (with filter)](https://img.shields.io/github/v/tag/equinor/septic-config-generator?label=latest)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/equinor/septic-config-generator/latest/total)
