@@ -1,8 +1,0 @@
-black
-flake8
-isort
-mypy
-pip-tools
-pyinstaller
-pytest
-setuptools_scm
