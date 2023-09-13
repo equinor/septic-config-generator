@@ -18,7 +18,7 @@ jobs:
       checks: write
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🕵️ Run cargo audit
         uses: rustsec/audit-check@v1
