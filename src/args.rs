@@ -16,6 +16,8 @@ pub enum Commands {
     Diff(DiffArguments),
     /// Check septic .out and .cnc files for error messages
     Checklogs(ChecklogsArguments),
+    /// Check for new versions of scg and auto-update
+    Update,
 }
 
 #[derive(Parser, Debug)]

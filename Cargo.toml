@@ -1,6 +1,6 @@
 [package]
 name = "septic-config-generator"
-version = "2.5.1"
+version = "2.5.0"
 edition = "2021"
 description = "A tool to generate SEPTIC config file from template files"
 license = "MIT"
@@ -25,6 +25,7 @@ lto = true      # 25 % reduction, result is 24% of original
 #panic = "abort"    # 7.5% reduction
 
 [dependencies]
+autoupdater = {version="0.3.0", features=[]}
 calamine = "0.21.2"
 chrono = {version= "0.4.26", default-features=false, features=["clock"]}
 clap = { version = "4.1.8", features = ["derive", "cargo"] }
@@ -36,6 +37,7 @@ encoding_rs_io = "0.1.7"
 glob = "0.3.1"
 minijinja = { version = "1.0.5", features = ["loader"] }
 regex = "1.7.1"
+# self_update = { version="0.37.0", features=[ ]}
 serde = { version = "1.0.156", features = ["derive"] }
 serde_yaml = "0.9.19"
 

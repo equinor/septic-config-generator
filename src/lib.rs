@@ -5,6 +5,11 @@ use datasource::{CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceR
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
 use regex::RegexSet;
+// use self_update::cargo_crate_version;
+use autoupdater::{
+    apis::{github::GithubApi, DownloadApiTrait},
+    cargo_crate_version, Sort,
+};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -365,6 +370,35 @@ pub fn cmd_diff(file1: &Path, file2: &Path) {
     let diff = create_patch(&file_content[0], &file_content[1]);
     let f = PatchFormatter::new().with_color();
     print!("{}", f.fmt_patch(&diff));
+}
+
+pub fn cmd_update() {
+    let api = GithubApi::new("equinor", "septic-config-generator")
+        .current_version(cargo_crate_version!());
+
+    let download = api.get_newer(None::<Sort>).unwrap();
+    println!("{:?}", download);
+
+    if let Some(download) = download {
+        api.download(
+            &download.assets[0],
+            Some(|progress| println!("Download progress {progress}")),
+        )
+        .unwrap();
+    }
+    // let status = self_update::backends::github::Update::configure()
+    //     .repo_owner("equinor")
+    //     .repo_name("septic-config-generator")
+    //     .bin_name("github")
+    //     .target("windows") // Do I need to specify target?
+    //     .bin_path_in_archive("scg.exe")  // Handle Windows differently from Linux/MacOS
+    //     .show_download_progress(true)
+    //     .current_version(cargo_crate_version!())
+    //     .build()
+    //     .unwrap()
+    //     .update()
+    //     .unwrap();
+    // println!("Update status: `{}`!", status.version());
 }
 
 fn get_newest_file(files: &[PathBuf]) -> Option<&PathBuf> {
