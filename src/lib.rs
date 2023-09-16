@@ -16,7 +16,6 @@ use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 use std::process;
 
-pub mod args;
 pub mod commands;
 pub mod config;
 pub mod datasource;

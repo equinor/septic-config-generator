@@ -12,8 +12,8 @@ pub struct Diff {
 }
 
 impl Diff {
-    pub fn execute(file1: &Path, file2: &Path) {
-        cmd_diff(file1, file2);
+    pub fn execute(&self) {
+        cmd_diff(&self.file1, &self.file2);
     }
 }
 

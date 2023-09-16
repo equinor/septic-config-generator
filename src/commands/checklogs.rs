@@ -25,8 +25,8 @@ pub struct Checklogs {
 }
 
 impl Checklogs {
-    pub fn execute(rundir: &Path) {
-        cmd_check_logs(rundir);
+    pub fn execute(&self) {
+        cmd_check_logs(&self.rundir);
     }
 }
 
