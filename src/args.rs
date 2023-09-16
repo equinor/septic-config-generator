@@ -1,4 +1,5 @@
 use crate::commands::Checklogs;
+use crate::commands::Diff;
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
@@ -14,7 +15,7 @@ pub enum Commands {
     /// Generate SEPTIC config
     Make(MakeArguments),
     /// Show difference between two text files
-    Diff(DiffArguments),
+    Diff(Diff),
     /// Check septic .out and .cnc files for error messages
     Checklogs(Checklogs),
 }
@@ -35,10 +36,4 @@ pub struct MakeArguments {
     /// Only make if layout or source files have changed since last make
     #[arg(long)]
     pub ifchanged: bool,
-}
-
-#[derive(Parser, Debug)]
-pub struct DiffArguments {
-    pub file1: PathBuf,
-    pub file2: PathBuf,
 }

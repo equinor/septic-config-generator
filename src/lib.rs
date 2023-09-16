@@ -342,26 +342,6 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     }
 }
 
-pub fn cmd_diff(file1: &Path, file2: &Path) {
-    let mut file_content = vec![String::new(), String::new()];
-
-    for (i, file) in [file1, file2].iter().enumerate() {
-        if file.exists() {
-            let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-                .encoding(Some(encoding_rs::WINDOWS_1252))
-                .build(fs::File::open(file).unwrap());
-            reader.read_to_string(&mut file_content[i]).unwrap();
-        } else {
-            eprintln!("File not found: '{}'", &file.display());
-            process::exit(1);
-        }
-    }
-
-    let diff = create_patch(&file_content[0], &file_content[1]);
-    let f = PatchFormatter::new().with_color();
-    print!("{}", f.fmt_patch(&diff));
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
