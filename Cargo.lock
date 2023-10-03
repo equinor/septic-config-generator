@@ -1216,6 +1216,7 @@ dependencies = [
  "encoding_rs",
  "encoding_rs_io",
  "glob",
+ "lazy_static",
  "minijinja",
  "regex",
  "self_update",

@@ -2,12 +2,63 @@ use chrono::Local;
 use minijinja::value::{Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::RwLock;
 
 const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+lazy_static! {
+    static ref COUNTERS: RwLock<HashMap<String, i32>> = RwLock::new(HashMap::new());
+}
+
+fn counterwrapper(name: String) -> impl Fn() -> Result<i32, Error> {
+    move || counter(&name)
+}
+
+fn counter(name: &str) -> Result<i32, Error> {
+    let mut counters = COUNTERS
+        .write()
+        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Write lock poisoned"))?;
+    let counter = counters.get_mut(name).ok_or_else(|| {
+        Error::new(
+            ErrorKind::InvalidOperation,
+            format!("Counter '{name}' does not exist"),
+        )
+    })?;
+    *counter += 1;
+    Ok(*counter)
+}
+
+fn setcounterwrapper(name: String) -> impl Fn(i32) -> Result<i32, Error> {
+    move |value| setcounter(&name, value)
+}
+
+fn setcounter(name: &str, value: i32) -> Result<i32, Error> {
+    let mut counters = COUNTERS
+        .write()
+        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Write lock poisoned"))?;
+    counters.insert(name.to_owned(), value);
+    Ok(value)
+}
+
+fn createcounter(name: &str, init_val: Option<i32>) -> Result<(), Error> {
+    let mut counters = COUNTERS
+        .write()
+        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Write lock poisoned"))?;
+    if counters.contains_key(name) {
+        return Err(Error::new(
+            ErrorKind::InvalidOperation,
+            "Counter already exists",
+        ));
+    }
+    let init_val = init_val.unwrap_or(0);
+    counters.insert(name.to_owned(), init_val);
+    Ok(())
+}
 
 fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
     let value = match value.kind() {
@@ -114,12 +165,19 @@ impl<'a> MiniJinja<'a> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
+        createcounter("teller", Some(15)).unwrap(); // TODO: Removeme
         renderer.add_globals(globals);
         renderer
             .env
             .add_global("scgversion", String::from(SCG_VERSION));
         renderer.env.add_global("gitcommit", gitcommit(false));
         renderer.env.add_global("gitcommitlong", gitcommit(true));
+        renderer
+            .env
+            .add_function("teller", counterwrapper("teller".to_string())); // TODO: Removeme
+        renderer
+            .env
+            .add_function("setteller", setcounterwrapper("teller".to_string())); // TODO: Removeme
         renderer.env.add_function("now", timestamp);
         renderer.env.add_filter("bitmask", bitmask);
         renderer.env.set_formatter(erroring_formatter);

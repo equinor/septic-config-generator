@@ -1,3 +1,6 @@
+#[macro_use(lazy_static)]
+extern crate lazy_static;
+
 use crate::config::Config;
 use crate::renderer::MiniJinja;
 
