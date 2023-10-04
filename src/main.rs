@@ -1,22 +1,25 @@
 use clap::Parser;
-use septic_config_generator::{args, cmd_check_logs, cmd_diff, cmd_make};
+use septic_config_generator::commands::Commands;
+
+#[derive(Parser, Debug)]
+#[command(version, about, disable_colored_help = true, next_line_help = true)]
+pub struct Cli {
+    #[clap(subcommand)]
+    pub command: Commands,
+}
 
 fn main() {
-    let args = args::Cli::parse();
+    let args = Cli::parse();
 
     match args.command {
-        args::Commands::Make(make_args) => {
-            cmd_make(
-                &make_args.config_file,
-                make_args.ifchanged,
-                &make_args.var.unwrap_or_default(),
-            );
+        Commands::Make(make) => {
+            make.execute();
         }
-        args::Commands::Diff(diff_args) => {
-            cmd_diff(&diff_args.file1, &diff_args.file2);
+        Commands::Diff(diff) => {
+            diff.execute();
         }
-        args::Commands::Checklogs(check_args) => {
-            cmd_check_logs(&check_args.rundir);
+        Commands::Checklogs(checklogs) => {
+            checklogs.execute();
         }
     }
 }
