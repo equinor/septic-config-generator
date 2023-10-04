@@ -7,48 +7,43 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::RwLock;
+use std::sync::{Arc, Mutex};
 
 const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-lazy_static! {
-    static ref COUNTERS: RwLock<HashMap<String, i32>> = RwLock::new(HashMap::new());
+type CounterMap = Arc<Mutex<HashMap<String, i32>>>;
+
+fn counterwrapper(name: String, counters: &CounterMap) -> impl Fn() -> Result<i32, Error> {
+    let counters = counters.clone();
+    move || counter(&name, &counters)
 }
 
-fn counterwrapper(name: String) -> impl Fn() -> Result<i32, Error> {
-    move || counter(&name)
-}
-
-fn counter(name: &str) -> Result<i32, Error> {
-    let mut counters = COUNTERS
-        .write()
-        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Write lock poisoned"))?;
-    let counter = counters.get_mut(name).ok_or_else(|| {
-        Error::new(
-            ErrorKind::InvalidOperation,
-            format!("Counter '{name}' does not exist"),
-        )
-    })?;
+fn counter(name: &str, counters: &CounterMap) -> Result<i32, Error> {
+    let mut counters = counters
+        .lock()
+        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Mutex lock poisoned"))?;
+    let counter = counters.entry(name.to_owned()).or_insert(0);
     *counter += 1;
     Ok(*counter)
 }
 
-fn setcounterwrapper(name: String) -> impl Fn(i32) -> Result<i32, Error> {
-    move |value| setcounter(&name, value)
+fn setcounterwrapper(name: String, counters: &CounterMap) -> impl Fn(i32) -> Result<i32, Error> {
+    let counters = counters.clone();
+    move |value| setcounter(&name, value, &counters)
 }
 
-fn setcounter(name: &str, value: i32) -> Result<i32, Error> {
-    let mut counters = COUNTERS
-        .write()
-        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Write lock poisoned"))?;
+fn setcounter(name: &str, value: i32, counters: &CounterMap) -> Result<i32, Error> {
+    let mut counters = counters
+        .lock()
+        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Mutex lock poisoned"))?;
     counters.insert(name.to_owned(), value);
     Ok(value)
 }
 
-fn createcounter(name: &str, init_val: Option<i32>) -> Result<(), Error> {
-    let mut counters = COUNTERS
-        .write()
-        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Write lock poisoned"))?;
+fn createcounter(name: &str, init_val: Option<i32>, counters: &CounterMap) -> Result<(), Error> {
+    let mut counters = counters
+        .lock()
+        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Mutex lock poisoned"))?;
     if counters.contains_key(name) {
         return Err(Error::new(
             ErrorKind::InvalidOperation,
@@ -165,7 +160,8 @@ impl<'a> MiniJinja<'a> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
-        createcounter("teller", Some(15)).unwrap(); // TODO: Removeme
+        let counters = CounterMap::new(Mutex::new(HashMap::new()));
+        createcounter("teller", Some(15), &counters).unwrap(); // TODO: Removeme
         renderer.add_globals(globals);
         renderer
             .env
@@ -174,10 +170,11 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_global("gitcommitlong", gitcommit(true));
         renderer
             .env
-            .add_function("teller", counterwrapper("teller".to_string())); // TODO: Removeme
-        renderer
-            .env
-            .add_function("setteller", setcounterwrapper("teller".to_string())); // TODO: Removeme
+            .add_function("teller", counterwrapper("teller".to_string(), &counters)); // TODO: Removeme
+        renderer.env.add_function(
+            "setteller",
+            setcounterwrapper("teller".to_string(), &counters),
+        ); // TODO: Removeme
         renderer.env.add_function("now", timestamp);
         renderer.env.add_filter("bitmask", bitmask);
         renderer.env.set_formatter(erroring_formatter);
