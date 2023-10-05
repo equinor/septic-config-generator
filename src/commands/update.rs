@@ -1,5 +1,3 @@
-use std::process;
-
 use clap::Parser;
 use self_update::cargo_crate_version;
 
@@ -12,38 +10,40 @@ impl Update {
     }
 }
 
+fn get_target() -> Result<String, String> {
+    let target = self_update::get_target();
+    let supported_targets = ["windows", "darwin", "linux"];
+
+    for supported_target in &supported_targets {
+        if target.contains(supported_target) {
+            return Ok(String::from(*supported_target));
+        }
+    }
+
+    Err(format!("Unsupported target: {}", target))
+}
+
 fn cmd_update() {
-    let updater = self_update::backends::github::Update::configure()
+    let target = get_target().unwrap_or_else(|e| {
+        eprintln!("{}", e);
+        std::process::exit(1)
+    });
+
+    self_update::backends::github::Update::configure()
         .repo_owner("equinor")
         .repo_name("septic-config-generator")
         .bin_name("scg")
         .show_download_progress(true)
+        .target(&target)
         .current_version(cargo_crate_version!())
         .build()
         .unwrap_or_else(|e| {
             eprintln!("Problem creating updater: {e}");
-            process::exit(1);
+            std::process::exit(1);
+        })
+        .update()
+        .unwrap_or_else(|e| {
+            eprintln!("{e}");
+            std::process::exit(1);
         });
-
-    let status = updater.update().unwrap_or_else(|e| {
-        eprintln!("{e}");
-        eprintln!("You may be rate limited. Please try again later.");
-        process::exit(1);
-    });
-
-    println!("Update status: `{}`!", status.version());
-
-    // let status = self_update::backends::github::Update::configure()
-    //     .repo_owner("equinor")
-    //     .repo_name("septic-config-generator")
-    //     .bin_name("github")
-    //     .target("windows") // Do I need to specify target?
-    //     .bin_path_in_archive("scg.exe") // Handle Windows differently from Linux/MacOS
-    //     .show_download_progress(true)
-    //     .current_version(cargo_crate_version!())
-    //     .build()
-    //     .unwrap()
-    //     .update()
-    //     .unwrap();
-    // println!("Update status: `{}`!", status.version());
 }
