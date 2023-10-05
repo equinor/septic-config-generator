@@ -47,3 +47,20 @@ fn cmd_update() {
             std::process::exit(1);
         });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn check_get_target_returns_value() {
+        let target = get_target().unwrap();
+        if cfg!(windows) {
+            assert_eq!(target, "windows");
+        } else if cfg!(target_os = "macos") {
+            assert_eq!(target, "darwin");
+        } else if cfg!(target_os = "linux") {
+            assert_eq!(target, "linux");
+        }
+    }
+}
