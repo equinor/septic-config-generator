@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.5.2](https://github.com/equinor/septic-config-generator/compare/v2.5.1...v2.5.2) (2023-10-09)
+
+
+### 🧹 Chores
+
+* add badges ([#150](https://github.com/equinor/septic-config-generator/issues/150)) ([b09a621](https://github.com/equinor/septic-config-generator/commit/b09a621ab8aa31288299ed64c5535663619ae56b))
+* **deps:** bump actions/checkout from 3 to 4 ([#162](https://github.com/equinor/septic-config-generator/issues/162)) ([865a8c2](https://github.com/equinor/septic-config-generator/commit/865a8c21ac59a1e5e2583f729d96203c5a3e4e94))
+* **deps:** bump calamine from 0.21.2 to 0.22.0 ([#164](https://github.com/equinor/septic-config-generator/issues/164)) ([9b7367a](https://github.com/equinor/septic-config-generator/commit/9b7367aa695fce11f071aa15c6e191986e26459c))
+* remove legacy python code ([#153](https://github.com/equinor/septic-config-generator/issues/153)) ([18cfbf5](https://github.com/equinor/septic-config-generator/commit/18cfbf53de5ab9e4e35811333f2fe447a23f6ec3))
+
+
+### 👷 CI/CD
+
+* add build targets for aarch64 macos + linux musl ([#176](https://github.com/equinor/septic-config-generator/issues/176)) ([0ce9fcf](https://github.com/equinor/septic-config-generator/commit/0ce9fcf52071108006030ebbfbd1f8cba710ea7a))
+
+
+### 🔨 Refactor
+
+* move commands into separate files ([#173](https://github.com/equinor/septic-config-generator/issues/173)) ([56d69c3](https://github.com/equinor/septic-config-generator/commit/56d69c3c6c2a158bcb372ede198c965247d57f4c))
+
 ## [2.5.1](https://github.com/equinor/septic-config-generator/compare/v2.5.0...v2.5.1) (2023-08-10)
 
 
