@@ -38,12 +38,11 @@ jobs:
     needs: [release_please]
     uses: ./.github/workflows/build-workflow.yml
 
-  deploy:
-    name: "🚀 Publish"
+  upload:
+    name: "🚀 Upload"
     needs: [build, release_please]
-    uses: ./.github/workflows/publish-workflow.yml
+    uses: ./.github/workflows/upload-workflow.yml
     with:
-      artifact-name: ${{ needs.build.outputs.artifact-name }}
-      artifact-name-exe: ${{ needs.build.outputs.artifact-name-exe }}
+      artifact_base_name: ${{ needs.build.outputs.artifact_base_name }}
       tag_name: ${{ needs.release_please.outputs.tag_name }}
     secrets: inherit
