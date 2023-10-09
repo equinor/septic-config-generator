@@ -1,0 +1,53 @@
+name: "🚀 Upload release"
+
+on:
+  workflow_call:
+    inputs:
+      artifact_base_name:
+        required: true
+        type: string
+      tag_name:
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  upload:
+    name: Upload to GitHub release
+    runs-on: ubuntu-latest   
+    strategy:
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - x86_64-pc-windows-msvc
+          - x86_64-unknown-linux-gnu
+          - x86_64-unknown-linux-musl
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.artifact_base_name }}-${{ matrix.target }}
+          path: ./release/
+
+      - name: 📁 Create archive
+        shell: bash
+        run: |
+          archive_name="scg-${{ inputs.tag_name }}-${{ matrix.target }}"
+          
+          cd ./release/
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            7z a ${archive_name}.zip scg.exe
+            echo "ASSET=$archive_name.zip" >> $GITHUB_ENV
+          else
+            tar cvzf ${archive_name}.tar.gz scg
+            echo "ASSET=$archive_name.tar.gz" >> $GITHUB_ENV
+          fi
+
+      - name: 🚀 Upload binary for ${{ matrix.target }} 
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./release/${{ env.ASSET }}
+          tag_name: ${{ inputs.tag_name }}
