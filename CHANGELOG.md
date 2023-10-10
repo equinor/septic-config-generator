@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.1](https://github.com/equinor/septic-config-generator/compare/v2.6.0...v2.6.1) (2023-10-10)
+
+
+### 👷 CI/CD
+
+* don't compile for musl target ([ba111e6](https://github.com/equinor/septic-config-generator/commit/ba111e67294e03236b5ce5997f90f2cc65d5d633))
+
 ## [2.6.0](https://github.com/equinor/septic-config-generator/compare/v2.5.2...v2.6.0) (2023-10-10)
 
 
