@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.6.0](https://github.com/equinor/septic-config-generator/compare/v2.5.2...v2.6.0) (2023-10-10)
+
+
+### 👷 CI/CD
+
+* make binary executable ([#177](https://github.com/equinor/septic-config-generator/issues/177)) ([07e76f5](https://github.com/equinor/septic-config-generator/commit/07e76f522ba16ca85b58709d9cf1c22011d90a47))
+
+
+### ✨ Features
+
+* add command to self update ([#175](https://github.com/equinor/septic-config-generator/issues/175)) ([1a4f9ec](https://github.com/equinor/septic-config-generator/commit/1a4f9ecb6fcaa13fad19ac0cbb3f8727cc874ba2))
+
 ## [2.5.2](https://github.com/equinor/septic-config-generator/compare/v2.5.1...v2.5.2) (2023-10-09)
 
 
