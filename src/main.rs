@@ -21,5 +21,8 @@ fn main() {
         Commands::Checklogs(checklogs) => {
             checklogs.execute();
         }
+        Commands::Update(update) => {
+            update.execute();
+        }
     }
 }
