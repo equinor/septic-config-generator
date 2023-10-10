@@ -42,6 +42,7 @@ jobs:
             7z a ${archive_name}.zip scg.exe
             echo "ASSET=$archive_name.zip" >> $GITHUB_ENV
           else
+            chmod +x scg
             tar cvzf ${archive_name}.tar.gz scg
             echo "ASSET=$archive_name.tar.gz" >> $GITHUB_ENV
           fi
