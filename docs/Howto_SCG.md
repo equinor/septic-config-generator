@@ -22,6 +22,7 @@ using 1.0 to 2.x, expect having to change a few lines in your templates and YAML
   - [The template engine](#the-template-engine)
     - [Custom keywords, filters and functions](#custom-keywords-filters-and-functions)
 - [scg checklogs](#scg-checklogs)
+- [scg update](#scg-update)
 - [Howto/tutorial](#howtotutorial)
   - [The template files](#the-template-files)
   - [The source file](#the-source-file)
@@ -60,11 +61,12 @@ Download the latest version from the Releases-section on GitHub and extract scg.
 
 ## Usage overview
 
-The tool has three commands (or modes of operation):
+The tool has four commands (or modes of operation):
 
 - make: Generate complete config file based on templates
 - checklogs: Inspect SEPTIC log files and report errors. _(Added in 2.4)_
 - diff: Simple utility to show difference between two files.
+- update: Check GitHub for new release. If available, ask user whether to update. _(Added in 2.6)_
 
 Type `scg.exe --help` to get basic help information for the tool. You can also get help for each command, e.g.
 `scg.exe make --help` .
@@ -216,6 +218,9 @@ The value of `simulation` will be boolean `true`, `size` will be a float with va
 string with value `1.2.3`. The values can be used by inserting `{{ simulation }}` , `{{ size }}` and `{{ version }}` in
 template files.
 
+Note that these variables are not true globals: If a variable is changed within one template, the next template in the
+layout will still be initialized with the original value.
+
 #### `--ifchanged` <!-- omit in toc -->
 
 _(Added in v2.2)_ If this argument is provided, the `outputfile` will only be built if at least one of the input files
@@ -315,6 +320,16 @@ scg checklogs ..\run_main
 MYAPP.out[21]: No Xvr match for Pvr TestPvr
 MYAPP_20230601_1415.cnc[51]: ERROR adding Item: SomeTag
 ```
+
+## scg update
+
+This command will check GitHub for the existence of a newer release. If it exists, the user will be prompted whether to
+update. The update procedure replaces the called executable with the updated version.
+
+Please note that while connected to office network, the GitHub
+[rate limit](https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#rate-limiting) can
+cause the update to fail with an HTTP 403 error. If that happens, you can either wait for at least 15 minutes before you
+try again or connect to a different network, e.g. your home network or mobile network.
 
 ## Howto/tutorial
 
