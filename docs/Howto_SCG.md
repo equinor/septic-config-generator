@@ -15,6 +15,9 @@ using 1.0 to 2.x, expect having to change a few lines in your templates and YAML
 - [Usage overview](#usage-overview)
 - [scg make](#scg-make)
   - [The configuration file](#the-configuration-file)
+    - [Counters](#counters)
+    - [Sources](#sources)
+    - [Layout](#layout)
   - [The source files](#the-source-files)
     - [Excel source](#excel-source)
     - [CSV source](#csv-source)
@@ -90,6 +93,9 @@ outputfile: example.cnfg
 templatepath: templates
 adjustsspacing: true
 verifycontent: true
+counters:
+  - name: mycounter
+    value: 0
 sources:
   - filename: example.xlsx
     id: wells
@@ -114,13 +120,38 @@ layout:
 - `adjustspacing` (boolean, default: true): Specifies whether to ensure exactly one newline between rendered template
   files. If `false`, then the rendering will default to
   [MiniJinja's behaviour](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#trailing-newlines).
-- `verifycontent` (boolean, default: true): Specifies whether to report differences from the previous to the newly
-  rendered outputfile before asking whether it is ok to replace the original. If you don't want to be bothered with this
-  question, you can set this value to `false`.
+- `verifycontent` (boolean, default: true): Whether to report differences from an already existing rendered file. Will
+  ask before replacing with the new content. Set to `false` to overwrite existing file without checking for changes.
+- `counters` (optional list of `counter` structs): Contains a list of global auto-incrementing counter functions.
 - `sources` (list of `source` structs): Contains a list of source file configurations.
 - `layout` (list of `template` structs): Contains a list of templates in the order they should be rendered.
 
 All file names and paths are relative to the location of the configuration file.
+
+#### Counters
+
+_(Added in v2.7)_
+
+The `counter` struct and has the following fields:
+
+- `name` (string): The name of the counter to create.
+- `value` (optional integer, default: 0)`: The initial value to provide the counter.
+
+For each counter that is defined, a Jinja custom function with the same name is created. It can be called in two ways:
+
+- `countername()`: The counter is increased by 1 and the new value is returned. A counter initialized to 0 will return 1
+  the first time it is called.
+- `countername(somevalue)`: The counter is set to the provided value and the new value is returned.
+
+The counters are true globals: Any change to a counter value, either by incrementing or by setting to a new value in a
+template, will be retained for subsequent templates.
+
+In the example above, the function will be called `mycounter()` . It is called as other Jinja custom functions by
+placing it inside double braces: `{{ mycounter() }}`, `{{ mycounter(13) }}`.
+
+To avoid printout when setting the value, try something like this: `{% if "" == mycounter(5) %}{% endif %}`
+
+#### Sources
 
 The `source` struct represents a file that is used for replacing values in the templates. The file can be either an
 Excel file or a CSV file (_since v2.5_), where the file type is identified by the extension (`.xlsx` or `.csv`).
@@ -132,6 +163,8 @@ The structure has the following fields:
   `.csv` _(since v2.5)_.
 - `sheet` (string): The name of the sheet where the substitution values are found. Only valid for Excel files.
 - `delimiter` (optional character, default: ';'): The delimiter used a CSV file.
+
+#### Layout
 
 The `layout` section contains one or more `template` structs that each represent a template file and how it should be
 rendered to the `outputfile`. It has the following fields:
@@ -223,8 +256,10 @@ layout will still be initialized with the original value.
 
 #### `--ifchanged` <!-- omit in toc -->
 
-_(Added in v2.2)_ If this argument is provided, the `outputfile` will only be built if at least one of the input files
-is newer than the `outputfile` .
+_(Added in v2.2)_
+
+If this argument is provided, the `outputfile` will only be built if at least one of the input files is newer than the
+`outputfile` .
 
 Input files include the layout `.yaml` file itself, all files in the `templatepath` directory, including any
 subdirectories, and all source files listed under `sources`. This makes it possible to kill and restart applications

@@ -1,13 +1,54 @@
+use crate::config::Counter as CounterConfig;
 use chrono::Local;
 use minijinja::value::{Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 
 const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+struct CounterMap {
+    counters: HashMap<String, i32>,
+}
+
+impl CounterMap {
+    fn new() -> Self {
+        Self {
+            counters: HashMap::new(),
+        }
+    }
+
+    pub fn create(&mut self, name: &str, init_val: Option<i32>) -> Result<(), Error> {
+        if self
+            .counters
+            .insert(name.to_owned(), init_val.unwrap_or(0))
+            .is_some()
+        {
+            return Err(Error::new(
+                ErrorKind::InvalidOperation,
+                "Counter already exists",
+            ));
+        }
+        Ok(())
+    }
+
+    pub fn increment(&mut self, name: &str, value: Option<i32>) -> Result<i32, Error> {
+        let counter = self.counters.get_mut(name).ok_or_else(|| {
+            Error::new(
+                ErrorKind::InvalidOperation,
+                format!("Counter '{}' not found", name),
+            )
+        })?;
+        let new_value = value.map_or_else(|| *counter + 1, |v| v);
+        *counter = new_value;
+        Ok(new_value)
+    }
+}
 
 fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
     let value = match value.kind() {
@@ -110,10 +151,33 @@ pub struct MiniJinja<'a> {
 }
 
 impl<'a> MiniJinja<'a> {
-    pub fn new(globals: &[String], template_path: &Path) -> MiniJinja<'a> {
+    pub fn new(
+        globals: &[String],
+        template_path: &Path,
+        counter_list: Option<Vec<CounterConfig>>,
+    ) -> MiniJinja<'a> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
+        let counters = Arc::new(Mutex::new(CounterMap::new()));
+        if let Some(cnts) = counter_list {
+            for counter in cnts {
+                counters
+                    .lock()
+                    .unwrap()
+                    .create(&counter.name.clone(), counter.value)
+                    .unwrap();
+                let increment_closure = {
+                    let counters = counters.clone();
+                    let name = counter.name.clone();
+                    move |value: Option<i32>| counters.lock().unwrap().increment(&name, value)
+                };
+                renderer
+                    .env
+                    .add_function(counter.name.clone(), increment_closure);
+            }
+        }
+
         renderer.add_globals(globals);
         renderer
             .env
@@ -171,6 +235,37 @@ impl<'a> MiniJinja<'a> {
 mod tests {
     use super::*;
     use regex::Regex;
+
+    #[test]
+    fn countermap_create() {
+        let mut counter_map = CounterMap::new();
+        assert!(counter_map.create("counter1", Some(10)).is_ok());
+        assert!(counter_map.create("counter2", None).is_ok());
+        assert!(counter_map.create("counter1", None).is_err());
+    }
+
+    #[test]
+    fn countermap_increment_and_set() {
+        let mut counter_map = CounterMap::new();
+        counter_map.create("counter1", Some(10)).unwrap();
+        assert_eq!(counter_map.increment("counter1", None).unwrap(), 11);
+        assert_eq!(counter_map.increment("counter1", Some(20)).unwrap(), 20);
+        assert_eq!(counter_map.increment("counter1", None).unwrap(), 21);
+    }
+
+    #[test]
+    fn countermap_default_value_is_0() {
+        let mut counter_map = CounterMap::new();
+        counter_map.create("counter1", None).unwrap();
+        assert_eq!(counter_map.increment("counter1", None).unwrap(), 1);
+    }
+
+    #[test]
+    fn countermap_increment_nonexistent_fails() {
+        let mut counter_map = CounterMap::new();
+        counter_map.create("counter1", None).unwrap();
+        assert!(counter_map.increment("counter2", None).is_err());
+    }
 
     #[test]
     fn customfunction_timestamp_works() {

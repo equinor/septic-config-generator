@@ -17,6 +17,7 @@ pub struct Config {
     pub adjustspacing: bool,
     #[serde(default = "_default_true")]
     pub verifycontent: bool,
+    pub counters: Option<Vec<Counter>>,
     pub sources: Vec<Source>,
     pub layout: Vec<Template>,
 }
@@ -57,6 +58,14 @@ fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
     }
 
     Ok(())
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Counter {
+    pub name: String,
+    #[serde(default)]
+    pub value: Option<i32>,
 }
 
 #[derive(Deserialize, Debug, Default)]

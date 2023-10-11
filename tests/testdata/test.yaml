@@ -19,6 +19,11 @@ sources:
     sheet: Specials
     # Col1, Col2_empty, Col3_error
 
+counters:
+  - name: mycounter
+  - name: myothercounter
+    value: 267
+
 layout:
   - name: 00_plaintext.tmpl
   - name: 01_normals.tmpl
