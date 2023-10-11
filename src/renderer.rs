@@ -24,14 +24,16 @@ impl CounterMap {
     }
 
     pub fn create(&mut self, name: &str, init_val: Option<i32>) -> Result<(), Error> {
-        if self.counters.contains_key(name) {
+        if self
+            .counters
+            .insert(name.to_owned(), init_val.unwrap_or(0))
+            .is_some()
+        {
             return Err(Error::new(
                 ErrorKind::InvalidOperation,
                 "Counter already exists",
             ));
         }
-        let init_val = init_val.unwrap_or(0);
-        self.counters.insert(name.to_owned(), init_val);
         Ok(())
     }
 
