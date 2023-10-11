@@ -13,8 +13,10 @@ Counter:
 17 == {{ mycounter() }}
 18 == {{ mycounter() }}
 268 == {{ myothercounter() }}
-13 == {{ setmycounter(13)}}
+13 == {{ mycounter(12)}}
 14 == {{ mycounter() }}
 
+{% if false == mycounter(5) %}{% endif %}
+6 == {{ mycounter()}}
 
 // Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }} 

@@ -38,7 +38,12 @@ impl CounterMap {
     }
 
     pub fn increment(&mut self, name: &str, value: Option<i32>) -> Result<i32, Error> {
-        let counter = self.counters.entry(name.to_owned()).or_insert(0);
+        let counter = self.counters.get_mut(name).ok_or_else(|| {
+            Error::new(
+                ErrorKind::InvalidOperation,
+                format!("Counter '{}' not found", name),
+            )
+        })?;
         let new_value = value.map_or_else(|| *counter + 1, |v| v);
         *counter = new_value;
         Ok(new_value)
@@ -253,6 +258,13 @@ mod tests {
         let mut counter_map = CounterMap::new();
         counter_map.create("counter1", None).unwrap();
         assert_eq!(counter_map.increment("counter1", None).unwrap(), 1);
+    }
+
+    #[test]
+    fn countermap_increment_nonexistent_fails() {
+        let mut counter_map = CounterMap::new();
+        counter_map.create("counter1", None).unwrap();
+        assert!(counter_map.increment("counter2", None).is_err());
     }
 
     #[test]
