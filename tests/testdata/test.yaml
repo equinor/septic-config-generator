@@ -21,7 +21,6 @@ sources:
 
 counters:
   - name: mycounter
-    value: 15
   - name: myothercounter
     value: 267
 

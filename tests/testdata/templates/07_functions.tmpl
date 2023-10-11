@@ -10,12 +10,11 @@
 {{ [1, 3, 31] | bitmask }}
 
 Counter:
-17 == {{ mycounter() }}
-18 == {{ mycounter() }}
+2 == {{ mycounter() }}
+3 == {{ mycounter() }}
 268 == {{ myothercounter() }}
-13 == {{ mycounter(12)}}
-14 == {{ mycounter() }}
-
+12 == {{ mycounter(12) }}
+13 == {{ mycounter() }}
 {% if false == mycounter(5) %}{% endif %}
 6 == {{ mycounter()}}
 
