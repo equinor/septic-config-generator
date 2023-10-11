@@ -1,3 +1,4 @@
+use crate::config::Counter as CounterConfig;
 use chrono::Local;
 use minijinja::value::{Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
@@ -13,12 +14,12 @@ const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 type CounterMap = Arc<Mutex<HashMap<String, i32>>>;
 
-fn counterwrapper(name: String, counters: &CounterMap) -> impl Fn() -> Result<i32, Error> {
+fn counter_wrapper(name: String, counters: &CounterMap) -> impl Fn() -> Result<i32, Error> {
     let counters = counters.clone();
-    move || counter(&name, &counters)
+    move || increment_counter(name.clone(), &counters)
 }
 
-fn counter(name: &str, counters: &CounterMap) -> Result<i32, Error> {
+fn increment_counter(name: String, counters: &CounterMap) -> Result<i32, Error> {
     let mut counters = counters
         .lock()
         .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Mutex lock poisoned"))?;
@@ -27,12 +28,12 @@ fn counter(name: &str, counters: &CounterMap) -> Result<i32, Error> {
     Ok(*counter)
 }
 
-fn setcounterwrapper(name: String, counters: &CounterMap) -> impl Fn(i32) -> Result<i32, Error> {
+fn set_counter_wrapper(name: String, counters: &CounterMap) -> impl Fn(i32) -> Result<i32, Error> {
     let counters = counters.clone();
-    move |value| setcounter(&name, value, &counters)
+    move |value| set_counter(name.clone(), value, &counters)
 }
 
-fn setcounter(name: &str, value: i32, counters: &CounterMap) -> Result<i32, Error> {
+fn set_counter(name: String, value: i32, counters: &CounterMap) -> Result<i32, Error> {
     let mut counters = counters
         .lock()
         .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Mutex lock poisoned"))?;
@@ -40,7 +41,7 @@ fn setcounter(name: &str, value: i32, counters: &CounterMap) -> Result<i32, Erro
     Ok(value)
 }
 
-fn createcounter(name: &str, init_val: Option<i32>, counters: &CounterMap) -> Result<(), Error> {
+fn create_counter(name: &str, init_val: Option<i32>, counters: &CounterMap) -> Result<(), Error> {
     let mut counters = counters
         .lock()
         .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Mutex lock poisoned"))?;
@@ -156,25 +157,35 @@ pub struct MiniJinja<'a> {
 }
 
 impl<'a> MiniJinja<'a> {
-    pub fn new(globals: &[String], template_path: &Path) -> MiniJinja<'a> {
+    pub fn new(
+        globals: &[String],
+        template_path: &Path,
+        counter_list: Option<Vec<CounterConfig>>,
+    ) -> MiniJinja<'a> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
-        let counters = CounterMap::new(Mutex::new(HashMap::new()));
-        createcounter("teller", Some(15), &counters).unwrap(); // TODO: Removeme
+        let counters = Arc::new(CounterMap::new(Mutex::new(HashMap::new())));
+        if let Some(cnts) = counter_list {
+            for counter in cnts {
+                create_counter(&counter.name.clone(), counter.value, &counters).unwrap();
+                renderer.env.add_function(
+                    counter.name.clone(),
+                    counter_wrapper(counter.name.clone(), &counters),
+                );
+                renderer.env.add_function(
+                    format!("set{}", &counter.name),
+                    set_counter_wrapper(counter.name.clone(), &counters),
+                );
+            }
+        }
+
         renderer.add_globals(globals);
         renderer
             .env
             .add_global("scgversion", String::from(SCG_VERSION));
         renderer.env.add_global("gitcommit", gitcommit(false));
         renderer.env.add_global("gitcommitlong", gitcommit(true));
-        renderer
-            .env
-            .add_function("teller", counterwrapper("teller".to_string(), &counters)); // TODO: Removeme
-        renderer.env.add_function(
-            "setteller",
-            setcounterwrapper("teller".to_string(), &counters),
-        ); // TODO: Removeme
         renderer.env.add_function("now", timestamp);
         renderer.env.add_filter("bitmask", bitmask);
         renderer.env.set_formatter(erroring_formatter);

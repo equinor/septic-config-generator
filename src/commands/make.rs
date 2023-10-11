@@ -104,7 +104,7 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         .collect();
 
     let template_path = relative_root.join(&cfg.templatepath);
-    let renderer = MiniJinja::new(globals, &template_path);
+    let renderer = MiniJinja::new(globals, &template_path, cfg.counters);
 
     let mut rendered = String::new();
 
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn render_with_normal_values() {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
         let template = config::Template {
             name: "01_normals.tmpl".to_string(),
             source: Some("main".to_string()),
@@ -220,7 +220,7 @@ mod tests {
 
     #[test]
     fn render_with_special_values() {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
         let template = config::Template {
             name: "02_specials.tmpl".to_string(),
             source: Some("errors".to_string()),
@@ -240,7 +240,7 @@ mod tests {
     #[test]
     fn render_with_global_variables() {
         let globals = ["glob".to_string(), "globvalue".to_string()];
-        let renderer = MiniJinja::new(&globals, Path::new("tests/testdata/templates/"));
+        let renderer = MiniJinja::new(&globals, Path::new("tests/testdata/templates/"), None);
         let template = config::Template {
             name: "03_globals.tmpl".to_string(),
             ..Default::default()
@@ -253,7 +253,7 @@ mod tests {
 
     #[test]
     fn render_uses_latin1_encoding() {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
         let template = config::Template {
             name: "06_encoding.tmpl".to_string(),
             ..Default::default()
@@ -267,7 +267,7 @@ mod tests {
 
     #[test]
     fn render_adjusts_spacing() {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"));
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
         let template = config::Template {
             name: "00_plaintext.tmpl".to_string(),
             ..Default::default()

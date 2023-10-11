@@ -65,7 +65,7 @@ fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
 pub struct Counter {
     pub name: String,
     #[serde(default)]
-    pub value: i32,
+    pub value: Option<i32>,
 }
 
 #[derive(Deserialize, Debug, Default)]
