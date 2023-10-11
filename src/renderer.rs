@@ -244,6 +244,35 @@ mod tests {
     use regex::Regex;
 
     #[test]
+    fn countermap_create() {
+        let mut counter_map = CounterMap::new();
+        assert!(counter_map.create("counter1", Some(10)).is_ok());
+        assert!(counter_map.create("counter2", None).is_ok());
+        assert!(counter_map.create("counter1", None).is_err());
+    }
+
+    #[test]
+    fn countermap_increment() {
+        let mut counter_map = CounterMap::new();
+        counter_map.create("counter1", Some(10)).unwrap();
+        counter_map.create("counter2", None).unwrap();
+        assert_eq!(counter_map.increment("counter1").unwrap(), 11);
+        assert_eq!(counter_map.increment("counter2").unwrap(), 1);
+        assert_eq!(counter_map.increment("counter3").unwrap(), 1);
+    }
+
+    #[test]
+    fn countermap_set() {
+        let mut counter_map = CounterMap::new();
+        counter_map.create("counter1", Some(10)).unwrap();
+        counter_map.create("counter2", None).unwrap();
+        assert_eq!(counter_map.set("counter1", 20).unwrap(), 20);
+        assert_eq!(counter_map.set("counter2", 30).unwrap(), 30);
+        assert_eq!(counter_map.increment("counter2").unwrap(), 31);
+        assert_eq!(counter_map.set("counter3", 40).unwrap(), 40);
+    }
+
+    #[test]
     fn customfunction_timestamp_works() {
         let result = timestamp(None);
         let re = Regex::new(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$").unwrap();
