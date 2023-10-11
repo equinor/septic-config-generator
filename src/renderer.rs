@@ -37,15 +37,11 @@ impl CounterMap {
         Ok(())
     }
 
-    pub fn increment(&mut self, name: &str) -> Result<i32, Error> {
+    pub fn increment(&mut self, name: &str, value: Option<i32>) -> Result<i32, Error> {
         let counter = self.counters.entry(name.to_owned()).or_insert(0);
-        *counter += 1;
-        Ok(*counter)
-    }
-
-    pub fn set(&mut self, name: &str, value: i32) -> Result<i32, Error> {
-        self.counters.insert(name.to_owned(), value);
-        Ok(value)
+        let new_value = value.map_or_else(|| *counter + 1, |v| v);
+        *counter = new_value;
+        Ok(new_value)
     }
 }
 
@@ -169,19 +165,11 @@ impl<'a> MiniJinja<'a> {
                 let increment_closure = {
                     let counters = counters.clone();
                     let name = counter.name.clone();
-                    move || counters.lock().unwrap().increment(&name)
+                    move |value: Option<i32>| counters.lock().unwrap().increment(&name, value)
                 };
                 renderer
                     .env
                     .add_function(counter.name.clone(), increment_closure);
-                let set_closure = {
-                    let counters = counters.clone();
-                    let name = counter.name.clone();
-                    move |value| counters.lock().unwrap().set(&name, value)
-                };
-                renderer
-                    .env
-                    .add_function(format!("set{}", &counter.name), set_closure);
             }
         }
 
@@ -252,24 +240,19 @@ mod tests {
     }
 
     #[test]
-    fn countermap_increment() {
+    fn countermap_increment_and_set() {
         let mut counter_map = CounterMap::new();
         counter_map.create("counter1", Some(10)).unwrap();
-        counter_map.create("counter2", None).unwrap();
-        assert_eq!(counter_map.increment("counter1").unwrap(), 11);
-        assert_eq!(counter_map.increment("counter2").unwrap(), 1);
-        assert_eq!(counter_map.increment("counter3").unwrap(), 1);
+        assert_eq!(counter_map.increment("counter1", None).unwrap(), 11);
+        assert_eq!(counter_map.increment("counter1", Some(20)).unwrap(), 20);
+        assert_eq!(counter_map.increment("counter1", None).unwrap(), 21);
     }
 
     #[test]
-    fn countermap_set() {
+    fn countermap_default_value_is_0() {
         let mut counter_map = CounterMap::new();
-        counter_map.create("counter1", Some(10)).unwrap();
-        counter_map.create("counter2", None).unwrap();
-        assert_eq!(counter_map.set("counter1", 20).unwrap(), 20);
-        assert_eq!(counter_map.set("counter2", 30).unwrap(), 30);
-        assert_eq!(counter_map.increment("counter2").unwrap(), 31);
-        assert_eq!(counter_map.set("counter3", 40).unwrap(), 40);
+        counter_map.create("counter1", None).unwrap();
+        assert_eq!(counter_map.increment("counter1", None).unwrap(), 1);
     }
 
     #[test]
