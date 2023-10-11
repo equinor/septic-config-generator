@@ -36,15 +36,9 @@ impl CounterMap {
     }
 
     pub fn increment(&mut self, name: &str) -> Result<i32, Error> {
-        if let Some(counter) = self.counters.get_mut(name) {
-            *counter += 1;
-            Ok(*counter)
-        } else {
-            Err(Error::new(
-                ErrorKind::InvalidOperation,
-                format!("Counter '{}' does not exist", name),
-            ))
-        }
+        let counter = self.counters.entry(name.to_owned()).or_insert(0);
+        *counter += 1;
+        Ok(*counter)
     }
 
     pub fn set(&mut self, name: &str, value: i32) -> Result<i32, Error> {
