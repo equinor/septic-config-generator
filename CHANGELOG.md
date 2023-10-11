@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.7.0](https://github.com/equinor/septic-config-generator/compare/v2.6.1...v2.7.0) (2023-10-11)
+
+
+### 🧹 Chores
+
+* **deps:** bump clap from 4.3.21 to 4.4.6 ([#170](https://github.com/equinor/septic-config-generator/issues/170)) ([4c5d501](https://github.com/equinor/septic-config-generator/commit/4c5d50197184d2bc83c2c9ae2cf97da7224886e5))
+* **deps:** bump encoding_rs from 0.8.32 to 0.8.33 ([#156](https://github.com/equinor/septic-config-generator/issues/156)) ([9c5e20e](https://github.com/equinor/septic-config-generator/commit/9c5e20e845a986a449539e88b91f03672c5e341f))
+* **deps:** bump minijinja from 1.0.5 to 1.0.8 ([#166](https://github.com/equinor/septic-config-generator/issues/166)) ([958dd0a](https://github.com/equinor/septic-config-generator/commit/958dd0a40afb092ec2a4b53bcca06be1ef866b1f))
+* **deps:** bump tempfile from 3.7.1 to 3.8.0 ([#155](https://github.com/equinor/septic-config-generator/issues/155)) ([d6d8ce9](https://github.com/equinor/septic-config-generator/commit/d6d8ce90ba3b726356213525e5e94bbc4e20ea3e))
+* **deps:** bump winresource from 0.1.16 to 0.1.17 ([#157](https://github.com/equinor/septic-config-generator/issues/157)) ([14400ba](https://github.com/equinor/septic-config-generator/commit/14400ba527aaf6a9c05f0815dbf00f8fa58c47a8))
+
+
+### 📚 Documentation
+
+* update for v2.6 ([#181](https://github.com/equinor/septic-config-generator/issues/181)) ([c77257e](https://github.com/equinor/septic-config-generator/commit/c77257e845d25a5a230972cd38a6821b4bc737ed))
+
+
+### ✨ Features
+
+* add global auto-incrementing counters ([#183](https://github.com/equinor/septic-config-generator/issues/183)) ([40ef2e1](https://github.com/equinor/septic-config-generator/commit/40ef2e150832beafad8fd43b75b5469653c6093f))
+
 ## [2.6.1](https://github.com/equinor/septic-config-generator/compare/v2.6.0...v2.6.1) (2023-10-10)
 
 
