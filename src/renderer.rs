@@ -12,48 +12,45 @@ use std::sync::{Arc, Mutex};
 
 const SCG_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-type CounterMap = Arc<Mutex<HashMap<String, i32>>>;
-
-fn counter_wrapper(name: String, counters: &CounterMap) -> impl Fn() -> Result<i32, Error> {
-    let counters = counters.clone();
-    move || increment_counter(name.clone(), &counters)
+struct CounterMap {
+    counters: HashMap<String, i32>,
 }
 
-fn increment_counter(name: String, counters: &CounterMap) -> Result<i32, Error> {
-    let mut counters = counters
-        .lock()
-        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Mutex lock poisoned"))?;
-    let counter = counters.entry(name.to_owned()).or_insert(0);
-    *counter += 1;
-    Ok(*counter)
-}
-
-fn set_counter_wrapper(name: String, counters: &CounterMap) -> impl Fn(i32) -> Result<i32, Error> {
-    let counters = counters.clone();
-    move |value| set_counter(name.clone(), value, &counters)
-}
-
-fn set_counter(name: String, value: i32, counters: &CounterMap) -> Result<i32, Error> {
-    let mut counters = counters
-        .lock()
-        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Mutex lock poisoned"))?;
-    counters.insert(name.to_owned(), value);
-    Ok(value)
-}
-
-fn create_counter(name: &str, init_val: Option<i32>, counters: &CounterMap) -> Result<(), Error> {
-    let mut counters = counters
-        .lock()
-        .map_err(|_| Error::new(ErrorKind::InvalidOperation, "Mutex lock poisoned"))?;
-    if counters.contains_key(name) {
-        return Err(Error::new(
-            ErrorKind::InvalidOperation,
-            "Counter already exists",
-        ));
+impl CounterMap {
+    fn new() -> Self {
+        Self {
+            counters: HashMap::new(),
+        }
     }
-    let init_val = init_val.unwrap_or(0);
-    counters.insert(name.to_owned(), init_val);
-    Ok(())
+
+    pub fn create(&mut self, name: &str, init_val: Option<i32>) -> Result<(), Error> {
+        if self.counters.contains_key(name) {
+            return Err(Error::new(
+                ErrorKind::InvalidOperation,
+                "Counter already exists",
+            ));
+        }
+        let init_val = init_val.unwrap_or(0);
+        self.counters.insert(name.to_owned(), init_val);
+        Ok(())
+    }
+
+    pub fn increment(&mut self, name: String) -> Result<i32, Error> {
+        if let Some(counter) = self.counters.get_mut(&name) {
+            *counter += 1;
+            Ok(*counter)
+        } else {
+            Err(Error::new(
+                ErrorKind::InvalidOperation,
+                format!("Counter '{}' does not exist", name),
+            ))
+        }
+    }
+
+    pub fn set(&mut self, name: String, value: i32) -> Result<i32, Error> {
+        self.counters.insert(name.to_owned(), value);
+        Ok(value)
+    }
 }
 
 fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
@@ -165,18 +162,30 @@ impl<'a> MiniJinja<'a> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
-        let counters = Arc::new(CounterMap::new(Mutex::new(HashMap::new())));
+        let counters = Arc::new(Mutex::new(CounterMap::new()));
         if let Some(cnts) = counter_list {
             for counter in cnts {
-                create_counter(&counter.name.clone(), counter.value, &counters).unwrap();
-                renderer.env.add_function(
-                    counter.name.clone(),
-                    counter_wrapper(counter.name.clone(), &counters),
-                );
-                renderer.env.add_function(
-                    format!("set{}", &counter.name),
-                    set_counter_wrapper(counter.name.clone(), &counters),
-                );
+                counters
+                    .lock()
+                    .unwrap()
+                    .create(&counter.name.clone(), counter.value)
+                    .unwrap();
+                let increment_closure = {
+                    let counters = counters.clone();
+                    let name = counter.name.clone();
+                    move || counters.lock().unwrap().increment(name.clone())
+                };
+                renderer
+                    .env
+                    .add_function(counter.name.clone(), increment_closure);
+                let set_closure = {
+                    let counters = counters.clone();
+                    let name = counter.name.clone();
+                    move |value| counters.lock().unwrap().set(name.clone(), value)
+                };
+                renderer
+                    .env
+                    .add_function(format!("set{}", &counter.name), set_closure);
             }
         }
 
