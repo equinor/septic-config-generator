@@ -135,11 +135,12 @@ _(Added in v2.7)_
 The `counter` struct and has the following fields:
 
 - `name` (string): The name of the counter to create.
-- `value` (optional integer, default: 0)`: The intial value to provide the counter.
+- `value` (optional integer, default: 0)`: The initial value to provide the counter.
 
 For each counter that is defined, a Jinja custom function with the same name is created. It can be called in two ways:
 
-- `countername()`: The counter is increased by 1 and the value returned.
+- `countername()`: The counter is increased by 1 and the new value is returned. A counter initialized to 0 will return 1
+  the first time it is called.
 - `countername(somevalue)`: The counter is set to the provided value and the new value is returned.
 
 The counters are true globals: Any change to a counter value, either by incrementing or by setting to a new value in a
