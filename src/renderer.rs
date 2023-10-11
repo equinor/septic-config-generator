@@ -35,8 +35,8 @@ impl CounterMap {
         Ok(())
     }
 
-    pub fn increment(&mut self, name: String) -> Result<i32, Error> {
-        if let Some(counter) = self.counters.get_mut(&name) {
+    pub fn increment(&mut self, name: &str) -> Result<i32, Error> {
+        if let Some(counter) = self.counters.get_mut(name) {
             *counter += 1;
             Ok(*counter)
         } else {
@@ -47,7 +47,7 @@ impl CounterMap {
         }
     }
 
-    pub fn set(&mut self, name: String, value: i32) -> Result<i32, Error> {
+    pub fn set(&mut self, name: &str, value: i32) -> Result<i32, Error> {
         self.counters.insert(name.to_owned(), value);
         Ok(value)
     }
@@ -173,7 +173,7 @@ impl<'a> MiniJinja<'a> {
                 let increment_closure = {
                     let counters = counters.clone();
                     let name = counter.name.clone();
-                    move || counters.lock().unwrap().increment(name.clone())
+                    move || counters.lock().unwrap().increment(&name)
                 };
                 renderer
                     .env
@@ -181,7 +181,7 @@ impl<'a> MiniJinja<'a> {
                 let set_closure = {
                     let counters = counters.clone();
                     let name = counter.name.clone();
-                    move |value| counters.lock().unwrap().set(name.clone(), value)
+                    move |value| counters.lock().unwrap().set(&name, value)
                 };
                 renderer
                     .env
