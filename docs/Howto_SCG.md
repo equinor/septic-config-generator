@@ -149,7 +149,8 @@ template, will be retained for subsequent templates.
 In the example above, the function will be called `mycounter()` . It is called as other Jinja custom functions by
 placing it inside double braces: `{{ mycounter() }}`, `{{ mycounter(13) }}`.
 
-To avoid printout when setting the value, try `{% do mycounter(5) %}` ([link](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-do-)).
+To avoid printout when setting the value, try `{% do mycounter(5) %}`
+([link](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-do-)).
 
 #### Sources
 
@@ -368,7 +369,7 @@ try again or connect to a different network, e.g. your home network or mobile ne
 
 ## Howto/tutorial
 
-It may be easier to understand how to use the tool by example. In the file-set in this repository, you will find a
+It may be easier to understand how to use the tool by example. In the docs-directory in this repository, you will find a
 directory called `basic example`. This directory contains the following directories and files:
 
 - templates: A directory containing the templates that make up a SEPTIC config file.
