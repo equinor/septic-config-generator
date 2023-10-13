@@ -6,7 +6,7 @@ use crate::{
     set_extension_if_missing, timestamps_newer_than,
 };
 use clap::Parser;
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -40,6 +40,19 @@ impl Make {
     }
 }
 
+fn exit_if_files_clean(outfile: PathBuf, file_list: HashSet<PathBuf>) {
+    if outfile.exists() {
+        let dirty = &timestamps_newer_than(&file_list, &outfile).unwrap_or_else(|e| {
+            eprintln!("Problem checking timestamp: '{e}'");
+            process::exit(2)
+        });
+        if !dirty {
+            println!("No files have changed. Skipping rebuild.");
+            process::exit(1);
+        }
+    }
+}
+
 pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     let cfg_file = set_extension_if_missing(cfg_file, "yaml");
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
@@ -49,6 +62,13 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     });
 
     if only_if_changed & cfg.outputfile.is_some() {
+        let file_list = collect_file_list(&cfg, &cfg_file, &relative_root).unwrap_or_else(|e| {
+            eprintln!("Problem identifying changed files: {e}");
+            process::exit(2)
+        });
+        let outfile = relative_root.join(cfg.outputfile.as_ref().unwrap());
+        exit_if_files_clean(outfile, file_list);
+    }
 
     let all_source_data = read_all_sources(cfg.sources, &relative_root);
     let template_path = relative_root.join(&cfg.templatepath);
@@ -119,6 +139,7 @@ mod tests {
     use super::*;
     use crate::config;
     use crate::datasource::{DataSourceReader, DataSourceRows, ExcelSourceReader};
+    use std::collections::HashMap;
 
     fn get_all_source_data() -> HashMap<String, DataSourceRows> {
         let mut all_source_data: HashMap<String, DataSourceRows> = HashMap::new();
