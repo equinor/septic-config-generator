@@ -1,5 +1,5 @@
 use crate::config::Config;
-use crate::datasource::{CsvSourceReader, DataSourceReader, ExcelSourceReader};
+use crate::datasource::read_all_sources;
 use crate::renderer::MiniJinja;
 use crate::{
     ask_should_overwrite, bubble_error, collect_file_list, create_patch, render_template,
@@ -49,60 +49,8 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     });
 
     if only_if_changed & cfg.outputfile.is_some() {
-        let outfile = relative_root.join(cfg.outputfile.as_ref().unwrap());
-        if outfile.exists() {
-            let file_list =
-                collect_file_list(&cfg, &cfg_file, &relative_root).unwrap_or_else(|e| {
-                    eprintln!("Problem identifying changed files: {e}");
-                    process::exit(2)
-                });
-            let dirty = &timestamps_newer_than(&file_list, &outfile).unwrap_or_else(|e| {
-                eprintln!("Problem checking timestamp: '{e}'");
-                process::exit(2)
-            });
-            if !dirty {
-                println!("No files have changed. Skipping rebuild.");
-                process::exit(1);
-            }
-        }
-    }
 
-    let all_source_data: HashMap<_, _> = cfg
-        .sources
-        .iter()
-        .map(|source| {
-            let reader = match Path::new(&source.filename).extension() {
-                Some(ext) if ext == "xlsx" => {
-                    let reader = ExcelSourceReader::new(
-                        &source.filename,
-                        &relative_root,
-                        source.sheet.as_deref(),
-                    );
-                    Box::new(reader) as Box<dyn DataSourceReader>
-                }
-                Some(ext) if ext == "csv" => {
-                    let delimiter = source.delimiter.unwrap_or(';');
-
-                    let reader =
-                        CsvSourceReader::new(&source.filename, &relative_root, Some(delimiter));
-                    Box::new(reader) as Box<dyn DataSourceReader>
-                }
-                _ => {
-                    eprintln!(
-                        "Unsupported file extension for source file '{}'",
-                        source.filename
-                    );
-                    process::exit(2);
-                }
-            };
-            let source_data = reader.read().unwrap_or_else(|e| {
-                eprintln!("Problem reading source file '{}': {e}", source.filename);
-                process::exit(2);
-            });
-            (source.id.clone(), source_data)
-        })
-        .collect();
-
+    let all_source_data = read_all_sources(cfg.sources, &relative_root);
     let template_path = relative_root.join(&cfg.templatepath);
     let renderer = MiniJinja::new(globals, &template_path, cfg.counters);
 

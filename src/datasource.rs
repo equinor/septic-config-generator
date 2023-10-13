@@ -1,10 +1,53 @@
+use crate::config::Source;
 use crate::{CtxDataType, CtxErrorType};
 use calamine::{open_workbook, CellErrorType, DataType, Reader, Xlsx};
 use csv::{self, Trim};
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
+use std::process;
+
 pub type DataSourceRows = Vec<(String, HashMap<String, CtxDataType>)>;
+
+pub fn read_all_sources(
+    sources: Vec<Source>,
+    relative_root: &Path,
+) -> HashMap<String, DataSourceRows> {
+    sources
+        .iter()
+        .map(|source| {
+            let reader = match Path::new(&source.filename).extension() {
+                Some(ext) if ext == "xlsx" => {
+                    let reader = ExcelSourceReader::new(
+                        &source.filename,
+                        relative_root,
+                        source.sheet.as_deref(),
+                    );
+                    Box::new(reader) as Box<dyn DataSourceReader>
+                }
+                Some(ext) if ext == "csv" => {
+                    let delimiter = source.delimiter.unwrap_or(';');
+
+                    let reader =
+                        CsvSourceReader::new(&source.filename, relative_root, Some(delimiter));
+                    Box::new(reader) as Box<dyn DataSourceReader>
+                }
+                _ => {
+                    eprintln!(
+                        "Unsupported file extension for source file '{}'",
+                        source.filename
+                    );
+                    process::exit(2);
+                }
+            };
+            let source_data = reader.read().unwrap_or_else(|e| {
+                eprintln!("Problem reading source file '{}': {e}", source.filename);
+                process::exit(2);
+            });
+            (source.id.clone(), source_data)
+        })
+        .collect()
+}
 
 pub trait DataSourceReader {
     fn read(&self) -> Result<DataSourceRows, Box<dyn Error>>;
