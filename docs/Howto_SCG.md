@@ -149,7 +149,7 @@ template, will be retained for subsequent templates.
 In the example above, the function will be called `mycounter()` . It is called as other Jinja custom functions by
 placing it inside double braces: `{{ mycounter() }}`, `{{ mycounter(13) }}`.
 
-To avoid printout when setting the value, try something like this: `{% if "" == mycounter(5) %}{% endif %}`
+To avoid printout when setting the value, try `{% do mycounter(5) %}` ([link](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-do-)).
 
 #### Sources
 
