@@ -47,5 +47,3 @@ ShowText1WithName=  OFF
 MinimizeByHide=  OFF
 HideCloseButton=  OFF
 OPCSampleTimeOffset=  0
-
-ExprProc:      CVMVtest

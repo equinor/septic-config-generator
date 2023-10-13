@@ -7,7 +7,6 @@
        PlotMax=  250000
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  -1
           Unit=  "Sm3/h"
@@ -57,7 +56,6 @@ UseFactorWeight=  0
        PlotMax=  100
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  100
           Unit=  "%"
