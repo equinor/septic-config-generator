@@ -53,6 +53,29 @@ fn exit_if_files_clean(outfile: PathBuf, file_list: HashSet<PathBuf>) {
     }
 }
 
+fn check_and_ask_overwrite(path: &Path, rendered: &str, verifycontent: bool) -> bool {
+    let mut do_write_file = true;
+
+    if path.exists() {
+        let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+            .encoding(Some(encoding_rs::WINDOWS_1252))
+            .build(fs::File::open(path).unwrap());
+        let mut old_file_content = String::new();
+        reader.read_to_string(&mut old_file_content).unwrap();
+
+        let diff = create_patch(&old_file_content, rendered);
+
+        if diff.hunks().is_empty() {
+            eprintln!("No change from original version, exiting.");
+            process::exit(1);
+        } else if verifycontent {
+            do_write_file = ask_should_overwrite(&diff).expect("error: unable to read user input");
+        }
+    }
+
+    do_write_file
+}
+
 pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     let cfg_file = set_extension_if_missing(cfg_file, "yaml");
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
@@ -72,7 +95,7 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
 
     let all_source_data = read_all_sources(cfg.sources, &relative_root);
     let template_path = relative_root.join(&cfg.templatepath);
-    let renderer = MiniJinja::new(globals, &template_path, cfg.counters);
+    let renderer = MiniJinja::new(globals, &template_path, cfg.counters.clone());
 
     let mut rendered = String::new();
 
@@ -89,26 +112,7 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     }
 
     if let Some(path) = cfg.outputfile.as_ref().map(|f| relative_root.join(f)) {
-        let mut do_write_file = true;
-
-        if path.exists() {
-            let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-                .encoding(Some(encoding_rs::WINDOWS_1252))
-                .build(fs::File::open(&path).unwrap());
-            let mut old_file_content = String::new();
-            reader.read_to_string(&mut old_file_content).unwrap();
-
-            let diff = create_patch(&old_file_content, &rendered);
-
-            if diff.hunks().is_empty() {
-                eprintln!("No change from original version, exiting.");
-                process::exit(1);
-            } else if cfg.verifycontent {
-                do_write_file =
-                    ask_should_overwrite(&diff).expect("error: unable to read user input");
-            }
-        }
-        if do_write_file {
+        if check_and_ask_overwrite(&path, &rendered, cfg.verifycontent) {
             if path.exists() {
                 let backup_path = path.with_extension(format!(
                     "{}.bak",

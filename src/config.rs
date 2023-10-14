@@ -60,7 +60,7 @@ fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Counter {
     pub name: String,
