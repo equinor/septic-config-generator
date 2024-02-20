@@ -252,6 +252,44 @@ mod tests {
     }
 
     #[test]
+    fn render_source_no_iteration() {
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
+        let template = config::Template {
+            name: "08_sources.tmpl".to_string(),
+            ..Default::default()
+        };
+        let all_source_data = get_all_source_data();
+        let result = render_template(&renderer, &template, &all_source_data, true)
+            .unwrap()
+            .trim()
+            .replace('\r', "");
+        assert_eq!(
+            result,
+            "Num rows: 3\nRows in order: onetwothree\nSingle value: 34.56"
+        );
+    }
+
+    #[test]
+    fn render_source_with_iteration() {
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
+        let template = config::Template {
+            name: "08_sources.tmpl".to_string(),
+            source: Some("main".to_string()),
+            include: Some(vec!["one".to_string()]),
+            ..Default::default()
+        };
+        let all_source_data = get_all_source_data();
+        let result = render_template(&renderer, &template, &all_source_data, true)
+            .unwrap()
+            .trim()
+            .replace('\r', "");
+        assert_eq!(
+            result,
+            "Num rows: 3\nRows in order: onetwothree\nSingle value: 34.56"
+        );
+    }
+
+    #[test]
     fn render_uses_latin1_encoding() {
         let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
         let template = config::Template {
