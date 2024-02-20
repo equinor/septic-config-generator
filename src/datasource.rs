@@ -1,10 +1,11 @@
 use crate::{CtxDataType, CtxErrorType};
 use calamine::{open_workbook, CellErrorType, DataType, Reader, Xlsx};
 use csv::{self, Trim};
+use indexmap::IndexMap;
 use std::collections::HashMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
-pub type DataSourceRows = Vec<(String, HashMap<String, CtxDataType>)>;
+pub type DataSourceRows = IndexMap<String, HashMap<String, CtxDataType>>;
 
 pub trait DataSourceReader {
     fn read(&self) -> Result<DataSourceRows, Box<dyn Error>>;
@@ -36,52 +37,48 @@ impl DataSourceReader for CsvSourceReader {
 
         let headers = reader.headers()?.clone();
 
-        let rows = reader
-            .records()
-            .enumerate()
-            .map(|(_, record_result)| {
-                let record = record_result.map_err(|e| format!("Error reading CSV record: {e}"))?;
+        let mut rows = IndexMap::new();
 
-                let mut data = HashMap::new();
-                for (i, value) in record.iter().enumerate() {
-                    if let Some(header_field) = headers.get(i) {
-                        let converted_value = match value {
-                            "" => CtxDataType::Empty,
-                            v if v.parse::<i64>().is_ok() => {
-                                if v.starts_with('0') && v != "0" {
-                                    CtxDataType::String(value.to_string())
-                                } else {
-                                    CtxDataType::Int(v.parse().unwrap())
-                                }
+        for record_result in reader.records() {
+            let record = record_result.map_err(|e| format!("Error reading CSV record: {e}"))?;
+
+            let mut data = HashMap::new();
+            for (i, value) in record.iter().enumerate() {
+                if let Some(header_field) = headers.get(i) {
+                    let converted_value = match value {
+                        "" => CtxDataType::Empty,
+                        v if v.parse::<i64>().is_ok() => {
+                            if v.starts_with('0') && v != "0" {
+                                CtxDataType::String(value.to_string())
+                            } else {
+                                CtxDataType::Int(v.parse().unwrap())
                             }
-                            v if v.parse::<f64>().is_ok() => CtxDataType::Float(v.parse().unwrap()),
-                            v if v.replace(',', ".").parse::<f64>().is_ok() => {
-                                CtxDataType::Float(v.replace(',', ".").parse().unwrap())
-                            }
-                            v if v.parse::<bool>().is_ok() => CtxDataType::Bool(v.parse().unwrap()),
-                            _ => CtxDataType::String(value.to_string()),
-                        };
-                        data.insert(header_field.to_string(), converted_value);
-                    }
+                        }
+                        v if v.parse::<f64>().is_ok() => CtxDataType::Float(v.parse().unwrap()),
+                        v if v.replace(',', ".").parse::<f64>().is_ok() => {
+                            CtxDataType::Float(v.replace(',', ".").parse().unwrap())
+                        }
+                        v if v.parse::<bool>().is_ok() => CtxDataType::Bool(v.parse().unwrap()),
+                        _ => CtxDataType::String(value.to_string()),
+                    };
+                    data.insert(header_field.to_string(), converted_value);
                 }
-                Ok::<_, Box<dyn Error>>((record[0].to_string(), data))
-            })
-            .collect::<Result<Vec<_>, Box<dyn Error>>>();
-
+            }
+            let key = record[0].to_string();
+            rows.insert(key, data);
+        }
         let first_column_name = headers.get(0).map(ToString::to_string).unwrap_or_default();
 
-        if let Ok(rows) = &rows {
-            if rows.iter().any(|(column_name, data)| {
-                column_name != &first_column_name
-                    && match data.get(&first_column_name) {
-                        Some(CtxDataType::String(val)) => val.trim().is_empty(),
-                        _ => true,
-                    }
-            }) {
-                return Err("First column must contain strings only".into());
-            }
+        if rows.iter().any(|(column_name, data)| {
+            column_name != &first_column_name
+                && match data.get(&first_column_name) {
+                    Some(CtxDataType::String(val)) => val.trim().is_empty(),
+                    _ => true,
+                }
+        }) {
+            return Err("First column must contain strings only".into());
         }
-        rows
+        Ok(rows)
     }
 }
 
@@ -199,8 +196,7 @@ key2;value2;2.2;2;2;00"#;
         let data = result.unwrap();
         assert_eq!(data.len(), 2);
 
-        let (key, values) = &data[0];
-        assert_eq!(key, "key1");
+        let values = &data["key1"];
         assert_eq!(
             values.get("text"),
             Some(&CtxDataType::String("value1".to_string()))
@@ -210,8 +206,7 @@ key2;value2;2.2;2;2;00"#;
         assert_eq!(values.get("mix"), Some(&CtxDataType::Float(1.0)));
         assert_eq!(values.get("zeros"), Some(&CtxDataType::Int(0)));
 
-        let (key, values) = &data[1];
-        assert_eq!(key, "key2");
+        let values = &data["key2"];
         assert_eq!(
             values.get("text"),
             Some(&CtxDataType::String("value2".to_string()))
@@ -245,8 +240,7 @@ key1  ;   value1  ;    1.1 ; 1  "#;
         let data = result.unwrap();
         assert_eq!(data.len(), 1);
 
-        let (key, values) = &data[0];
-        assert_eq!(key, "key1");
+        let values = &data["key1"];
         assert_eq!(
             values.get("text"),
             Some(&CtxDataType::String("value1".to_string()))
@@ -278,7 +272,7 @@ key1  ;   value1  ;    1.1 ; 1  "#;
         let data = result.unwrap();
         assert_eq!(data.len(), 1);
 
-        let (_, values) = &data[0];
+        let values = &data["key1"];
         assert_eq!(
             values.get("textfloat"),
             Some(&CtxDataType::String("1.234".to_string()))
@@ -309,7 +303,7 @@ key1  ;   value1  ;    1.1 ; 1  "#;
         let data = result.unwrap();
         assert_eq!(data.len(), 1);
 
-        let (_, values) = &data[0];
+        let values = &data["key1"];
         assert_eq!(
             values.get("header1"),
             Some(&CtxDataType::String("value1".to_string()))
