@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.8.0](https://github.com/equinor/septic-config-generator/compare/v2.7.0...v2.8.0) (2024-02-20)
+
+
+### 🧹 Chores
+
+* **deps:** bump calamine from 0.22.0 to 0.22.1 ([#185](https://github.com/equinor/septic-config-generator/issues/185)) ([7c1d095](https://github.com/equinor/septic-config-generator/commit/7c1d09514fd61b06cbbd4450672196b40a971043))
+* **deps:** bump chrono from 0.4.26 to 0.4.34 ([#211](https://github.com/equinor/septic-config-generator/issues/211)) ([2e03316](https://github.com/equinor/septic-config-generator/commit/2e03316f3e14edfc506fea2ad3b9dafbed84b811))
+* **deps:** bump csv from 1.2.2 to 1.3.0 ([#186](https://github.com/equinor/septic-config-generator/issues/186)) ([08a035b](https://github.com/equinor/septic-config-generator/commit/08a035befbfb96bb4f1a5928b726190bf51f81de))
+* **deps:** bump h2 from 0.3.21 to 0.3.24 ([#210](https://github.com/equinor/septic-config-generator/issues/210)) ([16b8371](https://github.com/equinor/septic-config-generator/commit/16b83717a3aac48ca0d948d3fa808f22ada76317))
+* **deps:** bump minijinja from 1.0.8 to 1.0.12 ([#209](https://github.com/equinor/septic-config-generator/issues/209)) ([be16ea6](https://github.com/equinor/septic-config-generator/commit/be16ea62ec9e081afb191d392db68b304c0c1b3c))
+* **deps:** bump openssl from 0.10.57 to 0.10.64 ([#207](https://github.com/equinor/septic-config-generator/issues/207)) ([5985a07](https://github.com/equinor/septic-config-generator/commit/5985a0793bbd25a92a8917c1a68d12df345a3f9f))
+* **deps:** bump regex from 1.9.3 to 1.9.4 ([#188](https://github.com/equinor/septic-config-generator/issues/188)) ([88112d0](https://github.com/equinor/septic-config-generator/commit/88112d079ec46dd0297b6a74164f0f75a2b14e89))
+* **deps:** bump self_cell from 1.0.1 to 1.0.3 ([#208](https://github.com/equinor/septic-config-generator/issues/208)) ([260d878](https://github.com/equinor/septic-config-generator/commit/260d878bee157231343962e184a891fc91cdd53e))
+* **deps:** bump unsafe-libyaml from 0.2.9 to 0.2.10 ([#198](https://github.com/equinor/septic-config-generator/issues/198)) ([9e21a5d](https://github.com/equinor/septic-config-generator/commit/9e21a5d3e01cf548c542c984b663fe90ba3c0eb7))
+
+
+### ✨ Features
+
+* make all sources available to all templates ([#204](https://github.com/equinor/septic-config-generator/issues/204)) ([6a3256a](https://github.com/equinor/septic-config-generator/commit/6a3256ad9e49a89c61aa9c73e874a6ea60477bbe))
+
+
+### 🧪 Tests
+
+* add test for csv fields beginning with "0" ([#205](https://github.com/equinor/septic-config-generator/issues/205)) ([f7e3c85](https://github.com/equinor/septic-config-generator/commit/f7e3c85ed6016bb8a4e18ba408214e5a82dfd715))
+
 ## [2.7.0](https://github.com/equinor/septic-config-generator/compare/v2.6.1...v2.7.0) (2023-10-11)
 
 
