@@ -46,3 +46,4 @@ layout:
       - one
   - name: 06_encoding.tmpl
   - name: 07_functions.tmpl
+  - name: 08_sources.tmpl

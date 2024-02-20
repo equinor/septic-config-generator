@@ -164,6 +164,43 @@ The structure has the following fields:
 - `sheet` (string): The name of the sheet where the substitution values are found. Only valid for Excel files.
 - `delimiter` (optional character, default: ';'): The delimiter used a CSV file.
 
+Since v2.8.0, each source can be accessed as a hashmap (dict) from within any template file in the layout regardless of
+whether the layout item is set to iterate over a source or not. This makes it possible to do things like obtain any
+value from any source row:
+
+```sh
+{{ main["D01"]["TagId"] }}
+```
+
+This is equivalent to above:
+
+```sh
+{{ main.D01.TagId }}
+```
+
+To list the keys for all rows in a source:
+
+```sh
+{% for well in main %}
+  {{ well }}
+{% endfor %}
+```
+
+To iterate over all keys and values, use the [items](https://docs.rs/minijinja/latest/minijinja/filters/fn.items.html)
+filter.
+
+```sh
+{% for k, v in main | items %}
+  {{ k }}: {{ v }}
+{% endfor %}
+```
+
+The length of a source can be found with:
+
+```sh
+{{ main | length}}
+```
+
 #### Layout
 
 The `layout` section contains one or more `template` structs that each represent a template file and how it should be

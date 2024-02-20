@@ -1,0 +1,3 @@
+Num rows: {{ main | length }}
+Rows in order: {% for k, v in main |items %}{{ k }}{% endfor %}
+Single value: {{ main["three"]["Col5_float"] }}
