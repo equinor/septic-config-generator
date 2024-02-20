@@ -178,11 +178,11 @@ mod csvtests {
     use std::io::Write;
 
     #[test]
-    fn csv_parses_text_float_int() {
-        let csv_content = r#"keys;text;float;int;mix
-key1;value1;1.1;1;1.0
+    fn csv_parses_text_float_int_zeros() {
+        let csv_content = r#"keys;text;float;int;mix;zeros
+key1;value1;1.1;1;1.0;0
 # Ignore this line
-key2;value2;2.2;2;2"#;
+key2;value2;2.2;2;2;00"#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
         write!(tmp_file, "{}", csv_content).unwrap();
 
@@ -208,6 +208,7 @@ key2;value2;2.2;2;2"#;
         assert_eq!(values.get("float"), Some(&CtxDataType::Float(1.1)));
         assert_eq!(values.get("int"), Some(&CtxDataType::Int(1)));
         assert_eq!(values.get("mix"), Some(&CtxDataType::Float(1.0)));
+        assert_eq!(values.get("zeros"), Some(&CtxDataType::Int(0)));
 
         let (key, values) = &data[1];
         assert_eq!(key, "key2");
@@ -218,6 +219,10 @@ key2;value2;2.2;2;2"#;
         assert_eq!(values.get("float"), Some(&CtxDataType::Float(2.2)));
         assert_eq!(values.get("int"), Some(&CtxDataType::Int(2)));
         assert_eq!(values.get("mix"), Some(&CtxDataType::Int(2)));
+        assert_eq!(
+            values.get("zeros"),
+            Some(&CtxDataType::String("00".to_string()))
+        );
     }
 
     #[test]
