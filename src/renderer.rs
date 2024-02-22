@@ -50,7 +50,27 @@ impl CounterMap {
     }
 }
 
-fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
+fn filt_values(v: Value) -> Result<Value, Error> {
+    if v.kind() == ValueKind::Map {
+        let mut rv = Vec::with_capacity(v.len().unwrap_or(0));
+        let iter = match v.try_iter() {
+            Ok(val) => val,
+            Err(err) => return Err(err),
+        };
+        for key in iter {
+            let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
+            rv.push(value);
+        }
+        Ok(Value::from(rv))
+    } else {
+        Err(Error::new(
+            ErrorKind::InvalidOperation,
+            "cannot convert value into pair list",
+        ))
+    }
+}
+
+fn filt_bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
     let value = match value.kind() {
         ValueKind::Number => Value::from(vec![value]),
         ValueKind::Seq => value,
@@ -84,12 +104,12 @@ fn bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
     Ok(mask.into_iter().collect())
 }
 
-fn timestamp(format: Option<&str>) -> String {
+fn func_timestamp(format: Option<&str>) -> String {
     let fmt = format.unwrap_or("%Y-%m-%d %H:%M:%S");
     Local::now().format(fmt).to_string()
 }
 
-fn gitcommit(long: bool) -> String {
+fn global_gitcommit(long: bool) -> String {
     let args = if long {
         ["rev-parse", "--verify", "HEAD"]
     } else {
@@ -182,10 +202,15 @@ impl<'a> MiniJinja<'a> {
         renderer
             .env
             .add_global("scgversion", String::from(SCG_VERSION));
-        renderer.env.add_global("gitcommit", gitcommit(false));
-        renderer.env.add_global("gitcommitlong", gitcommit(true));
-        renderer.env.add_function("now", timestamp);
-        renderer.env.add_filter("bitmask", bitmask);
+        renderer
+            .env
+            .add_global("gitcommit", global_gitcommit(false));
+        renderer
+            .env
+            .add_global("gitcommitlong", global_gitcommit(true));
+        renderer.env.add_function("now", func_timestamp);
+        renderer.env.add_filter("bitmask", filt_bitmask);
+        renderer.env.add_filter("values", filt_values);
         renderer.env.set_formatter(erroring_formatter);
 
         let local_template_path = template_path.to_path_buf();
@@ -234,7 +259,47 @@ impl<'a> MiniJinja<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use minijinja::{context, render};
     use regex::Regex;
+
+    #[test]
+    fn filt_values_simple() {
+        let mut env = Environment::new();
+        env.add_filter("values", filt_values);
+        let result = render! {in env, "{{ A | values }}",
+            A => context!(
+                AA => context!(a => "aa", b => "bb"),
+                CC => context!(a => "cc", b => "dd"),
+                )
+        };
+        assert_eq!(
+            result,
+            "[{\"a\": \"aa\", \"b\": \"bb\"}, {\"a\": \"cc\", \"b\": \"dd\"}]"
+        );
+    }
+
+    #[test]
+    fn filt_values_selectattr() {
+        let mut env = Environment::new();
+        env.add_filter("values", filt_values);
+        let result = render! {in env, "{% for v in A | values | selectattr('a', 'endingwith', 'a')%}{{ v }}{% endfor %}",
+            A => context!(
+                AA => context!(a => "aa", b => "bb"),
+                CC => context!(a => "cc", b => "dd"),
+                )
+        };
+        assert_eq!(result, "{\"a\": \"aa\", \"b\": \"bb\"}");
+    }
+
+    #[test]
+    fn filt_values_empty_ctx() {
+        let mut env = Environment::new();
+        env.add_filter("values", filt_values);
+        let result = render! {in env, "{{ A | values }}",
+            A => context!()
+        };
+        assert_eq!(result, "[]");
+    }
 
     #[test]
     fn countermap_create() {
@@ -269,45 +334,45 @@ mod tests {
 
     #[test]
     fn customfunction_timestamp_works() {
-        let result = timestamp(None);
+        let result = func_timestamp(None);
         let re = Regex::new(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$").unwrap();
         assert!(re.is_match(&result));
-        let result = timestamp(Some("%a %d %b %Y %H:%M:%S"));
+        let result = func_timestamp(Some("%a %d %b %Y %H:%M:%S"));
         let re = Regex::new(r"^\w{3} \d{1,2} \w{3} \d{4} \d{2}:\d{2}:\d{2}$").unwrap();
         assert!(re.is_match(&result));
     }
 
     #[test]
     fn customfunction_gitcommit_works() {
-        let result = gitcommit(true);
+        let result = global_gitcommit(true);
         let re = Regex::new(r"^\w{40}$").unwrap();
         assert!(re.is_match(&result));
-        let result = gitcommit(false);
+        let result = global_gitcommit(false);
         let re = Regex::new(r"^\w{7}$").unwrap();
         assert!(re.is_match(&result));
     }
 
     #[test]
     fn customfunction_bitmask_on_valid_integer() {
-        let result = bitmask(Value::from(1), Some(31)).unwrap();
+        let result = filt_bitmask(Value::from(1), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000001");
-        let result = bitmask(Value::from(31), Some(31)).unwrap();
+        let result = filt_bitmask(Value::from(31), Some(31)).unwrap();
         assert!(result == "1000000000000000000000000000000");
-        let result = bitmask(Value::from(vec![3]), Some(5)).unwrap();
+        let result = filt_bitmask(Value::from(vec![3]), Some(5)).unwrap();
         assert!(result == "00100");
     }
 
     #[test]
     fn customfunction_bitmask_errors_on_integer_oor() {
-        let result = bitmask(Value::from(-1), Some(31));
+        let result = filt_bitmask(Value::from(-1), Some(31));
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
             .to_string()
             .contains("input value must be "));
-        let result = bitmask(Value::from(0), Some(31)).unwrap();
+        let result = filt_bitmask(Value::from(0), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000000");
-        let result = bitmask(Value::from(32), Some(31));
+        let result = filt_bitmask(Value::from(32), Some(31));
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
@@ -317,25 +382,25 @@ mod tests {
 
     #[test]
     fn customfunction_bitmask_on_valid_sequence() {
-        let result = bitmask(Value::from(vec![0, 1, 3]), Some(31)).unwrap();
+        let result = filt_bitmask(Value::from(vec![0, 1, 3]), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000101");
-        let result = bitmask(Value::from(vec![1, 3, 31]), Some(31)).unwrap();
+        let result = filt_bitmask(Value::from(vec![1, 3, 31]), Some(31)).unwrap();
         assert!(result == "1000000000000000000000000000101");
-        let result = bitmask(Value::from(vec![1, 3]), Some(5)).unwrap();
+        let result = filt_bitmask(Value::from(vec![1, 3]), Some(5)).unwrap();
         assert!(result == "00101");
     }
 
     #[test]
     fn customfunction_bitmask_errors_on_sequence_oor() {
-        let result = bitmask(Value::from(vec![-1, 1, 3]), Some(31));
+        let result = filt_bitmask(Value::from(vec![-1, 1, 3]), Some(31));
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
             .to_string()
             .contains("input value must be "));
-        let result = bitmask(Value::from(vec![0, 1, 3]), Some(31)).unwrap();
+        let result = filt_bitmask(Value::from(vec![0, 1, 3]), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000101");
-        let result = bitmask(Value::from(vec![1, 3, 32]), Some(31));
+        let result = filt_bitmask(Value::from(vec![1, 3, 32]), Some(31));
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
