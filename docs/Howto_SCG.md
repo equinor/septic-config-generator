@@ -195,6 +195,14 @@ filter.
 {% endfor %}
 ```
 
+To iterate over just the values, use the custom `values` filter.
+
+```sh
+{% for v in main | values %}
+  {{ v }}
+{% endfor %}
+```
+
 The length of a source can be found with:
 
 ```sh
@@ -333,6 +341,46 @@ In addition to the built-in
 [filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html#built-in-filters) and
 [global functions](https://docs.rs/minijinja/latest/minijinja/functions/index.html#functions) in MiniJinja, some custom
 functionality has been added.
+
+##### `values` <!-- omit in toc -->
+
+Filter that extracts the values of a hashmap. Similar to the built-in
+[items](https://docs.rs/minijinja/latest/minijinja/filters/fn.items.html) which extracts key-value pairs.
+
+Example:
+
+Given a source called `wells` with this content:
+
+| well | flowline | Pdc        |
+| ---- | -------- | ---------- |
+| D01  | FL1      | 13-1111-33 |
+| D02  | FL2      | 13-2222-33 |
+
+This results in a hashmap that is available in all templates (since 2.8) and looks like this:
+
+```json
+{
+  "D01": 
+    {"well": "D01", "flowline": "FL1", "Pdc": "13-1111-33"},
+  "D02":
+    {"well": "D02", "flowline": "FL2", "Pdc": "13-2222-33"},
+}
+```
+
+The values can now be extracted with
+
+`{{ wells | values }}` ->
+`[{"well": "D01", "Flowline": "FL1", "Pdc": "13-1111-33"}, {"well": "D02", "Flowline": "FL2", "Pdc": "13-2222-33"}]`
+
+Printing the Pdc value for all wells that are connected to flowline FL1:
+
+```jinja
+{% for well in wells | values | selectattr("Flowline", "endingwith", "1") %}
+{{ well["Pdc"] }}
+{% endfor %}
+```
+
+-> `13-1111-33`
 
 ##### `bitmask` <!-- omit in toc -->
 
