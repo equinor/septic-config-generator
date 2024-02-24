@@ -51,59 +51,66 @@ impl CounterMap {
 }
 
 fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> {
+    let (item_keys, _): (&[Value], Kwargs) = from_args(&unpack_keys)?;
     if v.kind() == ValueKind::Map {
-        let (item_keys, _): (&[Value], Kwargs) = from_args(&unpack_keys)?;
-        let iter = match v.try_iter() {
-            Ok(val) => val,
-            Err(err) => return Err(err),
-        };
-        let mut input_is_source = true;
-        for key in iter {
-            let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
-            if value.kind() != ValueKind::Map {
-                input_is_source = false;
-                break;
-            }
-        }
-        let iter = v.try_iter().unwrap();
-        match input_is_source {
+        let items_are_maps = v
+            .try_iter()
+            .unwrap()
+            .all(|key| v.get_item(&key).unwrap_or(Value::UNDEFINED).kind() == ValueKind::Map);
+        match items_are_maps {
             true => {
                 let mut rv: Vec<Value> = Vec::with_capacity(v.len().unwrap_or(0));
-
+                let iter = v.try_iter().unwrap();
                 for key in iter {
                     let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
-                    if value.kind() == ValueKind::Map {
-                        let mut inner_vec = Vec::with_capacity(v.len().unwrap_or(0));
-                        for key in item_keys {
-                            let inner_value = value.get_item(key).unwrap_or(Value::UNDEFINED);
-                            inner_vec.push(inner_value);
-                        }
-                        rv.push(Value::from(inner_vec));
-                    } else {
-                        return Err(Error::new(
-                            ErrorKind::InvalidOperation,
-                            "input is not a map of maps (source)",
-                        ));
+                    let mut inner_vec = Vec::with_capacity(v.len().unwrap_or(0));
+                    for key in item_keys {
+                        let inner_value = value.get_item(key).unwrap_or(Value::UNDEFINED);
+                        inner_vec.push(inner_value);
                     }
+                    rv.push(Value::from(inner_vec));
                 }
                 Ok(rv)
             }
             false => {
-                println!("Not source");
                 let mut rv: Vec<Value> = Vec::with_capacity(v.len().unwrap_or(0));
-
                 for key in item_keys {
                     let inner_value = v.get_item(key).unwrap_or(Value::UNDEFINED);
                     rv.push(inner_value);
                 }
-                println!("inner_value: {:?}", rv);
                 Ok(rv)
+            }
+        }
+    } else if v.kind() == ValueKind::Seq {
+        let items_are_maps = v
+            .try_iter()
+            .unwrap()
+            .all(|val| val.kind() == ValueKind::Map);
+        match items_are_maps {
+            true => {
+                let mut rv: Vec<Value> = Vec::with_capacity(v.len().unwrap_or(0));
+                let iter = v.try_iter().unwrap();
+                for value in iter {
+                    let mut inner_vec = Vec::with_capacity(v.len().unwrap_or(0));
+                    for key in item_keys {
+                        let inner_value = value.get_item(key).unwrap_or(Value::UNDEFINED);
+                        inner_vec.push(inner_value);
+                    }
+                    rv.push(Value::from(inner_vec));
+                }
+             Ok(rv)
+            }
+            false => {
+                return Err(Error::new(
+                    ErrorKind::InvalidOperation,
+                    "input is not a map of maps (source), map (source row) or list of maps (source rows)",
+                ))
             }
         }
     } else {
         Err(Error::new(
             ErrorKind::InvalidOperation,
-            "input is not a map of maps (source)",
+            "input is not a map of maps (source), map (source row) or list of maps (source rows)",
         ))
     }
 }
