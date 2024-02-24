@@ -329,6 +329,101 @@ mod tests {
     use regex::Regex;
 
     #[test]
+    fn filt_unpack_source() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('b') }}",
+            A => context!(
+                AA => context!(a => "aa", b => "bb"),
+                CC => context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[[\"bb\"], [\"dd\"]]")
+    }
+
+    #[test]
+    fn filt_unpack_source_invalid_key() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('c') }}",
+            A => context!(
+                AA => context!(a => "aa", b => "bb"),
+                CC => context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[[undefined], [undefined]]")
+    }
+
+    #[test]
+    fn filt_unpack_source_row() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ AA | unpack('a', 'b') }}",
+            AA => context!(a => "aa", b => "bb")
+        };
+        assert_eq!(result, "[\"aa\", \"bb\"]")
+    }
+
+    #[test]
+    fn filt_unpack_source_row_invalid_key() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ AA | unpack('a', 'c') }}",
+            AA => context!(a => "aa", b => "bb")
+        };
+        assert_eq!(result, "[\"aa\", undefined]")
+    }
+
+    #[test]
+    fn filt_unpack_source_rows() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('c') }}",
+            A => vec!(
+                context!(a => "aa", b => "bb"),
+                context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[[undefined], [undefined]]")
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid operation")]
+    fn filt_unpack_invalid_type() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        render! {in env, "{{ A | unpack('c') }}",
+            A => "Some string"
+        };
+    }
+
+    #[test]
+    #[should_panic(expected = "invalid operation")]
+    fn filt_unpack_invalid_seq_item() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        render! {in env, "{{ A | unpack('c') }}",
+            A => vec!(
+                context!(a => "aa", b => "bb"),
+                Value::from("Some string"),
+            )
+        };
+    }
+
+    #[test]
+    fn filt_unpack_source_rows_invalid_key() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('b') }}",
+            A => vec!(
+                context!(a => "aa", b => "bb"),
+                context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[[\"bb\"], [\"dd\"]]")
+    }
+
+    #[test]
     fn filt_values_simple() {
         let mut env = Environment::new();
         env.add_filter("values", filt_values);
@@ -336,7 +431,7 @@ mod tests {
             A => context!(
                 AA => context!(a => "aa", b => "bb"),
                 CC => context!(a => "cc", b => "dd"),
-                )
+            )
         };
         assert_eq!(
             result,
