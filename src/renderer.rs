@@ -1,6 +1,6 @@
 use crate::config::Counter as CounterConfig;
 use chrono::Local;
-use minijinja::value::{Value, ValueKind};
+use minijinja::value::{from_args, Kwargs, Rest, Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -47,6 +47,35 @@ impl CounterMap {
         let new_value = value.map_or_else(|| *counter + 1, |v| v);
         *counter = new_value;
         Ok(new_value)
+    }
+}
+
+fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Vec<Value>>, Error> {
+    if v.kind() == ValueKind::Map {
+        let (item_keys, _): (&[Value], Kwargs) = from_args(&unpack_keys)?;
+        let mut rv: Vec<Vec<Value>> = Vec::with_capacity(v.len().unwrap_or(0));
+        let iter = match v.try_iter() {
+            Ok(val) => val,
+            Err(err) => return Err(err),
+        };
+        for key in iter {
+            let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
+            if value.kind() == ValueKind::Map {
+                let mut inner_vec = Vec::with_capacity(v.len().unwrap_or(0));
+
+                for key in item_keys {
+                    let inner_value = value.get_item(key).unwrap_or(Value::UNDEFINED);
+                    inner_vec.push(inner_value);
+                }
+                rv.push(inner_vec);
+            }
+        }
+        Ok(rv)
+    } else {
+        Err(Error::new(
+            ErrorKind::InvalidOperation,
+            "input is not a map of maps (source)",
+        ))
     }
 }
 
@@ -211,6 +240,7 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_function("now", func_timestamp);
         renderer.env.add_filter("bitmask", filt_bitmask);
         renderer.env.add_filter("values", filt_values);
+        renderer.env.add_filter("unpack", filt_unpack);
         renderer.env.set_formatter(erroring_formatter);
 
         let local_template_path = template_path.to_path_buf();
