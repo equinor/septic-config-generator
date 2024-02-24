@@ -50,27 +50,56 @@ impl CounterMap {
     }
 }
 
-fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Vec<Value>>, Error> {
+fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> {
     if v.kind() == ValueKind::Map {
         let (item_keys, _): (&[Value], Kwargs) = from_args(&unpack_keys)?;
-        let mut rv: Vec<Vec<Value>> = Vec::with_capacity(v.len().unwrap_or(0));
         let iter = match v.try_iter() {
             Ok(val) => val,
             Err(err) => return Err(err),
         };
+        let mut input_is_source = true;
         for key in iter {
             let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
-            if value.kind() == ValueKind::Map {
-                let mut inner_vec = Vec::with_capacity(v.len().unwrap_or(0));
-
-                for key in item_keys {
-                    let inner_value = value.get_item(key).unwrap_or(Value::UNDEFINED);
-                    inner_vec.push(inner_value);
-                }
-                rv.push(inner_vec);
+            if value.kind() != ValueKind::Map {
+                input_is_source = false;
+                break;
             }
         }
-        Ok(rv)
+        let iter = v.try_iter().unwrap();
+        match input_is_source {
+            true => {
+                let mut rv: Vec<Value> = Vec::with_capacity(v.len().unwrap_or(0));
+
+                for key in iter {
+                    let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
+                    if value.kind() == ValueKind::Map {
+                        let mut inner_vec = Vec::with_capacity(v.len().unwrap_or(0));
+                        for key in item_keys {
+                            let inner_value = value.get_item(key).unwrap_or(Value::UNDEFINED);
+                            inner_vec.push(inner_value);
+                        }
+                        rv.push(Value::from(inner_vec));
+                    } else {
+                        return Err(Error::new(
+                            ErrorKind::InvalidOperation,
+                            "input is not a map of maps (source)",
+                        ));
+                    }
+                }
+                Ok(rv)
+            }
+            false => {
+                println!("Not source");
+                let mut rv: Vec<Value> = Vec::with_capacity(v.len().unwrap_or(0));
+
+                for key in item_keys {
+                    let inner_value = v.get_item(key).unwrap_or(Value::UNDEFINED);
+                    rv.push(inner_value);
+                }
+                println!("inner_value: {:?}", rv);
+                Ok(rv)
+            }
+        }
     } else {
         Err(Error::new(
             ErrorKind::InvalidOperation,
