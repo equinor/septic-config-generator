@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.9.0](https://github.com/equinor/septic-config-generator/compare/v2.8.0...v2.9.0) (2024-02-25)
+
+
+### ✨ Features
+
+* add filter to extract values from hashmap ([#214](https://github.com/equinor/septic-config-generator/issues/214)) ([304b3aa](https://github.com/equinor/septic-config-generator/commit/304b3aa348638620d83a6eadd09708a58c25f694))
+* add filter to unpack values from maps ([#216](https://github.com/equinor/septic-config-generator/issues/216)) ([e1bbaeb](https://github.com/equinor/septic-config-generator/commit/e1bbaeb224780e71c81d5a0e5feb8a2f6eb84507))
+
+
+### 🧹 Chores
+
+* **deps:** bump actions/download-artifact from 3 to 4 ([#196](https://github.com/equinor/septic-config-generator/issues/196)) ([83de9d8](https://github.com/equinor/septic-config-generator/commit/83de9d8f1dbf738c593c64498799fe54107d5788))
+* **deps:** bump actions/upload-artifact from 3 to 4 ([#197](https://github.com/equinor/septic-config-generator/issues/197)) ([fa68c78](https://github.com/equinor/septic-config-generator/commit/fa68c78b3d36b63f4c57df1428bb28e7168fd72e))
+* **deps:** bump google-github-actions/release-please-action from 3 to 4 ([#195](https://github.com/equinor/septic-config-generator/issues/195)) ([b599c5a](https://github.com/equinor/septic-config-generator/commit/b599c5a0a6950d6a44b5076155272ba9136423ac))
+* update release-please-action from 3 to 4 ([#217](https://github.com/equinor/septic-config-generator/issues/217)) ([954089e](https://github.com/equinor/septic-config-generator/commit/954089e2df9bc8172f155a1d8b871597e53ca30c))
+
 ## [2.8.0](https://github.com/equinor/septic-config-generator/compare/v2.7.0...v2.8.0) (2024-02-20)
 
 
