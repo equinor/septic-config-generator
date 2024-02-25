@@ -23,7 +23,14 @@ using 1.0 to 2.x, expect having to change a few lines in your templates and YAML
     - [CSV source](#csv-source)
   - [Command-line options](#command-line-options)
   - [The template engine](#the-template-engine)
-    - [Custom keywords, filters and functions](#custom-keywords-filters-and-functions)
+  - [Custom keywords, filters and functions](#custom-keywords-filters-and-functions)
+    - [`values`](#values)
+    - [`unpack`](#unpack)
+    - [`bitmask`](#bitmask)
+    - [`gitcommit`](#gitcommit)
+    - [`gitcommitlong`](#gitcommitlong)
+    - [`now()`](#now)
+    - [`scgversion`](#scgversion)
 - [scg checklogs](#scg-checklogs)
 - [scg update](#scg-update)
 - [Howto/tutorial](#howtotutorial)
@@ -335,17 +342,18 @@ For further information, please take a look at the
 - [Filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html)
 - [Test functions](https://docs.rs/minijinja/latest/minijinja/tests/index.html)
 
-#### Custom keywords, filters and functions
+### Custom keywords, filters and functions
 
 In addition to the built-in
 [filter functions](https://docs.rs/minijinja/latest/minijinja/filters/index.html#built-in-filters) and
 [global functions](https://docs.rs/minijinja/latest/minijinja/functions/index.html#functions) in MiniJinja, some custom
 functionality has been added.
 
-##### `values` <!-- omit in toc -->
+#### `values`
 
-Filter that extracts the values of a hashmap. Similar to the built-in
-[items](https://docs.rs/minijinja/latest/minijinja/filters/fn.items.html) which extracts key-value pairs.
+Similar to the built-in [items](https://docs.rs/minijinja/latest/minijinja/filters/fn.items.html) which extracts
+key-value pairs, this filter extracts just the values of a map into an array. This can be handy when paired with e.g.
+the [selectattr](https://docs.rs/minijinja/latest/minijinja/filters/fn.selectattr.html) filter.
 
 Example:
 
@@ -360,14 +368,12 @@ This results in a hashmap that is available in all templates (since 2.8) and loo
 
 ```json
 {
-  "D01": 
-    {"well": "D01", "flowline": "FL1", "Pdc": "13-1111-33"},
-  "D02":
-    {"well": "D02", "flowline": "FL2", "Pdc": "13-2222-33"},
+  "D01": { "well": "D01", "flowline": "FL1", "Pdc": "13-1111-33" },
+  "D02": { "well": "D02", "flowline": "FL2", "Pdc": "13-2222-33" }
 }
 ```
 
-The values can now be extracted with
+The source rows can now be extracted with
 
 `{{ wells | values }}` ->
 `[{"well": "D01", "Flowline": "FL1", "Pdc": "13-1111-33"}, {"well": "D02", "Flowline": "FL2", "Pdc": "13-2222-33"}]`
@@ -382,7 +388,46 @@ Printing the Pdc value for all wells that are connected to flowline FL1:
 
 -> `13-1111-33`
 
-##### `bitmask` <!-- omit in toc -->
+#### `unpack`
+
+Filter that unpacks values for the provided keys. Can be applied directly to a source, a source row or an array of
+source rows. This prevents manually extracting each value with the Minjinja [set](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-set-) statement.
+
+Examples:
+
+Printing selected values for all rows in a source file:
+```jinja
+{% for well, flowline in main | unpack("well", "flowline") %}
+{{ well }}: {{ flowline }}
+{%- endfor %}
+```
+ 
+->
+
+```
+D01: FL1
+D02: FL2
+```
+
+Printing selected values for a single row in a source file:
+```jinja
+{% with (flowline, pdc) = main["D02"] | unpack("flowline", "pdc") %}
+{{ flowline }}, {{ pdc }}
+{%- endwith %}
+```
+
+-> `FL2, 13-2222-33`
+
+Printing selected values for all wells that are connected to flowline 2:
+```jinja
+{% for (well, pdc) in main | values | selectattr("flowline", "endingwith", 2) | unpack("well", "pdc") %}
+{{ well }}: {{ pdc }}
+{%- endfor %}
+```
+
+-> `D02: 13-2222-33`
+
+#### `bitmask`
 
 Filter that converts a non-negative integer or a sequence of non-negative integers into a bitmask. Each integer will be
 translated into a 1 in the bitmask that is otherwise 0. Takes an optional argument that is the length of the bitmask
@@ -393,21 +438,21 @@ Examples:
 `{{ [1, 3, 31] | bitmask }}` -> `1000000000000000000000000000101`  
 `{{ [1, 3] | bitmask(5) }}` -> `00101`
 
-##### `gitcommit` <!-- omit in toc -->
+#### `gitcommit`
 
 Global variable that inserts the Git commit hash on short form.
 
 Example:  
 `{{ gitcommit }}` -> 714e102
 
-##### `gitcommitlong` <!-- omit in toc -->
+#### `gitcommitlong`
 
 Global variable that inserts the Git commit hash on long form.
 
 Example:  
 `{{ gitcommitlong }}` -> 714e10261b59baf4a0257700f57c5e36a6e8c6c3
 
-##### `now()` <!-- omit in toc -->
+#### `now()`
 
 Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S"`. The format can be customized by providing
 an [strftime string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) as function argument.
@@ -416,12 +461,12 @@ Examples:
 `{{ now() }}` -> 2023-02-23 14:18:12  
 `{{ now("%a %d %b %Y %H:%M:%S") }}` -> Thu 23 feb 2023 14:18:12
 
-##### `scgversion` <!-- omit in toc -->
+#### `scgversion`
 
 Global variable that inserts the SCG version used to create the output file.
 
 Example:  
-`{{ scgversion }}` -> 2.2.1 <!-- omit in toc -->
+`{{ scgversion }}` -> 2.2.1
 
 Try for example to add the following line at the top of the first template file:  
 `// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`

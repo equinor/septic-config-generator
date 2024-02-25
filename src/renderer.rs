@@ -1,6 +1,6 @@
 use crate::config::Counter as CounterConfig;
 use chrono::Local;
-use minijinja::value::{Value, ValueKind};
+use minijinja::value::{from_args, Kwargs, Rest, Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -47,6 +47,66 @@ impl CounterMap {
         let new_value = value.map_or_else(|| *counter + 1, |v| v);
         *counter = new_value;
         Ok(new_value)
+    }
+}
+
+fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> {
+    let (item_keys, _): (&[Value], Kwargs) = from_args(&unpack_keys)?;
+    match v.kind() {
+        ValueKind::Map => {
+            let items_are_maps = v
+                .try_iter()
+                .unwrap()
+                .all(|key| v.get_item(&key).unwrap_or(Value::UNDEFINED).kind() == ValueKind::Map);
+            if items_are_maps {
+                let rv = v
+                    .try_iter()
+                    .unwrap()
+                    .map(|key| {
+                        let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
+                        item_keys
+                            .iter()
+                            .map(|key| value.get_item(key).unwrap_or(Value::UNDEFINED))
+                            .collect()
+                    })
+                    .collect();
+                Ok(rv)
+            } else {
+                let rv = item_keys
+                    .iter()
+                    .map(|key| v.get_item(key).unwrap_or(Value::UNDEFINED))
+                    .collect();
+                Ok(rv)
+            }
+        }
+        ValueKind::Seq => {
+            let items_are_maps = v
+                .try_iter()
+                .unwrap()
+                .all(|val| val.kind() == ValueKind::Map);
+            if items_are_maps {
+                let rv: Vec<Value> = v
+                    .try_iter()
+                    .unwrap()
+                    .map(|value| {
+                        item_keys
+                            .iter()
+                            .map(|key| value.get_item(key).unwrap_or(Value::UNDEFINED))
+                            .collect()
+                    })
+                    .collect();
+                Ok(rv)
+            } else {
+                Err(Error::new(
+                    ErrorKind::InvalidOperation,
+                    "input is not a map of maps (source), map (source row) or list of maps (source rows)",
+            ))
+            }
+        }
+        _ => Err(Error::new(
+            ErrorKind::InvalidOperation,
+            "input is not a map of maps (source), map (source row) or list of maps (source rows)",
+        )),
     }
 }
 
@@ -211,6 +271,7 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_function("now", func_timestamp);
         renderer.env.add_filter("bitmask", filt_bitmask);
         renderer.env.add_filter("values", filt_values);
+        renderer.env.add_filter("unpack", filt_unpack);
         renderer.env.set_formatter(erroring_formatter);
 
         let local_template_path = template_path.to_path_buf();
@@ -263,6 +324,101 @@ mod tests {
     use regex::Regex;
 
     #[test]
+    fn filt_unpack_source() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('b') }}",
+            A => context!(
+                AA => context!(a => "aa", b => "bb"),
+                CC => context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[[\"bb\"], [\"dd\"]]")
+    }
+
+    #[test]
+    fn filt_unpack_source_invalid_key() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('c') }}",
+            A => context!(
+                AA => context!(a => "aa", b => "bb"),
+                CC => context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[[undefined], [undefined]]")
+    }
+
+    #[test]
+    fn filt_unpack_source_row() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ AA | unpack('a', 'b') }}",
+            AA => context!(a => "aa", b => "bb")
+        };
+        assert_eq!(result, "[\"aa\", \"bb\"]")
+    }
+
+    #[test]
+    fn filt_unpack_source_row_invalid_key() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ AA | unpack('a', 'c') }}",
+            AA => context!(a => "aa", b => "bb")
+        };
+        assert_eq!(result, "[\"aa\", undefined]")
+    }
+
+    #[test]
+    fn filt_unpack_source_rows() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('c') }}",
+            A => vec!(
+                context!(a => "aa", b => "bb"),
+                context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[[undefined], [undefined]]")
+    }
+
+    #[test]
+    #[should_panic(expected = "input is not a map")]
+    fn filt_unpack_invalid_type() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        render! {in env, "{{ A | unpack('c') }}",
+            A => "Some string"
+        };
+    }
+
+    #[test]
+    #[should_panic(expected = "input is not a map")]
+    fn filt_unpack_invalid_seq_item() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        render! {in env, "{{ A | unpack('c') }}",
+            A => vec!(
+                context!(a => "aa", b => "bb"),
+                Value::from("Some string"),
+            )
+        };
+    }
+
+    #[test]
+    fn filt_unpack_source_rows_invalid_key() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('b') }}",
+            A => vec!(
+                context!(a => "aa", b => "bb"),
+                context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[[\"bb\"], [\"dd\"]]")
+    }
+
+    #[test]
     fn filt_values_simple() {
         let mut env = Environment::new();
         env.add_filter("values", filt_values);
@@ -270,7 +426,7 @@ mod tests {
             A => context!(
                 AA => context!(a => "aa", b => "bb"),
                 CC => context!(a => "cc", b => "dd"),
-                )
+            )
         };
         assert_eq!(
             result,
