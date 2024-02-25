@@ -1,0 +1,66 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "rust",
+  "pull-request-title-pattern": "chore: release ${version}",
+  "packages": {
+    ".": {}
+  },
+  "include-component-in-tag": false,
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "✨ Features",
+      "hidden": false
+    },
+    {
+      "type": "fix",
+      "section": "🐛 Bug Fixes",
+      "hidden": false
+    },
+    {
+      "type": "docs",
+      "section": "📚 Documentation",
+      "hidden": false
+    },
+    {
+      "type": "chore",
+      "section": "🧹 Chores",
+      "hidden": false
+    },
+    {
+      "type": "ci",
+      "section": "👷 CI/CD",
+      "hidden": false
+    },
+    {
+      "type": "build",
+      "section": "📦 Build system",
+      "hidden": false
+    },
+    {
+      "type": "performance",
+      "section": "🏎️ Performance",
+      "hidden": false
+    },
+    {
+      "type": "refactor",
+      "section": "🔨 Refactor",
+      "hidden": false
+    },
+    {
+      "type": "revert",
+      "section": "⏪️ Revert",
+      "hidden": false
+    },
+    {
+      "type": "style",
+      "section": "💎 Style",
+      "hidden": false
+    },
+    {
+      "type": "test",
+      "section": "🧪 Tests",
+      "hidden": false
+    }
+  ]
+}
