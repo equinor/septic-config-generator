@@ -1,0 +1,77 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "release-type": "rust",
+  "pull-request-title-pattern": "chore: release ${version}",
+  "packages": {
+    ".": {}
+  },
+  "include-component-in-tag": false,
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "✨ Features",
+      "hidden": false,
+      "collapse": false
+    },
+    {
+      "type": "fix",
+      "section": "🐛 Bug Fixes",
+      "hidden": false,
+      "collapse": false
+    },
+    {
+      "type": "docs",
+      "section": "📚 Documentation",
+      "hidden": false,
+      "collapse": false
+    },
+    {
+      "type": "chore",
+      "section": "🧹 Chores",
+      "hidden": false,
+      "collapse": true
+    },
+    {
+      "type": "ci",
+      "section": "👷 CI/CD",
+      "hidden": false,
+      "collapse": true
+    },
+    {
+      "type": "build",
+      "section": "📦 Build system",
+      "hidden": false,
+      "collapse": true
+    },
+    {
+      "type": "performance",
+      "section": "🏎️ Performance",
+      "hidden": false,
+      "collapse": false
+    },
+    {
+      "type": "refactor",
+      "section": "🔨 Refactor",
+      "hidden": false,
+      "collapse": true
+    },
+    {
+      "type": "revert",
+      "section": "⏪️ Revert",
+      "hidden": false,
+      "collapse": true
+    },
+    {
+      "type": "style",
+      "section": "💎 Style",
+      "hidden": false,
+      "collapse": true
+    },
+    {
+      "type": "test",
+      "section": "🧪 Tests",
+      "hidden": false,
+      "collapse": true
+    }
+  ]
+}
