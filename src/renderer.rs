@@ -52,66 +52,61 @@ impl CounterMap {
 
 fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> {
     let (item_keys, _): (&[Value], Kwargs) = from_args(&unpack_keys)?;
-    if v.kind() == ValueKind::Map {
-        let items_are_maps = v
-            .try_iter()
-            .unwrap()
-            .all(|key| v.get_item(&key).unwrap_or(Value::UNDEFINED).kind() == ValueKind::Map);
-        match items_are_maps {
-            true => {
-                let mut rv: Vec<Value> = Vec::with_capacity(v.len().unwrap_or(0));
-                let iter = v.try_iter().unwrap();
-                for key in iter {
-                    let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
-                    let mut inner_vec = Vec::with_capacity(v.len().unwrap_or(0));
-                    for key in item_keys {
-                        let inner_value = value.get_item(key).unwrap_or(Value::UNDEFINED);
-                        inner_vec.push(inner_value);
-                    }
-                    rv.push(Value::from(inner_vec));
-                }
+    match v.kind() {
+        ValueKind::Map => {
+            let items_are_maps = v
+                .try_iter()
+                .unwrap()
+                .all(|key| v.get_item(&key).unwrap_or(Value::UNDEFINED).kind() == ValueKind::Map);
+            if items_are_maps {
+                let rv = v
+                    .try_iter()
+                    .unwrap()
+                    .map(|key| {
+                        let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
+                        item_keys
+                            .iter()
+                            .map(|key| value.get_item(key).unwrap_or(Value::UNDEFINED))
+                            .collect()
+                    })
+                    .collect();
                 Ok(rv)
-            }
-            false => {
-                let mut rv: Vec<Value> = Vec::with_capacity(v.len().unwrap_or(0));
-                for key in item_keys {
-                    let inner_value = v.get_item(key).unwrap_or(Value::UNDEFINED);
-                    rv.push(inner_value);
-                }
+            } else {
+                let rv = item_keys
+                    .iter()
+                    .map(|key| v.get_item(key).unwrap_or(Value::UNDEFINED))
+                    .collect();
                 Ok(rv)
             }
         }
-    } else if v.kind() == ValueKind::Seq {
-        let items_are_maps = v
-            .try_iter()
-            .unwrap()
-            .all(|val| val.kind() == ValueKind::Map);
-        match items_are_maps {
-            true => {
-                let mut rv: Vec<Value> = Vec::with_capacity(v.len().unwrap_or(0));
-                let iter = v.try_iter().unwrap();
-                for value in iter {
-                    let mut inner_vec = Vec::with_capacity(v.len().unwrap_or(0));
-                    for key in item_keys {
-                        let inner_value = value.get_item(key).unwrap_or(Value::UNDEFINED);
-                        inner_vec.push(inner_value);
-                    }
-                    rv.push(Value::from(inner_vec));
-                }
-             Ok(rv)
-            }
-            false => {
-                return Err(Error::new(
+        ValueKind::Seq => {
+            let items_are_maps = v
+                .try_iter()
+                .unwrap()
+                .all(|val| val.kind() == ValueKind::Map);
+            if items_are_maps {
+                let rv: Vec<Value> = v
+                    .try_iter()
+                    .unwrap()
+                    .map(|value| {
+                        item_keys
+                            .iter()
+                            .map(|key| value.get_item(key).unwrap_or(Value::UNDEFINED))
+                            .collect()
+                    })
+                    .collect();
+                Ok(rv)
+            } else {
+                Err(Error::new(
                     ErrorKind::InvalidOperation,
                     "input is not a map of maps (source), map (source row) or list of maps (source rows)",
-                ))
+            ))
             }
         }
-    } else {
-        Err(Error::new(
+        _ => Err(Error::new(
             ErrorKind::InvalidOperation,
             "input is not a map of maps (source), map (source row) or list of maps (source rows)",
-        ))
+        )),
     }
 }
 
@@ -388,7 +383,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "invalid operation")]
+    #[should_panic(expected = "input is not a map")]
     fn filt_unpack_invalid_type() {
         let mut env = Environment::new();
         env.add_filter("unpack", filt_unpack);
@@ -398,7 +393,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "invalid operation")]
+    #[should_panic(expected = "input is not a map")]
     fn filt_unpack_invalid_seq_item() {
         let mut env = Environment::new();
         env.add_filter("unpack", filt_unpack);
