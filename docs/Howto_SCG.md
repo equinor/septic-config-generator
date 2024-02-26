@@ -171,23 +171,23 @@ The structure has the following fields:
 - `sheet` (string): The name of the sheet where the substitution values are found. Only valid for Excel files.
 - `delimiter` (optional character, default: ';'): The delimiter used a CSV file.
 
-Since v2.8.0, each source can be accessed as a hashmap (dict) from within any template file in the layout regardless of
-whether the layout item is set to iterate over a source or not. This makes it possible to do things like obtain any
-value from any source row:
+Since v2.8, each source can be accessed as a map from within any template file in the layout regardless of whether the
+layout item is set to iterate over a source or not. This makes it possible to do things like obtain any value from any
+source row:
 
-```sh
+```jinja
 {{ main["D01"]["TagId"] }}
 ```
 
-This is equivalent to above:
+This is equivalent:
 
-```sh
+```jinja
 {{ main.D01.TagId }}
 ```
 
 To list the keys for all rows in a source:
 
-```sh
+```jinja
 {% for well in main %}
   {{ well }}
 {% endfor %}
@@ -196,15 +196,15 @@ To list the keys for all rows in a source:
 To iterate over all keys and values, use the [items](https://docs.rs/minijinja/latest/minijinja/filters/fn.items.html)
 filter.
 
-```sh
+```jinja
 {% for k, v in main | items %}
   {{ k }}: {{ v }}
 {% endfor %}
 ```
 
-To iterate over just the values, use the custom `values` filter.
+To iterate over just the values, use the custom `values` filter. Also see the `unpack` filter.
 
-```sh
+```jinja
 {% for v in main | values %}
   {{ v }}
 {% endfor %}
@@ -212,7 +212,7 @@ To iterate over just the values, use the custom `values` filter.
 
 The length of a source can be found with:
 
-```sh
+```jinja
 {{ main | length}}
 ```
 
@@ -351,9 +351,15 @@ functionality has been added.
 
 #### `values`
 
-Similar to the built-in [items](https://docs.rs/minijinja/latest/minijinja/filters/fn.items.html) which extracts
-key-value pairs, this filter extracts just the values of a map into an array. This can be handy when paired with e.g.
-the [selectattr](https://docs.rs/minijinja/latest/minijinja/filters/fn.selectattr.html) filter.
+_(Added in v2.9)_
+
+Similar to the built-in [items](https://docs.rs/minijinja/latest/minijinja/filters/fn.items.html) filter which extracts
+key-value pairs, this filter extracts just the values of a map into an array.
+
+When applied to a source, which is a map of maps, the filter output is an array of the original maps (source rows). This
+can be useful when paired with e.g. the
+[selectattr](https://docs.rs/minijinja/latest/minijinja/filters/fn.selectattr.html) filter (see example for the `unpack`
+filter)
 
 Example:
 
@@ -361,22 +367,22 @@ Given a source called `wells` with this content:
 
 | well | flowline | Pdc        |
 | ---- | -------- | ---------- |
-| D01  | FL1      | 13-1111-33 |
-| D02  | FL2      | 13-2222-33 |
+| D01  | FL1      | 13-1111-11 |
+| D02  | FL2      | 13-2222-22 |
 
-This results in a hashmap that is available in all templates (since 2.8) and looks like this:
+This results in a map that is available in all templates (since v2.8) and looks like this:
 
 ```json
 {
-  "D01": { "well": "D01", "flowline": "FL1", "Pdc": "13-1111-33" },
-  "D02": { "well": "D02", "flowline": "FL2", "Pdc": "13-2222-33" }
+  "D01": { "well": "D01", "flowline": "FL1", "Pdc": "13-1111-11" },
+  "D02": { "well": "D02", "flowline": "FL2", "Pdc": "13-2222-22" }
 }
 ```
 
 The source rows can now be extracted with
 
 `{{ wells | values }}` ->
-`[{"well": "D01", "Flowline": "FL1", "Pdc": "13-1111-33"}, {"well": "D02", "Flowline": "FL2", "Pdc": "13-2222-33"}]`
+`[{"well": "D01", "Flowline": "FL1", "Pdc": "13-1111-11"}, {"well": "D02", "Flowline": "FL2", "Pdc": "13-2222-22"}]`
 
 Printing the Pdc value for all wells that are connected to flowline FL1:
 
@@ -386,48 +392,59 @@ Printing the Pdc value for all wells that are connected to flowline FL1:
 {% endfor %}
 ```
 
--> `13-1111-33`
+-> `13-1111-11`
 
 #### `unpack`
 
-Filter that unpacks values for the provided keys. Can be applied directly to a source, a source row or an array of
-source rows. This prevents manually extracting each value with the Minjinja [set](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-set-) statement.
+_(Added in v2.9)_
+
+Filter that unpacks values for the provided keys into an array. The values in the array can then be assigned to
+individual variables. This avoids having to create variables for each value with the
+[set](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-set-) statement, and also keeps the created
+variables inside the scope. The filter can be applied directly to a source, a source row or an array of source rows.
 
 Examples:
 
+These examples use the same source data as for `value`.
+
 Printing selected values for all rows in a source file:
+
 ```jinja
 {% for well, flowline in main | unpack("well", "flowline") %}
 {{ well }}: {{ flowline }}
 {%- endfor %}
 ```
- 
+
 ->
 
-```
+```text
 D01: FL1
 D02: FL2
 ```
 
-Printing selected values for a single row in a source file:
-```jinja
-{% with (flowline, pdc) = main["D02"] | unpack("flowline", "pdc") %}
-{{ flowline }}, {{ pdc }}
-{%- endwith %}
-```
-
--> `FL2, 13-2222-33`
-
 Printing selected values for all wells that are connected to flowline 2:
+
 ```jinja
 {% for (well, pdc) in main | values | selectattr("flowline", "endingwith", 2) | unpack("well", "pdc") %}
 {{ well }}: {{ pdc }}
 {%- endfor %}
 ```
 
--> `D02: 13-2222-33`
+-> `D02: 13-2222-22`
+
+Printing selected values for a single row in a source file:
+
+```jinja
+{% with (flowline, pdc) = main["D02"] | unpack("flowline", "pdc") %}
+{{ flowline }}, {{ pdc }}
+{%- endwith %}
+```
+
+-> `FL2, 13-2222-22`
 
 #### `bitmask`
+
+_(Added in v2.3)_
 
 Filter that converts a non-negative integer or a sequence of non-negative integers into a bitmask. Each integer will be
 translated into a 1 in the bitmask that is otherwise 0. Takes an optional argument that is the length of the bitmask
@@ -462,6 +479,8 @@ Examples:
 `{{ now("%a %d %b %Y %H:%M:%S") }}` -> Thu 23 feb 2023 14:18:12
 
 #### `scgversion`
+
+_(Added in v2.1)_
 
 Global variable that inserts the SCG version used to create the output file.
 
