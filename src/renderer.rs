@@ -57,19 +57,19 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
             let items_are_maps = v
                 .try_iter()
                 .unwrap()
-                .all(|key| v.get_item(&key).unwrap_or(Value::UNDEFINED).kind() == ValueKind::Map);
+                .all(|key| v.get_item(&key).unwrap().kind() == ValueKind::Map);
             if items_are_maps {
                 let rv = v
                     .try_iter()
                     .unwrap()
                     .map(|key| {
-                        let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
+                        let value = v.get_item(&key).unwrap();
                         let inner_vec: Vec<Value> = item_keys
                             .iter()
-                            .map(|key| value.get_item(key).unwrap_or(Value::UNDEFINED))
+                            .map(|key| value.get_item(key).unwrap())
                             .collect();
                         if item_keys.len() == 1 {
-                            inner_vec.into_iter().next().unwrap_or(Value::UNDEFINED)
+                            inner_vec.into_iter().next().unwrap()
                         } else {
                             Value::from(inner_vec)
                         }
@@ -78,10 +78,10 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
                 Ok(rv)
             } else {
                 let rv = match item_keys.len() {
-                    1 => v.get_item(&item_keys[0]).unwrap_or(Value::UNDEFINED),
+                    1 => v.get_item(&item_keys[0]).unwrap(),
                     _ => item_keys
                         .iter()
-                        .map(|key| v.get_item(key).unwrap_or(Value::UNDEFINED))
+                        .map(|key| v.get_item(key).unwrap())
                         .collect(),
                 };
                 Ok(rv)
@@ -99,10 +99,10 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
                     .map(|value| {
                         let inner_vec: Vec<Value> = item_keys
                             .iter()
-                            .map(|key| value.get_item(key).unwrap_or(Value::UNDEFINED))
+                            .map(|key| value.get_item(key).unwrap())
                             .collect();
                         if item_keys.len() == 1 {
-                            inner_vec.into_iter().next().unwrap_or(Value::UNDEFINED)
+                            inner_vec.into_iter().next().unwrap()
                         } else {
                             Value::from(inner_vec)
                         }
