@@ -50,7 +50,7 @@ impl CounterMap {
     }
 }
 
-fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> {
+fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
     let (item_keys, _): (&[Value], Kwargs) = from_args(&unpack_keys)?;
     match v.kind() {
         ValueKind::Map => {
@@ -77,10 +77,13 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> 
                     .collect();
                 Ok(rv)
             } else {
-                let rv = item_keys
-                    .iter()
-                    .map(|key| v.get_item(key).unwrap_or(Value::UNDEFINED))
-                    .collect();
+                let rv = match item_keys.len() {
+                    1 => v.get_item(&item_keys[0]).unwrap_or(Value::UNDEFINED),
+                    _ => item_keys
+                        .iter()
+                        .map(|key| v.get_item(key).unwrap_or(Value::UNDEFINED))
+                        .collect(),
+                };
                 Ok(rv)
             }
         }
@@ -90,7 +93,7 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> 
                 .unwrap()
                 .all(|val| val.kind() == ValueKind::Map);
             if items_are_maps {
-                let rv: Vec<Value> = v
+                let rv = v
                     .try_iter()
                     .unwrap()
                     .map(|value| {
