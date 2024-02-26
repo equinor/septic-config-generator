@@ -64,10 +64,15 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> 
                     .unwrap()
                     .map(|key| {
                         let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
-                        item_keys
+                        let inner_vec: Vec<Value> = item_keys
                             .iter()
                             .map(|key| value.get_item(key).unwrap_or(Value::UNDEFINED))
-                            .collect()
+                            .collect();
+                        if item_keys.len() == 1 {
+                            inner_vec.into_iter().next().unwrap_or(Value::UNDEFINED)
+                        } else {
+                            Value::from(inner_vec)
+                        }
                     })
                     .collect();
                 Ok(rv)
@@ -89,10 +94,15 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> 
                     .try_iter()
                     .unwrap()
                     .map(|value| {
-                        item_keys
+                        let inner_vec: Vec<Value> = item_keys
                             .iter()
                             .map(|key| value.get_item(key).unwrap_or(Value::UNDEFINED))
-                            .collect()
+                            .collect();
+                        if item_keys.len() == 1 {
+                            inner_vec.into_iter().next().unwrap_or(Value::UNDEFINED)
+                        } else {
+                            Value::from(inner_vec)
+                        }
                     })
                     .collect();
                 Ok(rv)
