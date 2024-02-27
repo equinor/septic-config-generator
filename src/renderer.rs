@@ -50,32 +50,40 @@ impl CounterMap {
     }
 }
 
-fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> {
+fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
     let (item_keys, _): (&[Value], Kwargs) = from_args(&unpack_keys)?;
     match v.kind() {
         ValueKind::Map => {
             let items_are_maps = v
                 .try_iter()
                 .unwrap()
-                .all(|key| v.get_item(&key).unwrap_or(Value::UNDEFINED).kind() == ValueKind::Map);
+                .all(|key| v.get_item(&key).unwrap().kind() == ValueKind::Map);
             if items_are_maps {
                 let rv = v
                     .try_iter()
                     .unwrap()
                     .map(|key| {
-                        let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
-                        item_keys
+                        let value = v.get_item(&key).unwrap();
+                        let inner_vec: Vec<Value> = item_keys
                             .iter()
-                            .map(|key| value.get_item(key).unwrap_or(Value::UNDEFINED))
-                            .collect()
+                            .map(|key| value.get_item(key).unwrap())
+                            .collect();
+                        if item_keys.len() == 1 {
+                            inner_vec.into_iter().next().unwrap()
+                        } else {
+                            Value::from(inner_vec)
+                        }
                     })
                     .collect();
                 Ok(rv)
             } else {
-                let rv = item_keys
-                    .iter()
-                    .map(|key| v.get_item(key).unwrap_or(Value::UNDEFINED))
-                    .collect();
+                let rv = match item_keys.len() {
+                    1 => v.get_item(&item_keys[0]).unwrap(),
+                    _ => item_keys
+                        .iter()
+                        .map(|key| v.get_item(key).unwrap())
+                        .collect(),
+                };
                 Ok(rv)
             }
         }
@@ -85,14 +93,19 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Vec<Value>, Error> 
                 .unwrap()
                 .all(|val| val.kind() == ValueKind::Map);
             if items_are_maps {
-                let rv: Vec<Value> = v
+                let rv = v
                     .try_iter()
                     .unwrap()
                     .map(|value| {
-                        item_keys
+                        let inner_vec: Vec<Value> = item_keys
                             .iter()
-                            .map(|key| value.get_item(key).unwrap_or(Value::UNDEFINED))
-                            .collect()
+                            .map(|key| value.get_item(key).unwrap())
+                            .collect();
+                        if item_keys.len() == 1 {
+                            inner_vec.into_iter().next().unwrap()
+                        } else {
+                            Value::from(inner_vec)
+                        }
                     })
                     .collect();
                 Ok(rv)
@@ -327,26 +340,39 @@ mod tests {
     fn filt_unpack_source() {
         let mut env = Environment::new();
         env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('a', 'b') }}",
+            A => context!(
+                AA => context!(a => "aa", b => "bb"),
+                CC => context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[[\"aa\", \"bb\"], [\"cc\", \"dd\"]]")
+    }
+
+    #[test]
+    fn filt_unpack_source_single_key() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
         let result = render! {in env, "{{ A | unpack('b') }}",
             A => context!(
                 AA => context!(a => "aa", b => "bb"),
                 CC => context!(a => "cc", b => "dd"),
             )
         };
-        assert_eq!(result, "[[\"bb\"], [\"dd\"]]")
+        assert_eq!(result, "[\"bb\", \"dd\"]")
     }
 
     #[test]
     fn filt_unpack_source_invalid_key() {
         let mut env = Environment::new();
         env.add_filter("unpack", filt_unpack);
-        let result = render! {in env, "{{ A | unpack('c') }}",
+        let result = render! {in env, "{{ A | unpack('a', 'c') }}",
             A => context!(
                 AA => context!(a => "aa", b => "bb"),
                 CC => context!(a => "cc", b => "dd"),
             )
         };
-        assert_eq!(result, "[[undefined], [undefined]]")
+        assert_eq!(result, "[[\"aa\", undefined], [\"cc\", undefined]]")
     }
 
     #[test]
@@ -357,6 +383,16 @@ mod tests {
             AA => context!(a => "aa", b => "bb")
         };
         assert_eq!(result, "[\"aa\", \"bb\"]")
+    }
+
+    #[test]
+    fn filt_unpack_source_row_single_key() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ AA | unpack('b') }}",
+            AA => context!(a => "aa", b => "bb")
+        };
+        assert_eq!(result, "bb")
     }
 
     #[test]
@@ -373,13 +409,39 @@ mod tests {
     fn filt_unpack_source_rows() {
         let mut env = Environment::new();
         env.add_filter("unpack", filt_unpack);
-        let result = render! {in env, "{{ A | unpack('c') }}",
+        let result = render! {in env, "{{ A | unpack('a', 'b') }}",
             A => vec!(
                 context!(a => "aa", b => "bb"),
                 context!(a => "cc", b => "dd"),
             )
         };
-        assert_eq!(result, "[[undefined], [undefined]]")
+        assert_eq!(result, "[[\"aa\", \"bb\"], [\"cc\", \"dd\"]]")
+    }
+
+    #[test]
+    fn filt_unpack_source_rows_single_key() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('b') }}",
+            A => vec!(
+                context!(a => "aa", b => "bb"),
+                context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[\"bb\", \"dd\"]")
+    }
+
+    #[test]
+    fn filt_unpack_source_rows_invalid_key() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        let result = render! {in env, "{{ A | unpack('a', 'c') }}",
+            A => vec!(
+                context!(a => "aa", b => "bb"),
+                context!(a => "cc", b => "dd"),
+            )
+        };
+        assert_eq!(result, "[[\"aa\", undefined], [\"cc\", undefined]]")
     }
 
     #[test]
@@ -403,19 +465,6 @@ mod tests {
                 Value::from("Some string"),
             )
         };
-    }
-
-    #[test]
-    fn filt_unpack_source_rows_invalid_key() {
-        let mut env = Environment::new();
-        env.add_filter("unpack", filt_unpack);
-        let result = render! {in env, "{{ A | unpack('b') }}",
-            A => vec!(
-                context!(a => "aa", b => "bb"),
-                context!(a => "cc", b => "dd"),
-            )
-        };
-        assert_eq!(result, "[[\"bb\"], [\"dd\"]]")
     }
 
     #[test]
