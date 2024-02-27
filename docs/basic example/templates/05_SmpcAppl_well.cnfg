@@ -1,18 +1,17 @@
 
-         Cvr:  D02Qg
-           Text1=  "D02: Gas rate"
+         Cvr:  D{{ Id }}Qg
+           Text1=  "D{{ Id }}: Gas rate"
          Text2=  ""
           Mode=  ACTIVE
           Auto=  OFF
        PlotMax=  250000
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  -1
           Unit=  "Sm3/h"
           Meas=  230000
-       GrpMask=  0000000000000000000001000000000
+       GrpMask=  {{ GroupMask }}
        GrpType=  0000000000000000000000100000000
           Span=  3
       SetPntOn=  230000
@@ -49,20 +48,19 @@ MeasValidation=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
   
-    Mvr:  D02Zpc            
-         Text1=  "D02: Production choke"
+    Mvr:  D{{ Id }}Zpc            
+         Text1=  "D{{ Id }}: Production choke"
          Text2=  ""
           Mode=  ACTIVE
           Auto=  OFF
        PlotMax=  100
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  100
           Unit=  "%"
           Meas=  35
-       GrpMask=  0000000000000000000001000000000
+       GrpMask=  {{ GroupMask }}
        GrpType=  0000000000000000000000100000000
           Span=  1
         HighOn=  40

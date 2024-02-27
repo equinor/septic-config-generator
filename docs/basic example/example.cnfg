@@ -48,7 +48,6 @@ MinimizeByHide=  OFF
 HideCloseButton=  OFF
 OPCSampleTimeOffset=  0
 
-ExprProc:      CVMVtest
 
 SopcProc:      CVMVtest
          Text1=  ""
@@ -75,6 +74,7 @@ SampleAgeLimit=  -1
 BlockWritingIfBad=  OFF
     WriteGroups=  1
 WriteGroupPause=  1000
+
 
    SopcCvr:    	 D01Qg
          Text1=  "D01:GasRate"
@@ -114,6 +114,7 @@ WriteGroupPause=  1000
     MaxDownTag=  "18HCV0600.XRCD"
        AutoTag=  "18HCV0600.YBA"
 
+
    SopcCvr:    	 D02Qg
          Text1=  "D02:GasRate"
          Text2=  ""
@@ -152,6 +153,7 @@ WriteGroupPause=  1000
     MaxDownTag=  "18HCV0700.XRCD"
        AutoTag=  "18HCV0700.YBA"
 
+
    SopcCvr:    	 D03Qg
          Text1=  "D03:GasRate"
          Text2=  ""
@@ -189,6 +191,7 @@ WriteGroupPause=  1000
       MaxUpTag=  "18HCV0800.XRCU"
     MaxDownTag=  "18HCV0800.XRCD"
        AutoTag=  "18HCV0800.YBA"
+
  
   SmpcAppl:      CVMVtest
          Text1=  ""
@@ -233,6 +236,7 @@ WriteGroupPause=  1000
      SensLimSS=  1e-006
     SensLimDyn=  1e-006
 
+
          Cvr:  D01Qg
            Text1=  "D01: Gas rate"
          Text2=  ""
@@ -241,7 +245,6 @@ WriteGroupPause=  1000
        PlotMax=  250000
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  -1
           Unit=  "Sm3/h"
@@ -291,7 +294,6 @@ UseFactorWeight=  0
        PlotMax=  100
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  100
           Unit=  "%"
@@ -320,6 +322,7 @@ MeasValidation=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
 
+
          Cvr:  D02Qg
            Text1=  "D02: Gas rate"
          Text2=  ""
@@ -328,7 +331,6 @@ UseFactorWeight=  0
        PlotMax=  250000
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  -1
           Unit=  "Sm3/h"
@@ -378,7 +380,6 @@ UseFactorWeight=  0
        PlotMax=  100
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  100
           Unit=  "%"
@@ -407,6 +408,7 @@ MeasValidation=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
 
+
          Cvr:  D03Qg
            Text1=  "D03: Gas rate"
          Text2=  ""
@@ -415,7 +417,6 @@ UseFactorWeight=  0
        PlotMax=  250000
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  -1
           Unit=  "Sm3/h"
@@ -465,7 +466,6 @@ UseFactorWeight=  0
        PlotMax=  100
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  100
           Unit=  "%"
@@ -493,6 +493,10 @@ MeasValidation=  OFF
         LockIV=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
+
+
+ExprModl:      modell
+
   
 	  DisplayGroup:  Tables
        GroupNo=  1
@@ -517,6 +521,7 @@ UseFactorWeight=  0
   ValueColSize=  -1
  GroupsColSize=  -1
 
+
   Spacer:        s1
           Size=  2
 
@@ -532,7 +537,8 @@ UseFactorWeight=  0
   MvrList:       MVlist
           Text=  "MV"
           Mvrs=  1
-                 "D01Zpc"  
+                 "D01Zpc"
+
 
   Spacer:        s1
           Size=  2
@@ -549,4 +555,4 @@ UseFactorWeight=  0
   MvrList:       MVlist
           Text=  "MV"
           Mvrs=  1
-                 "D02Zpc"  
+                 "D02Zpc"
