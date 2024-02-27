@@ -1192,7 +1192,7 @@ checksum = "ad977052201c6de01a8ef2aa3378c4bd23217a056337d1d6da40468d267a4fb0"
 
 [[package]]
 name = "septic-config-generator"
-version = "2.9.0"
+version = "2.9.1"
 dependencies = [
  "calamine",
  "chrono",
