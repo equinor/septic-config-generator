@@ -1,5 +1,31 @@
 # Changelog
 
+## [2.9.1](https://github.com/equinor/septic-config-generator/compare/v2.9.0...v2.9.1) (2024-02-27)
+
+
+### 🐛 Bug Fixes
+
+* unpack output non-array value for single argument ([bbe8425](https://github.com/equinor/septic-config-generator/commit/bbe8425eda10d7511241cab0b9c1f779372354ae))
+
+
+### 📚 Documentation
+
+* improve docs for filters ([#218](https://github.com/equinor/septic-config-generator/issues/218)) ([9d1d77e](https://github.com/equinor/septic-config-generator/commit/9d1d77ecc3ddb3aa44a5956f67e09fe97675aa91))
+
+
+### 🧹 Chores
+
+* **deps:** bump clap from 4.4.6 to 4.4.18 ([#222](https://github.com/equinor/septic-config-generator/issues/222)) ([07f9208](https://github.com/equinor/septic-config-generator/commit/07f9208f8ec1914f343182cb7a33caec9646165c))
+* **deps:** bump codecov/codecov-action from 3 to 4 ([#226](https://github.com/equinor/septic-config-generator/issues/226)) ([a5f4e18](https://github.com/equinor/septic-config-generator/commit/a5f4e1838809479de428c56469b15b767c596e02))
+* **deps:** bump colored from 2.0.4 to 2.1.0 ([#223](https://github.com/equinor/septic-config-generator/issues/223)) ([d3f1444](https://github.com/equinor/septic-config-generator/commit/d3f14441383e4228343df677339f320772f88d20))
+* **deps:** bump regex from 1.9.4 to 1.10.3 ([#221](https://github.com/equinor/septic-config-generator/issues/221)) ([83b2c24](https://github.com/equinor/septic-config-generator/commit/83b2c24cb33afde4c343e7b46d4f60887de446d0))
+* **deps:** bump serde_yaml from 0.9.25 to 0.9.32 ([#224](https://github.com/equinor/septic-config-generator/issues/224)) ([a8265eb](https://github.com/equinor/septic-config-generator/commit/a8265ebdfd0498be77931909d7e654642604cc82))
+
+
+### 👷 CI/CD
+
+* only test when updating relevant files ([#220](https://github.com/equinor/septic-config-generator/issues/220)) ([75aef70](https://github.com/equinor/septic-config-generator/commit/75aef70ec2e3e3feae2d4af4604f02a13f94df0a))
+
 ## [2.9.0](https://github.com/equinor/septic-config-generator/compare/v2.8.0...v2.9.0) (2024-02-25)
 
 
