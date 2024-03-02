@@ -1,5 +1,5 @@
 use crate::{CtxDataType, CtxErrorType};
-use calamine::{open_workbook, CellErrorType, DataType, Reader, Xlsx};
+use calamine::{open_workbook, CellErrorType, Data, DataType, Reader, Xlsx};
 use csv::{self, Trim};
 use indexmap::IndexMap;
 use std::collections::HashMap;
@@ -105,9 +105,7 @@ impl DataSourceReader for ExcelSourceReader {
         let mut workbook: Xlsx<_> = open_workbook(&self.file_path)?;
         let sheet = self.sheet.as_ref().unwrap();
 
-        let range = workbook
-            .worksheet_range(sheet)
-            .ok_or_else(|| format!("Cannot find sheet '{sheet}'"))??;
+        let range = workbook.worksheet_range(sheet)?;
 
         if range
             .rows()
@@ -129,19 +127,19 @@ impl DataSourceReader for ExcelSourceReader {
                     .map(|(header, cell)| {
                         let header_str = header.get_string().unwrap().to_string();
                         let value = match cell.clone() {
-                            DataType::Int(i) => CtxDataType::Int(i),
-                            DataType::Float(f) => {
+                            Data::Int(i) => CtxDataType::Int(i),
+                            Data::Float(f) => {
                                 if (f - f.floor()).abs() < f64::EPSILON {
                                     CtxDataType::Int(f as i64)
                                 } else {
                                     CtxDataType::Float(f)
                                 }
                             }
-                            DataType::String(s) => CtxDataType::String(s),
-                            DataType::Bool(b) => CtxDataType::Bool(b),
-                            DataType::DateTime(d) => CtxDataType::DateTime(d),
-                            DataType::Empty => CtxDataType::Empty,
-                            DataType::Error(e) => match e {
+                            Data::String(s) => CtxDataType::String(s),
+                            Data::Bool(b) => CtxDataType::Bool(b),
+                            Data::DateTime(d) => CtxDataType::DateTime(d.as_f64()),
+                            Data::Empty => CtxDataType::Empty,
+                            Data::Error(e) => match e {
                                 CellErrorType::Div0 => CtxDataType::Error(CtxErrorType::Div0),
                                 CellErrorType::NA => CtxDataType::Error(CtxErrorType::NA),
                                 CellErrorType::Name => CtxDataType::Error(CtxErrorType::Name),
@@ -153,9 +151,7 @@ impl DataSourceReader for ExcelSourceReader {
                                     CtxDataType::Error(CtxErrorType::GettingData)
                                 }
                             },
-                            DataType::Duration(_)
-                            | DataType::DateTimeIso(_)
-                            | DataType::DurationIso(_) => {
+                            _ => {
                                 panic!("Unhandled datatype for {cell})"); // Should never happen
                             }
                         };
@@ -412,6 +408,6 @@ mod xlsxtests {
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("Cannot find sheet"));
+            .contains("Worksheet 'nonexistent_sheet' not found"));
     }
 }
