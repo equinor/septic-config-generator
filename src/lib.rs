@@ -5,7 +5,6 @@ use datasource::DataSourceRows;
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
 
-use serde::ser::SerializeMap;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -50,7 +49,6 @@ pub enum CtxDataType {
     DateTime(f64),
     Error(CtxErrorType),
     Empty,
-    DataSourceRows(DataSourceRows), // Context sent to renderer can contain entire sources
 }
 
 impl Serialize for CtxDataType {
@@ -77,13 +75,6 @@ impl Serialize for CtxDataType {
                 serializer.serialize_str(s)
             }
             Self::Empty => serializer.serialize_unit(),
-            Self::DataSourceRows(value) => {
-                let mut map = serializer.serialize_map(Some(value.len()))?;
-                for (k, v) in value {
-                    map.serialize_entry(&k, &v)?;
-                }
-                map.end()
-            }
         }
     }
 }
@@ -145,16 +136,7 @@ fn render_template(
 
         for (key, row) in &source_data[src_name] {
             if items_set.contains(key) {
-                let ctx_map = row
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.clone()))
-                    .chain(
-                        source_data
-                            .iter()
-                            .map(|(k, v)| (k.to_string(), CtxDataType::DataSourceRows(v.clone()))),
-                    )
-                    .collect::<HashMap<_, _>>();
-                let mut tmpl_rend = renderer.render(&template.name, ctx_map)?;
+                let mut tmpl_rend = renderer.render(&template.name, Some(row))?;
 
                 if adjust_spacing {
                     tmpl_rend = tmpl_rend.trim_end().to_string();
