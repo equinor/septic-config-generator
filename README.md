@@ -17,3 +17,10 @@ version to the first Rust-based version (2.0) and how you can amend your templat
 version, see [docs/Changes_1.0_2.0.md](docs/Changes_1.0_2.0.md).
 
 The legacy 1.x version will not be updated. All new development work will be on the Rust- based 2.x version.
+
+## Contributing
+
+SEPTIC config generator is a somewhat niche project, but all contributions are welcome. This includes code, bug reports,
+issues, feature requests, and documentation. The preferred way of submitting a contribution is to either create an issue
+on GitHub or to fork the project and make a pull request. Just don't expect SCG to evolve into anything other than a
+tool to assist with SEPTIC config development.
