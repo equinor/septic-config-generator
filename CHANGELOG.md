@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.9.2](https://github.com/equinor/septic-config-generator/compare/v2.9.1...v2.9.2) (2024-03-12)
+
+
+### 🧹 Chores
+
+* **deps:** bump calamine from 0.22.1 to 0.24.0 ([#230](https://github.com/equinor/septic-config-generator/issues/230)) ([b83b293](https://github.com/equinor/septic-config-generator/commit/b83b29370f07a80cabcf63abc1e7f0ea1f2914f0))
+* **deps:** bump softprops/action-gh-release from 1 to 2 ([#237](https://github.com/equinor/septic-config-generator/issues/237)) ([07a96cd](https://github.com/equinor/septic-config-generator/commit/07a96cd8351f4373db7ca7a77b9cf4197ef33b68))
+
 ## [2.9.1](https://github.com/equinor/septic-config-generator/compare/v2.9.0...v2.9.1) (2024-02-27)
 
 
