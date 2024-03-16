@@ -6,6 +6,7 @@ use crate::{
     set_extension_if_missing, timestamps_newer_than,
 };
 use clap::Parser;
+use minijinja::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::io::prelude::*;
@@ -104,7 +105,13 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         .collect();
 
     let template_path = relative_root.join(&cfg.templatepath);
-    let renderer = MiniJinja::new(globals, &template_path, cfg.counters);
+    let mut renderer = MiniJinja::new(globals, &template_path, cfg.counters);
+
+    for key in all_source_data.keys() {
+        renderer
+            .env
+            .add_global(key, Value::from_serializable(&all_source_data[key]));
+    }
 
     let mut rendered = String::new();
 
