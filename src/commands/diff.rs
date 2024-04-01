@@ -18,7 +18,7 @@ impl Diff {
 }
 
 pub fn cmd_diff(file1: &Path, file2: &Path) {
-    let mut file_content = vec![String::new(), String::new()];
+    let mut file_content = [String::new(), String::new()];
 
     for (i, file) in [file1, file2].iter().enumerate() {
         if file.exists() {
