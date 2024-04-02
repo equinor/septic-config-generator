@@ -89,14 +89,6 @@ fn bubble_error(pretext: &str, err: Box<dyn Error>) {
     }
 }
 
-fn set_extension_if_missing(filename: &Path, extension: &str) -> PathBuf {
-    let mut file = filename.to_path_buf();
-    if file.extension().is_none() {
-        file.set_extension(extension);
-    }
-    file
-}
-
 fn render_template(
     renderer: &MiniJinja,
     template: &config::Template,
@@ -207,16 +199,6 @@ mod tests {
     use super::*;
     use std::fs::File;
     use tempfile::tempdir;
-    #[test]
-    fn ensure_has_extension_works() {
-        let before = Path::new("file.extension");
-        assert_eq!(before, set_extension_if_missing(before, "extension"));
-        assert_eq!(
-            before,
-            set_extension_if_missing(Path::new("file"), "extension")
-        );
-        assert!(set_extension_if_missing(before, "other") == before);
-    }
 
     #[test]
     fn collect_file_list_works() {

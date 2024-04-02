@@ -3,7 +3,7 @@ use crate::datasource::{CsvSourceReader, DataSourceReader, ExcelSourceReader};
 use crate::renderer::MiniJinja;
 use crate::{
     ask_should_overwrite, bubble_error, collect_file_list, create_patch, render_template,
-    set_extension_if_missing, timestamps_newer_than, CtxDataType,
+    timestamps_newer_than, CtxDataType,
 };
 use clap::Parser;
 use minijinja::Value;
@@ -42,8 +42,14 @@ impl Make {
 }
 
 pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
-    let cfg_file = set_extension_if_missing(cfg_file, "yaml");
+    let mut cfg_file = cfg_file.to_path_buf();
+    cfg_file
+        .extension()
+        .is_none()
+        .then(|| cfg_file.set_extension("yaml"));
+
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
+
     let cfg = Config::new(&cfg_file).unwrap_or_else(|e| {
         eprintln!("Problem reading config file '{}: {e}", cfg_file.display());
         process::exit(2);
