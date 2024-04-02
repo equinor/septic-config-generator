@@ -1,12 +1,7 @@
 use crate::config::Config;
-use crate::renderer::MiniJinja;
-
-use datasource::DataSourceRows;
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
-
 use serde::Serialize;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
@@ -87,57 +82,6 @@ fn bubble_error(pretext: &str, err: Box<dyn Error>) {
         eprintln!("Above error caused by: {next_err:#}");
         err = next_err;
     }
-}
-
-fn render_template(
-    renderer: &MiniJinja,
-    template: &config::Template,
-    source_data: &HashMap<String, DataSourceRows>,
-    adjust_spacing: bool,
-) -> Result<String, Box<dyn Error>> {
-    let mut rendered = String::new();
-
-    if let Some(src_name) = &template.source {
-        let keys: Vec<String> = source_data[src_name]
-            .iter()
-            .map(|(key, _row)| key.clone())
-            .collect();
-
-        let mut items_set: HashSet<String> = keys.iter().cloned().collect();
-
-        if template.include.is_some() {
-            items_set = items_set
-                .intersection(&template.include_set())
-                .cloned()
-                .collect();
-        }
-
-        items_set = items_set
-            .difference(&template.exclude_set())
-            .cloned()
-            .collect();
-
-        for (key, row) in &source_data[src_name] {
-            if items_set.contains(key) {
-                let mut tmpl_rend = renderer.render(&template.name, Some(row))?;
-
-                if adjust_spacing {
-                    tmpl_rend = tmpl_rend.trim_end().to_string();
-                    tmpl_rend.push_str("\r\n\r\n");
-                }
-                rendered.push_str(&tmpl_rend);
-            }
-        }
-    } else {
-        rendered = renderer.render(&template.name, minijinja::context!())?;
-    }
-
-    if adjust_spacing {
-        rendered = rendered.trim_end().to_string();
-        rendered.push_str("\r\n\r\n");
-    }
-
-    Ok(rendered)
 }
 
 fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, Box<dyn Error>> {

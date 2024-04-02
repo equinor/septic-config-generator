@@ -2,8 +2,8 @@ use crate::config::Config;
 use crate::datasource::{CsvSourceReader, DataSourceReader, ExcelSourceReader};
 use crate::renderer::MiniJinja;
 use crate::{
-    ask_should_overwrite, bubble_error, collect_file_list, create_patch, render_template,
-    timestamps_newer_than, CtxDataType,
+    ask_should_overwrite, bubble_error, collect_file_list, create_patch, timestamps_newer_than,
+    CtxDataType,
 };
 use clap::Parser;
 use minijinja::Value;
@@ -123,11 +123,12 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     let mut rendered = String::new();
 
     for template in &cfg.layout {
-        rendered += &render_template(&renderer, template, &all_source_data, cfg.adjustspacing)
-            .unwrap_or_else(|err| {
-                bubble_error("Template Error", err);
-                process::exit(2);
-            });
+        rendered +=
+            &MiniJinja::render_template(&renderer, template, &all_source_data, cfg.adjustspacing)
+                .unwrap_or_else(|err| {
+                    bubble_error("Template Error", err);
+                    process::exit(2);
+                });
     }
     if cfg.adjustspacing {
         rendered = rendered.trim_end().to_string();
@@ -222,7 +223,7 @@ mod tests {
             ..Default::default()
         };
         let all_source_data = get_all_source_data();
-        let result = render_template(&renderer, &template, &all_source_data, true)
+        let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)
             .unwrap()
             .trim()
             .replace('\r', "");
@@ -241,7 +242,7 @@ mod tests {
             ..Default::default()
         };
         let all_source_data = get_all_source_data();
-        let result = render_template(&renderer, &template, &all_source_data, true)
+        let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)
             .unwrap()
             .trim()
             .replace('\r', "");
@@ -261,7 +262,8 @@ mod tests {
         };
         let all_source_data = get_all_source_data();
 
-        let result = render_template(&renderer, &template, &all_source_data, true).unwrap();
+        let result =
+            MiniJinja::render_template(&renderer, &template, &all_source_data, true).unwrap();
         assert_eq!(result.trim_end(), "Global: >|globvalue|<");
     }
 
@@ -280,7 +282,7 @@ mod tests {
                 .env
                 .add_global(key, Value::from_serializable(&values_vec));
         }
-        let result = render_template(&renderer, &template, &HashMap::new(), true)
+        let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)
             .unwrap()
             .trim()
             .replace('\r', "");
@@ -307,7 +309,7 @@ mod tests {
                 .env
                 .add_global(key, Value::from_serializable(&values_vec));
         }
-        let result = render_template(&renderer, &template, &all_source_data, true)
+        let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)
             .unwrap()
             .trim()
             .replace('\r', "");
@@ -324,7 +326,7 @@ mod tests {
             name: "06_encoding.tmpl".to_string(),
             ..Default::default()
         };
-        let result = render_template(&renderer, &template, &HashMap::new(), true)
+        let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)
             .unwrap()
             .trim()
             .replace('\r', "");
@@ -338,8 +340,10 @@ mod tests {
             name: "00_plaintext.tmpl".to_string(),
             ..Default::default()
         };
-        let result_false = render_template(&renderer, &template, &HashMap::new(), false).unwrap();
-        let result_true = render_template(&renderer, &template, &HashMap::new(), true).unwrap();
+        let result_false =
+            MiniJinja::render_template(&renderer, &template, &HashMap::new(), false).unwrap();
+        let result_true =
+            MiniJinja::render_template(&renderer, &template, &HashMap::new(), true).unwrap();
         assert_eq!(&result_true[result_true.len() - 5..], ".\r\n\r\n");
         #[cfg(target_os = "windows")]
         assert_eq!(&result_false[result_false.len() - 4..], "c.\r\n");

@@ -1,9 +1,12 @@
+use crate::config;
 use crate::config::Counter as CounterConfig;
+use crate::datasource::DataSourceRows;
 use chrono::Local;
 use minijinja::value::{from_args, Kwargs, Rest, Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -282,6 +285,57 @@ impl<'a> MiniJinja<'a> {
             Ok(r) => Ok(r),
             Err(e) => Err(Box::new(e)),
         }
+    }
+
+    pub fn render_template(
+        &self,
+        template: &config::Template,
+        source_data: &HashMap<String, DataSourceRows>,
+        adjust_spacing: bool,
+    ) -> Result<String, Box<dyn std::error::Error>> {
+        let mut rendered = String::new();
+
+        if let Some(src_name) = &template.source {
+            let keys: Vec<String> = source_data[src_name]
+                .iter()
+                .map(|(key, _row)| key.clone())
+                .collect();
+
+            let mut items_set: HashSet<String> = keys.iter().cloned().collect();
+
+            if template.include.is_some() {
+                items_set = items_set
+                    .intersection(&template.include_set())
+                    .cloned()
+                    .collect();
+            }
+
+            items_set = items_set
+                .difference(&template.exclude_set())
+                .cloned()
+                .collect();
+
+            for (key, row) in &source_data[src_name] {
+                if items_set.contains(key) {
+                    let mut tmpl_rend = self.render(&template.name, Some(row))?;
+
+                    if adjust_spacing {
+                        tmpl_rend = tmpl_rend.trim_end().to_string();
+                        tmpl_rend.push_str("\r\n\r\n");
+                    }
+                    rendered.push_str(&tmpl_rend);
+                }
+            }
+        } else {
+            rendered = self.render(&template.name, minijinja::context!())?;
+        }
+
+        if adjust_spacing {
+            rendered = rendered.trim_end().to_string();
+            rendered.push_str("\r\n\r\n");
+        }
+
+        Ok(rendered)
     }
 
     fn add_globals(&mut self, globals: &[String]) {
