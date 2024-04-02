@@ -1,5 +1,38 @@
 # Changelog
 
+## [2.10.0](https://github.com/equinor/septic-config-generator/compare/v2.9.1...v2.10.0) (2024-04-02)
+
+
+### ✨ Features
+
+* pass global sources as vecs, not hashmaps ([#249](https://github.com/equinor/septic-config-generator/issues/249)) ([a97d2c8](https://github.com/equinor/septic-config-generator/commit/a97d2c87204e787696930544e67db6f0f0a0bc5f))
+
+
+### 🐛 Bug Fixes
+
+* polluted ctx for non-iteration templates ([#248](https://github.com/equinor/septic-config-generator/issues/248)) ([56d8a35](https://github.com/equinor/septic-config-generator/commit/56d8a354e8cd1ea215e1c903dd0755f13111f005))
+
+
+### 🧹 Chores
+
+* **deps:** bump calamine from 0.22.1 to 0.24.0 ([#230](https://github.com/equinor/septic-config-generator/issues/230)) ([b83b293](https://github.com/equinor/septic-config-generator/commit/b83b29370f07a80cabcf63abc1e7f0ea1f2914f0))
+* **deps:** bump chrono from 0.4.34 to 0.4.37 ([#246](https://github.com/equinor/septic-config-generator/issues/246)) ([6caa540](https://github.com/equinor/septic-config-generator/commit/6caa540c59f07e2fc50c8c1984356b9c3a84e2fa))
+* **deps:** bump clap from 4.4.18 to 4.5.4 ([#245](https://github.com/equinor/septic-config-generator/issues/245)) ([e5b933f](https://github.com/equinor/septic-config-generator/commit/e5b933fca4f7b5406ff878abfbf67aa5e45d3eea))
+* **deps:** bump indexmap from 2.2.3 to 2.2.6 ([#244](https://github.com/equinor/septic-config-generator/issues/244)) ([7589f27](https://github.com/equinor/septic-config-generator/commit/7589f2706ea6fde613322030649c1c6b779996ca))
+* **deps:** bump mio from 0.8.8 to 0.8.11 ([#234](https://github.com/equinor/septic-config-generator/issues/234)) ([a0d9f4e](https://github.com/equinor/septic-config-generator/commit/a0d9f4e579f564b55b303add63d5f86cd404e0f0))
+* **deps:** bump serde_yaml from 0.9.32 to 0.9.34+deprecated ([#243](https://github.com/equinor/septic-config-generator/issues/243)) ([78d21b3](https://github.com/equinor/septic-config-generator/commit/78d21b3f0a19c5ee0cc99eb208332e371ae13963))
+* **deps:** bump softprops/action-gh-release from 1 to 2 ([#237](https://github.com/equinor/septic-config-generator/issues/237)) ([07a96cd](https://github.com/equinor/septic-config-generator/commit/07a96cd8351f4373db7ca7a77b9cf4197ef33b68))
+
+
+### 👷 CI/CD
+
+* fix "perf" commit type for release-please ([#247](https://github.com/equinor/septic-config-generator/issues/247)) ([6052e34](https://github.com/equinor/septic-config-generator/commit/6052e3416511de28e23cd9a19e42ce25eeb8efde))
+
+
+### 🏎️ Performance
+
+* add sources once as globals ([#236](https://github.com/equinor/septic-config-generator/issues/236)) ([210a4d1](https://github.com/equinor/septic-config-generator/commit/210a4d1f37435dfd963eb87c68a04c63deacbba5))
+
 ## [2.9.1](https://github.com/equinor/septic-config-generator/compare/v2.9.0...v2.9.1) (2024-02-27)
 
 
