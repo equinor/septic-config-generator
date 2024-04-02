@@ -79,15 +79,6 @@ impl Serialize for CtxDataType {
     }
 }
 
-fn _merge_maps(
-    map1: &HashMap<String, String>,
-    map2: &HashMap<String, String>,
-) -> HashMap<String, String> {
-    let mut merged = map1.clone();
-    merged.extend(map2.iter().map(|(k, v)| (k.to_string(), v.to_string())));
-    merged
-}
-
 fn bubble_error(pretext: &str, err: Box<dyn Error>) {
     eprintln!("{pretext}: {err:#}");
     let mut err = err.as_ref();
