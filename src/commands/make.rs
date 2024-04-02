@@ -3,7 +3,7 @@ use crate::datasource::{CsvSourceReader, DataSourceReader, ExcelSourceReader};
 use crate::renderer::MiniJinja;
 use crate::{
     ask_should_overwrite, bubble_error, collect_file_list, create_patch, render_template,
-    set_extension_if_missing, timestamps_newer_than,
+    set_extension_if_missing, timestamps_newer_than, CtxDataType,
 };
 use clap::Parser;
 use minijinja::Value;
@@ -107,10 +107,11 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     let template_path = relative_root.join(&cfg.templatepath);
     let mut renderer = MiniJinja::new(globals, &template_path, cfg.counters);
 
-    for key in all_source_data.keys() {
+    for (key, source_data) in all_source_data.iter() {
+        let values_vec: Vec<HashMap<String, CtxDataType>> = source_data.values().cloned().collect();
         renderer
             .env
-            .add_global(key, Value::from_serializable(&all_source_data[key]));
+            .add_global(key, Value::from_serializable(&values_vec));
     }
 
     let mut rendered = String::new();

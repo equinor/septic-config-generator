@@ -1,13 +1,11 @@
-
-         Cvr:  D{{ Id }}Qg
-           Text1=  "D{{ Id }}: Gas rate"
+  Cvr:           D{{ Id }}Qg
+         Text1=  "D{{ Id }}: Gas rate"
          Text2=  ""
           Mode=  ACTIVE
           Auto=  OFF
        PlotMax=  250000
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  -1
           Unit=  "Sm3/h"
@@ -28,7 +26,7 @@
       LowPnlty=  1
      HighLimit=  1000
       LowLimit=  1000
-     RelxParam=  3    1   30   80
+     RelxParam=  3    1    30    80
    FulfReScale=  0.001
       SetpTref=  1.4116
      BiasTfilt=  1
@@ -48,8 +46,8 @@ MeasValidation=  OFF
         LockSP=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
-  
-    Mvr:  D{{ Id }}Zpc            
+
+  Mvr:           D{{ Id }}Zpc
          Text1=  "D{{ Id }}: Production choke"
          Text2=  ""
           Mode=  ACTIVE
@@ -57,7 +55,6 @@ UseFactorWeight=  0
        PlotMax=  100
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  100
           Unit=  "%"
@@ -77,7 +74,7 @@ UseFactorWeight=  0
           Fulf=  10
    FulfReScale=  1
          Price=  0
-      Blocking=  8    1    2    4    8   16   32   64   96
+      Blocking=  8    1     2     4     8    16    32    64    96
 MeasValidation=  OFF
  MeasHighLimit=  1e+010
   MeasLowLimit=  -1e+010
