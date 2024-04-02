@@ -146,7 +146,7 @@ fn render_template(
             }
         }
     } else {
-        rendered = renderer.render(&template.name, source_data)?;
+        rendered = renderer.render(&template.name, minijinja::context!())?;
     }
 
     if adjust_spacing {
