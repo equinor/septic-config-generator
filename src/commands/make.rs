@@ -268,10 +268,11 @@ mod tests {
             ..Default::default()
         };
         let all_source_data = get_all_source_data();
-        for key in all_source_data.keys() {
+        for (key, source_data) in all_source_data.iter() {
+            let values_vec: Vec<_> = source_data.values().cloned().collect();
             renderer
                 .env
-                .add_global(key, Value::from_serializable(&all_source_data[key]));
+                .add_global(key, Value::from_serializable(&values_vec));
         }
         let result = render_template(&renderer, &template, &HashMap::new(), true)
             .unwrap()
@@ -294,10 +295,11 @@ mod tests {
             ..Default::default()
         };
         let all_source_data = get_all_source_data();
-        for key in all_source_data.keys() {
+        for (key, source_data) in all_source_data.iter() {
+            let values_vec: Vec<_> = source_data.values().cloned().collect();
             renderer
                 .env
-                .add_global(key, Value::from_serializable(&all_source_data[key]));
+                .add_global(key, Value::from_serializable(&values_vec));
         }
         let result = render_template(&renderer, &template, &all_source_data, true)
             .unwrap()
