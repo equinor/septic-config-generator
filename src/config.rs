@@ -26,9 +26,9 @@ impl Config {
     #[allow(clippy::missing_errors_doc)]
     pub fn new(filename: &Path) -> Result<Self, Box<dyn Error>> {
         let content = fs::read_to_string(filename)?;
-        let mut cfg: Self = serde_yaml::from_str(&content)?;
+        let cfg: Self = serde_yaml::from_str(&content)?;
 
-        for source in &mut cfg.sources {
+        for source in &cfg.sources {
             validate_source(source)?;
         }
 
@@ -36,7 +36,7 @@ impl Config {
     }
 }
 
-fn validate_source(source: &mut Source) -> Result<(), Box<dyn Error>> {
+fn validate_source(source: &Source) -> Result<(), Box<dyn Error>> {
     let extension = Path::new(&source.filename).extension();
     match extension {
         Some(ext) if ext == "xlsx" => {
