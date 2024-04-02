@@ -49,8 +49,11 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
 
     let relative_root = PathBuf::from(cfg_file.parent().unwrap());
 
-    let cfg = Config::new(&cfg_file).unwrap_or_else(|e| {
-        eprintln!("Problem reading config file '{}: {e}", cfg_file.display());
+    let cfg = Config::new(&cfg_file).unwrap_or_else(|err| {
+        eprintln!(
+            "Problem reading config file '{}: {err:#}",
+            cfg_file.display()
+        );
         process::exit(2);
     });
 
@@ -58,12 +61,12 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         let outfile = relative_root.join(cfg.outputfile.as_ref().unwrap());
         if outfile.exists() {
             let file_list =
-                collect_file_list(&cfg, &cfg_file, &relative_root).unwrap_or_else(|e| {
-                    eprintln!("Problem identifying changed files: {e}");
+                collect_file_list(&cfg, &cfg_file, &relative_root).unwrap_or_else(|err| {
+                    eprintln!("Problem identifying changed files: {err:#}");
                     process::exit(2)
                 });
-            let dirty = &timestamps_newer_than(&file_list, &outfile).unwrap_or_else(|e| {
-                eprintln!("Problem checking timestamp: '{e}'");
+            let dirty = &timestamps_newer_than(&file_list, &outfile).unwrap_or_else(|err| {
+                eprintln!("Problem checking timestamp: '{err:#}'");
                 process::exit(2)
             });
             if !dirty {
@@ -101,8 +104,11 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
                     process::exit(2);
                 }
             };
-            let source_data = reader.read().unwrap_or_else(|e| {
-                eprintln!("Problem reading source file '{}': {e}", source.filename);
+            let source_data = reader.read().unwrap_or_else(|err| {
+                eprintln!(
+                    "Problem reading source file '{0}': {err:#}",
+                    source.filename
+                );
                 process::exit(2);
             });
             (source.id.clone(), source_data)
@@ -110,7 +116,11 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         .collect();
 
     let template_path = relative_root.join(&cfg.templatepath);
-    let mut renderer = MiniJinja::new(globals, &template_path, cfg.counters);
+    let mut renderer =
+        MiniJinja::new(globals, &template_path, cfg.counters).unwrap_or_else(|err| {
+            eprintln!("{err:#}");
+            process::exit(2);
+        });
 
     for (key, source_data) in all_source_data.iter() {
         let values_vec: Vec<HashMap<String, CtxDataType>> = source_data.values().cloned().collect();
@@ -165,9 +175,8 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
 
             let mut f = fs::File::create(&path).unwrap_or_else(|err| {
                 eprintln!(
-                    "Problem creating output file '{}': {}",
-                    &path.display(),
-                    err
+                    "Problem creating output file '{}': {err:#}",
+                    &path.display()
                 );
                 process::exit(2);
             });
@@ -215,14 +224,15 @@ mod tests {
 
     #[test]
     fn render_with_normal_values() {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "01_normals.tmpl".to_string(),
             source: Some("main".to_string()),
             ..Default::default()
         };
         let all_source_data = get_all_source_data();
-        let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)
+        let result = renderer
+            .render_template(&template, &all_source_data, true)
             .unwrap()
             .trim()
             .replace('\r', "");
@@ -234,14 +244,15 @@ mod tests {
 
     #[test]
     fn render_with_special_values() {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "02_specials.tmpl".to_string(),
             source: Some("errors".to_string()),
             ..Default::default()
         };
         let all_source_data = get_all_source_data();
-        let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)
+        let result = renderer
+            .render_template(&template, &all_source_data, true)
             .unwrap()
             .trim()
             .replace('\r', "");
@@ -254,22 +265,25 @@ mod tests {
     #[test]
     fn render_with_global_variables() {
         let globals = ["glob".to_string(), "globvalue".to_string()];
-        let renderer = MiniJinja::new(&globals, Path::new("tests/testdata/templates/"), None);
+        let renderer =
+            MiniJinja::new(&globals, Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "03_globals.tmpl".to_string(),
             ..Default::default()
         };
         let all_source_data = get_all_source_data();
 
-        let result =
-            MiniJinja::render_template(&renderer, &template, &all_source_data, true).unwrap();
+        let result = renderer
+            .render_template(&template, &all_source_data, true)
+            .unwrap();
         assert_eq!(result.trim_end(), "Global: >|globvalue|<");
     }
 
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
     fn render_with_global_source_no_iteration() {
-        let mut renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
+        let mut renderer =
+            MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             ..Default::default()
@@ -294,7 +308,8 @@ mod tests {
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
     fn render_with_global_source_and_iteration() {
-        let mut renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
+        let mut renderer =
+            MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             source: Some("main".to_string()),
@@ -320,7 +335,7 @@ mod tests {
 
     #[test]
     fn render_uses_latin1_encoding() {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "06_encoding.tmpl".to_string(),
             ..Default::default()
@@ -334,7 +349,7 @@ mod tests {
 
     #[test]
     fn render_adjusts_spacing() {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None);
+        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "00_plaintext.tmpl".to_string(),
             ..Default::default()

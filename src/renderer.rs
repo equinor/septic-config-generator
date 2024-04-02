@@ -33,8 +33,8 @@ impl CounterMap {
             .is_some()
         {
             return Err(Error::new(
-                ErrorKind::InvalidOperation,
-                "Counter already exists",
+                ErrorKind::SyntaxError,
+                format!("Counter '{}' already exists", name),
             ));
         }
         Ok(())
@@ -224,7 +224,7 @@ impl<'a> MiniJinja<'a> {
         globals: &[String],
         template_path: &Path,
         counter_list: Option<Vec<CounterConfig>>,
-    ) -> MiniJinja<'a> {
+    ) -> Result<MiniJinja<'a>, Error> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
@@ -234,8 +234,7 @@ impl<'a> MiniJinja<'a> {
                 counters
                     .lock()
                     .unwrap()
-                    .create(&counter.name.clone(), counter.value)
-                    .unwrap();
+                    .create(&counter.name.clone(), counter.value)?;
                 let increment_closure = {
                     let counters = counters.clone();
                     let name = counter.name.clone();
@@ -268,7 +267,7 @@ impl<'a> MiniJinja<'a> {
         renderer
             .env
             .set_loader(move |name| load_template(&local_template_path, name));
-        renderer
+        Ok(renderer)
     }
 
     #[allow(clippy::missing_errors_doc)]
