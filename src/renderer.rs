@@ -124,23 +124,8 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
 }
 
 fn filt_values(v: Value) -> Result<Value, Error> {
-    if v.kind() == ValueKind::Map {
-        let mut rv = Vec::with_capacity(v.len().unwrap_or(0));
-        let iter = match v.try_iter() {
-            Ok(val) => val,
-            Err(err) => return Err(err),
-        };
-        for key in iter {
-            let value = v.get_item(&key).unwrap_or(Value::UNDEFINED);
-            rv.push(value);
-        }
-        Ok(Value::from(rv))
-    } else {
-        Err(Error::new(
-            ErrorKind::InvalidOperation,
-            "cannot convert value into pair list",
-        ))
-    }
+    eprintln!("The 'values' filter has been deprecated as it is no longer needed. Will be removed in an upcoming release. Please do not use.");
+    Ok(v)
 }
 
 fn filt_bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
@@ -465,45 +450,6 @@ mod tests {
                 Value::from("Some string"),
             )
         };
-    }
-
-    #[test]
-    fn filt_values_simple() {
-        let mut env = Environment::new();
-        env.add_filter("values", filt_values);
-        let result = render! {in env, "{{ A | values }}",
-            A => context!(
-                AA => context!(a => "aa", b => "bb"),
-                CC => context!(a => "cc", b => "dd"),
-            )
-        };
-        assert_eq!(
-            result,
-            "[{\"a\": \"aa\", \"b\": \"bb\"}, {\"a\": \"cc\", \"b\": \"dd\"}]"
-        );
-    }
-
-    #[test]
-    fn filt_values_selectattr() {
-        let mut env = Environment::new();
-        env.add_filter("values", filt_values);
-        let result = render! {in env, "{% for v in A | values | selectattr('a', 'endingwith', 'a')%}{{ v }}{% endfor %}",
-            A => context!(
-                AA => context!(a => "aa", b => "bb"),
-                CC => context!(a => "cc", b => "dd"),
-                )
-        };
-        assert_eq!(result, "{\"a\": \"aa\", \"b\": \"bb\"}");
-    }
-
-    #[test]
-    fn filt_values_empty_ctx() {
-        let mut env = Environment::new();
-        env.add_filter("values", filt_values);
-        let result = render! {in env, "{{ A | values }}",
-            A => context!()
-        };
-        assert_eq!(result, "[]");
     }
 
     #[test]
