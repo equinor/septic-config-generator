@@ -58,25 +58,7 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
                 .try_iter()
                 .unwrap()
                 .all(|key| v.get_item(&key).unwrap().kind() == ValueKind::Map);
-            if items_are_maps {
-                let rv = v
-                    .try_iter()
-                    .unwrap()
-                    .map(|key| {
-                        let value = v.get_item(&key).unwrap();
-                        let inner_vec: Vec<Value> = item_keys
-                            .iter()
-                            .map(|key| value.get_item(key).unwrap())
-                            .collect();
-                        if item_keys.len() == 1 {
-                            inner_vec.into_iter().next().unwrap()
-                        } else {
-                            Value::from(inner_vec)
-                        }
-                    })
-                    .collect();
-                Ok(rv)
-            } else {
+            if !items_are_maps {
                 let rv = match item_keys.len() {
                     1 => v.get_item(&item_keys[0]).unwrap(),
                     _ => item_keys
@@ -85,6 +67,11 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
                         .collect(),
                 };
                 Ok(rv)
+            } else {
+                Err(Error::new(
+                    ErrorKind::InvalidOperation,
+                    "input is not a list of maps (source) or map (source row)",
+                ))
             }
         }
         ValueKind::Seq => {
@@ -112,13 +99,13 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
             } else {
                 Err(Error::new(
                     ErrorKind::InvalidOperation,
-                    "input is not a map of maps (source), map (source row) or list of maps (source rows)",
-            ))
+                    "input is not a list of maps (source) or map (source row)",
+                ))
             }
         }
         _ => Err(Error::new(
             ErrorKind::InvalidOperation,
-            "input is not a map of maps (source), map (source row) or list of maps (source rows)",
+            "input is not a list of maps (source) or map (source row)",
         )),
     }
 }
@@ -326,10 +313,10 @@ mod tests {
         let mut env = Environment::new();
         env.add_filter("unpack", filt_unpack);
         let result = render! {in env, "{{ A | unpack('a', 'b') }}",
-            A => context!(
-                AA => context!(a => "aa", b => "bb"),
-                CC => context!(a => "cc", b => "dd"),
-            )
+            A => vec![
+                context!(a => "aa", b => "bb"),
+                context!(a => "cc", b => "dd"),
+            ]
         };
         assert_eq!(result, "[[\"aa\", \"bb\"], [\"cc\", \"dd\"]]")
     }
@@ -339,10 +326,10 @@ mod tests {
         let mut env = Environment::new();
         env.add_filter("unpack", filt_unpack);
         let result = render! {in env, "{{ A | unpack('b') }}",
-            A => context!(
-                AA => context!(a => "aa", b => "bb"),
-                CC => context!(a => "cc", b => "dd"),
-            )
+            A => vec![
+                context!(a => "aa", b => "bb"),
+                context!(a => "cc", b => "dd"),
+            ]
         };
         assert_eq!(result, "[\"bb\", \"dd\"]")
     }
@@ -352,10 +339,10 @@ mod tests {
         let mut env = Environment::new();
         env.add_filter("unpack", filt_unpack);
         let result = render! {in env, "{{ A | unpack('a', 'c') }}",
-            A => context!(
-                AA => context!(a => "aa", b => "bb"),
-                CC => context!(a => "cc", b => "dd"),
-            )
+            A => vec![
+                context!(a => "aa", b => "bb"),
+                context!(a => "cc", b => "dd"),
+            ]
         };
         assert_eq!(result, "[[\"aa\", undefined], [\"cc\", undefined]]")
     }
@@ -391,46 +378,7 @@ mod tests {
     }
 
     #[test]
-    fn filt_unpack_source_rows() {
-        let mut env = Environment::new();
-        env.add_filter("unpack", filt_unpack);
-        let result = render! {in env, "{{ A | unpack('a', 'b') }}",
-            A => vec!(
-                context!(a => "aa", b => "bb"),
-                context!(a => "cc", b => "dd"),
-            )
-        };
-        assert_eq!(result, "[[\"aa\", \"bb\"], [\"cc\", \"dd\"]]")
-    }
-
-    #[test]
-    fn filt_unpack_source_rows_single_key() {
-        let mut env = Environment::new();
-        env.add_filter("unpack", filt_unpack);
-        let result = render! {in env, "{{ A | unpack('b') }}",
-            A => vec!(
-                context!(a => "aa", b => "bb"),
-                context!(a => "cc", b => "dd"),
-            )
-        };
-        assert_eq!(result, "[\"bb\", \"dd\"]")
-    }
-
-    #[test]
-    fn filt_unpack_source_rows_invalid_key() {
-        let mut env = Environment::new();
-        env.add_filter("unpack", filt_unpack);
-        let result = render! {in env, "{{ A | unpack('a', 'c') }}",
-            A => vec!(
-                context!(a => "aa", b => "bb"),
-                context!(a => "cc", b => "dd"),
-            )
-        };
-        assert_eq!(result, "[[\"aa\", undefined], [\"cc\", undefined]]")
-    }
-
-    #[test]
-    #[should_panic(expected = "input is not a map")]
+    #[should_panic(expected = "input is not a list of maps")]
     fn filt_unpack_invalid_type() {
         let mut env = Environment::new();
         env.add_filter("unpack", filt_unpack);
@@ -440,7 +388,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "input is not a map")]
+    #[should_panic(expected = "input is not a list of maps")]
     fn filt_unpack_invalid_seq_item() {
         let mut env = Environment::new();
         env.add_filter("unpack", filt_unpack);
@@ -448,6 +396,18 @@ mod tests {
             A => vec!(
                 context!(a => "aa", b => "bb"),
                 Value::from("Some string"),
+            )
+        };
+    }
+
+    #[test]
+    #[should_panic(expected = "input is not a list of maps")]
+    fn filt_unpack_invalid_map() {
+        let mut env = Environment::new();
+        env.add_filter("unpack", filt_unpack);
+        render! {in env, "{{ A | unpack('c') }}",
+            A => context!(
+                AA => context!(a => "aa", b => "bb")
             )
         };
     }
