@@ -24,7 +24,6 @@ using 1.0 to 2.x, expect having to change a few lines in your templates and YAML
   - [Command-line options](#command-line-options)
   - [The template engine](#the-template-engine)
   - [Custom keywords, filters and functions](#custom-keywords-filters-and-functions)
-    - [`values`](#values)
     - [`unpack`](#unpack)
     - [`bitmask`](#bitmask)
     - [`gitcommit`](#gitcommit)
@@ -139,7 +138,7 @@ All file names and paths are relative to the location of the configuration file.
 
 _(Added in v2.7)_
 
-The `counter` struct and has the following fields:
+The `counter` struct has the following fields:
 
 - `name` (string): The name of the counter to create.
 - `value` (optional integer, default: 0)`: The initial value to provide the counter.
@@ -171,50 +170,10 @@ The structure has the following fields:
 - `sheet` (string): The name of the sheet where the substitution values are found. Only valid for Excel files.
 - `delimiter` (optional character, default: ';'): The delimiter used a CSV file.
 
-Since v2.8, each source can be accessed as a map from within any template file in the layout regardless of whether the
-layout item is set to iterate over a source or not. This makes it possible to do things like obtain any value from any
-source row:
-
-```jinja
-{{ main["D01"]["TagId"] }}
-```
-
-This is equivalent:
-
-```jinja
-{{ main.D01.TagId }}
-```
-
-To list the keys for all rows in a source:
-
-```jinja
-{% for well in main %}
-  {{ well }}
-{% endfor %}
-```
-
-To iterate over all keys and values, use the [items](https://docs.rs/minijinja/latest/minijinja/filters/fn.items.html)
-filter.
-
-```jinja
-{% for k, v in main | items %}
-  {{ k }}: {{ v }}
-{% endfor %}
-```
-
-To iterate over just the values, use the custom `values` filter. Also see the `unpack` filter.
-
-```jinja
-{% for v in main | values %}
-  {{ v }}
-{% endfor %}
-```
-
-The length of a source can be found with:
-
-```jinja
-{{ main | length}}
-```
+Since v2.8, each source can be accessed from within any template regardless of whether the layout item is set to iterate
+over a source or not. The source is represented as a list of the rows where each row is represented as a hashmap of the
+values. This makes it possible to obtain any value from any row in all sources. For more on this topic, see the
+[unpack](#unpack) filter.
 
 #### Layout
 
@@ -349,19 +308,16 @@ In addition to the built-in
 [global functions](https://docs.rs/minijinja/latest/minijinja/functions/index.html#functions) in MiniJinja, some custom
 functionality has been added.
 
-#### `values`
+#### `unpack`
 
 _(Added in v2.9)_
 
-Similar to the built-in [items](https://docs.rs/minijinja/latest/minijinja/filters/fn.items.html) filter which extracts
-key-value pairs, this filter extracts just the values of a map into an array.
+Filter that unpacks values for the provided keys into an array. The values in the array can then be assigned to
+individual variables. This avoids having to create variables for each value with the
+[set](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-set-) statement, and also keeps the created
+variables inside the scope. The filter can be applied directly to a source or a source row.
 
-When applied to a source, which is a map of maps, the filter output is an array of the original maps (source rows). This
-can be useful when paired with e.g. the
-[selectattr](https://docs.rs/minijinja/latest/minijinja/filters/fn.selectattr.html) filter (see example for the `unpack`
-filter)
-
-Example:
+Examples:
 
 Given a source called `wells` with this content:
 
@@ -370,44 +326,7 @@ Given a source called `wells` with this content:
 | D01  | FL1      | 13-1111-11 |
 | D02  | FL2      | 13-2222-22 |
 
-This results in a map that is available in all templates (since v2.8) and looks like this:
-
-```json
-{
-  "D01": { "well": "D01", "flowline": "FL1", "Pdc": "13-1111-11" },
-  "D02": { "well": "D02", "flowline": "FL2", "Pdc": "13-2222-22" }
-}
-```
-
-The source rows can now be extracted with
-
-`{{ wells | values }}` ->
-`[{"well": "D01", "Flowline": "FL1", "Pdc": "13-1111-11"}, {"well": "D02", "Flowline": "FL2", "Pdc": "13-2222-22"}]`
-
-Printing the Pdc value for all wells that are connected to flowline FL1:
-
-```jinja
-{% for well in wells | values | selectattr("Flowline", "endingwith", "1") %}
-{{ well["Pdc"] }}
-{% endfor %}
-```
-
--> `13-1111-11`
-
-#### `unpack`
-
-_(Added in v2.9)_
-
-Filter that unpacks values for the provided keys into an array. The values in the array can then be assigned to
-individual variables. This avoids having to create variables for each value with the
-[set](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-set-) statement, and also keeps the created
-variables inside the scope. The filter can be applied directly to a source, a source row or an array of source rows.
-
-Examples:
-
-These examples use the same source data as for `value`.
-
-Printing selected values for all rows in a source file:
+Printing selected values for all rows:
 
 ```jinja
 {% for well, flowline in main | unpack("well", "flowline") %}
@@ -425,18 +344,18 @@ D02: FL2
 Printing selected values for all wells that are connected to flowline 2:
 
 ```jinja
-{% for (well, pdc) in main | values | selectattr("flowline", "endingwith", 2) | unpack("well", "pdc") %}
+{% for (well, pdc) in main | selectattr("flowline", "endingwith", 2) | unpack("well", "pdc") %}
 {{ well }}: {{ pdc }}
 {%- endfor %}
 ```
 
 -> `D02: 13-2222-22`
 
-Printing selected values for a single row in a source file:
+Printing selected values for just the "D02" row:
 
 ```jinja
-{% with (flowline, pdc) = main["D02"] | unpack("flowline", "pdc") %}
-{{ flowline }}, {{ pdc }}
+{% with (flowline, pdc) = main | selectattr("well", "eq", "D02") | unpack("flowline", "pdc") %}
+{{ flowline }}: {{ pdc }}
 {%- endwith %}
 ```
 
@@ -611,7 +530,7 @@ If there are other groups of elements that you wish to create templates and subs
 or separator trains, or to distinguish between non-similar groups of wells such as production wells and injection wells,
 simply create another sheet (in the same or a new Excel file) and define the new source similarly with a unique id.
 
-A template file can only use one source, so in some cases it may be necessary to repeat information on two or more
+A template file can only iterate over one source, so in some cases it may be necessary to repeat information in two or more
 sources. If using Excel files, it may be a good idea to maintain one complete set of values in one sheet and reference
 the corresponding cells from the other sheets.
 
@@ -639,10 +558,10 @@ output in the specified sequence. Each template reference requires at least a fi
 specified, then the file is only written once and cannot contain tags that are defined in sources.
 
 If a `source` is defined, then the source is used as a look-up table for substitutions into the config file. By default,
-the template is generated once per row in the source. So the template `03_SopcProc_well.cnfg` will be replicated three
+the template is rendered once per row in the source. So the template `03_SopcProc_well.cnfg` will be replicated three
 times, once for each of the rows `D01`, `D02` and `D03` that are specified in the source.
 
-It is possible to specify exactly which rows to include. An example of this is shown for `07_DspGroupTables_well.cnfg`
+It is possible to specify exactly which rows to include from the source. An example of this is shown for `07_DspGroupTables_well.cnfg`
 which will only be generated for `D01` and `D03`. It is also possible to use the keyword `exclude` in the same way to
 skip specific rows from the source. If both `include` and `exclude` are defined, then only rows that are part of
 `include` and not in `exclude` are included.
