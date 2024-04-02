@@ -187,9 +187,9 @@ fn erroring_formatter(
 
 #[allow(clippy::unnecessary_wraps)]
 fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, Error> {
-    let mut path = PathBuf::new();
-    path.push(template_path);
+    let mut path = PathBuf::from(template_path);
     path.push(name);
+
     let file = match File::open(path) {
         Ok(f) => f,
         Err(err) => match err.kind() {
@@ -200,6 +200,7 @@ fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, Err
             }
         },
     };
+
     let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
         .encoding(Some(encoding_rs::WINDOWS_1252))
         .build(file);
@@ -271,20 +272,9 @@ impl<'a> MiniJinja<'a> {
     }
 
     #[allow(clippy::missing_errors_doc)]
-    pub fn render<S: Serialize>(
-        &self,
-        template_name: &str,
-        ctx: S,
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let tmpl = match self.env.get_template(template_name) {
-            Ok(t) => t,
-            Err(e) => return Err(Box::new(e)),
-        };
-
-        match tmpl.render(ctx) {
-            Ok(r) => Ok(r),
-            Err(e) => Err(Box::new(e)),
-        }
+    pub fn render<S: Serialize>(&self, template_name: &str, ctx: S) -> Result<String, Error> {
+        let tmpl = self.env.get_template(template_name)?;
+        tmpl.render(&ctx)
     }
 
     pub fn render_template(
@@ -292,7 +282,7 @@ impl<'a> MiniJinja<'a> {
         template: &config::Template,
         source_data: &HashMap<String, DataSourceRows>,
         adjust_spacing: bool,
-    ) -> Result<String, Box<dyn std::error::Error>> {
+    ) -> Result<String, Error> {
         let mut rendered = String::new();
 
         if let Some(src_name) = &template.source {

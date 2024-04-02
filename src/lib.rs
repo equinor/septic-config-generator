@@ -74,16 +74,6 @@ impl Serialize for CtxDataType {
     }
 }
 
-fn bubble_error(pretext: &str, err: Box<dyn Error>) {
-    eprintln!("{pretext}: {err:#}");
-    let mut err = err.as_ref();
-    while let Some(next_err) = err.source() {
-        eprintln!();
-        eprintln!("Above error caused by: {next_err:#}");
-        err = next_err;
-    }
-}
-
 fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, Box<dyn Error>> {
     let f = PatchFormatter::new().with_color();
     print!("{}\n\nReplace original? [Y]es or [N]o: ", f.fmt_patch(diff));

@@ -2,8 +2,7 @@ use crate::config::Config;
 use crate::datasource::{CsvSourceReader, DataSourceReader, ExcelSourceReader};
 use crate::renderer::MiniJinja;
 use crate::{
-    ask_should_overwrite, bubble_error, collect_file_list, create_patch, timestamps_newer_than,
-    CtxDataType,
+    ask_should_overwrite, collect_file_list, create_patch, timestamps_newer_than, CtxDataType,
 };
 use clap::Parser;
 use minijinja::Value;
@@ -126,7 +125,7 @@ pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         rendered +=
             &MiniJinja::render_template(&renderer, template, &all_source_data, cfg.adjustspacing)
                 .unwrap_or_else(|err| {
-                    bubble_error("Template Error", err);
+                    eprintln!("Template Error: {err:#}");
                     process::exit(2);
                 });
     }
