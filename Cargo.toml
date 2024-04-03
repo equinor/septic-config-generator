@@ -25,6 +25,7 @@ lto = true      # 25 % reduction, result is 24% of original
 #panic = "abort"    # 7.5% reduction
 
 [dependencies]
+anyhow = "1.0.81"
 calamine = "0.24.0"
 chrono = { version = "0.4.26", default-features = false, features = ["clock"] }
 clap = { version = "4.1.8", features = ["derive", "cargo"] }
