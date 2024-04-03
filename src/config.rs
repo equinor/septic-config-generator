@@ -92,9 +92,7 @@ impl Template {
             include.iter().cloned().collect::<HashSet<String>>()
         })
     }
-}
 
-impl Template {
     pub fn exclude_set(&self) -> HashSet<String> {
         self.exclude.as_ref().map_or_else(HashSet::new, |exclude| {
             exclude.iter().cloned().collect::<HashSet<String>>()
@@ -105,38 +103,129 @@ impl Template {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::File;
-    use std::io::prelude::*;
-    use tempfile::tempdir;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
 
-    #[test]
-    fn read_errors_on_invalid_content() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.yaml");
-        let mut file = File::create(&file_path).unwrap();
-
-        writeln!(file, "random").unwrap();
-        let result = Config::new(&file_path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("invalid type"));
+    fn create_temp_yaml(content: &str) -> NamedTempFile {
+        let mut temp_file = NamedTempFile::new().unwrap();
+        writeln!(temp_file, "{}", content).unwrap();
+        temp_file
     }
 
     #[test]
-    fn read_errors_on_invalid_yaml() {
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.yaml");
-        let mut file = File::create(&file_path).unwrap();
-
-        writeln!(file, "random: ").unwrap();
-        let result = Config::new(&file_path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("unknown field"));
+    fn config_read_valid_content() {
+        let content = r#"
+outputfile: test.cnfg
+templatepath: templates
+adjustspacing: true
+verifycontent: true
+sources:
+  - filename: test.csv
+    id: main
+counters:
+  - name: mycounter
+    value: 267
+layout:
+  - name: template1.cnfg
+    source: main
+    include:
+      - one
+    exclude:
+      - two
+"#;
+        let temp_file = create_temp_yaml(content);
+        let config = Config::new(temp_file.path());
+        assert!(config.is_ok())
     }
 
     #[test]
-    fn read_errors_on_missing_config_file() {
-        let result = Config::new(Path::new("nonexistent_file.yaml"));
-        assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("(os error 2)"));
+    fn config_fail_read_on_invalid_content() {
+        let temp_file = create_temp_yaml("random");
+        let config = Config::new(temp_file.path());
+        assert!(config.is_err());
+        assert!(config.unwrap_err().to_string().contains("invalid type"));
+    }
+
+    #[test]
+    fn config_fail_read_on_invalid_yaml() {
+        let temp_file = create_temp_yaml("random:");
+        let config = Config::new(temp_file.path());
+        assert!(config.is_err());
+        assert!(config.unwrap_err().to_string().contains("unknown field"));
+    }
+
+    #[test]
+    fn config_fail_read_on_missing_config_file() {
+        let config = Config::new(Path::new("nonexistent_file.yaml"));
+        assert!(config.is_err());
+        assert!(config.unwrap_err().to_string().contains("(os error 2)"));
+    }
+
+    #[test]
+    fn validate_source_good_xlsx() {
+        let source = Source {
+            filename: "data.xlsx".to_string(),
+            id: "id".to_string(),
+            sheet: Some("sheet".to_string()),
+            ..Default::default()
+        };
+        assert!(validate_source(&source).is_ok())
+    }
+
+    #[test]
+    fn fail_validate_source_xlsx_no_sheet() {
+        let source = Source {
+            filename: "data.xlsx".to_string(),
+            id: "id".to_string(),
+            ..Default::default()
+        };
+        assert!(validate_source(&source).is_err())
+    }
+
+    #[test]
+    fn fail_validate_source_xlsx_with_delimiter() {
+        let source = Source {
+            filename: "data.xlsx".to_string(),
+            id: "id".to_string(),
+            delimiter: Some(':'),
+            ..Default::default()
+        };
+        assert!(validate_source(&source).is_err())
+    }
+
+    #[test]
+    fn validate_source_good_csv() {
+        let source = Source {
+            filename: "data.csv".to_string(),
+            id: "id".to_string(),
+            delimiter: Some(':'),
+            ..Default::default()
+        };
+        assert!(validate_source(&source).is_ok())
+    }
+
+    #[test]
+    fn fail_validate_source_csv_with_sheet() {
+        let source = Source {
+            filename: "data.csv".to_string(),
+            id: "id".to_string(),
+            sheet: Some("sheet".to_string()),
+            ..Default::default()
+        };
+        assert!(validate_source(&source).is_err())
+    }
+
+    #[test]
+    fn fail_validate_unknown_source_type() {
+        let source = Source {
+            filename: "data.whatever".to_string(),
+            id: "id".to_string(),
+            ..Default::default()
+        };
+        assert!(validate_source(&source).is_err());
+        assert!(validate_source(&source)
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid file extension"))
     }
 }
