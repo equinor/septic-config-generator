@@ -130,7 +130,7 @@ fn process_single_startlog(
     Ok(result)
 }
 
-pub fn cmd_check_logs(rundir: &Path) {
+fn cmd_check_logs(rundir: &Path) {
     let check_functions = [check_outfile, check_cncfile];
 
     let mut found_warnings = false;

@@ -40,7 +40,7 @@ impl Make {
     }
 }
 
-pub fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
+fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     let mut cfg_file = cfg_file.to_path_buf();
     cfg_file
         .extension()
