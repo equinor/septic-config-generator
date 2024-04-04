@@ -49,6 +49,7 @@ serde = { version = "1.0.156", features = ["derive"] }
 serde_yaml = "0.9.19"
 
 [dev-dependencies]
+filetime = "0.2.23"
 tempfile = "3.4.0"
 
 [build-dependencies]
