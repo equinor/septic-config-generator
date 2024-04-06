@@ -1,16 +1,61 @@
-use crate::config::Config;
-use crate::datasource::{CsvSourceReader, DataSourceReader, ExcelSourceReader};
+use crate::config::{Config, Source};
+use crate::datasource::{CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader};
 use crate::renderer::MiniJinja;
 use crate::{
     ask_should_overwrite, collect_file_list, create_patch, timestamps_newer_than, CtxDataType,
 };
+use anyhow::Context;
 use clap::Parser;
 use minijinja::Value;
 use std::collections::HashMap;
 use std::fs;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-use std::process;
+
+#[derive(Debug)]
+enum MakeError {
+    TimeStampError(anyhow::Error),
+    CfgFileReadError(anyhow::Error),
+    CollectFileList(anyhow::Error),
+    CreateOutputFile(anyhow::Error),
+    LoadSourceError(anyhow::Error),
+    MiniJinjaError(minijinja::Error),
+    NoFilesChanged,
+    NoChangeFromPrevious,
+}
+
+impl std::fmt::Display for MakeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MakeError::TimeStampError(e) => write!(f, "{e:#}"),
+            MakeError::CfgFileReadError(e) => write!(f, "Problem reading config file: {e:#}"),
+            MakeError::CollectFileList(e) => write!(f, "Problem identifying changed files: {e:#}"),
+            MakeError::CreateOutputFile(e) => write!(f, "Problem creating output file: {e:#}"),
+            MakeError::LoadSourceError(e) => write!(f, "{e:#}"),
+            MakeError::MiniJinjaError(e) => write!(f, "{e:#}"),
+            MakeError::NoFilesChanged => write!(f, "No files have changed, skipping rebuild."),
+            MakeError::NoChangeFromPrevious => {
+                write!(f, "No change from previous version, exiting.")
+            }
+        }
+    }
+}
+impl std::error::Error for MakeError {}
+
+impl From<MakeError> for i32 {
+    fn from(err: MakeError) -> i32 {
+        match err {
+            MakeError::TimeStampError(_) => 2,
+            MakeError::CfgFileReadError(_) => 2,
+            MakeError::CollectFileList(_) => 2,
+            MakeError::CreateOutputFile(_) => 2,
+            MakeError::LoadSourceError(_) => 2,
+            MakeError::MiniJinjaError(_) => 2,
+            MakeError::NoFilesChanged => 1,
+            MakeError::NoChangeFromPrevious => 1,
+        }
+    }
+}
 
 #[derive(Parser, Debug)]
 pub struct Make {
@@ -32,95 +77,62 @@ pub struct Make {
 
 impl Make {
     pub fn execute(&self) {
-        cmd_make(
+        let result = cmd_make(
             &self.config_file,
             self.ifchanged,
             &self.var.clone().unwrap_or_default(),
-        )
+        );
+
+        match result {
+            Ok(_) => (),
+            Err(err) => {
+                eprintln!("{:#}", err);
+                std::process::exit(err.into())
+            }
+        }
     }
 }
 
-fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
+fn cmd_make(
+    cfg_file: &Path,
+    only_if_changed: bool,
+    globals: &[String],
+) -> anyhow::Result<(), MakeError> {
     let mut cfg_file = cfg_file.to_path_buf();
     cfg_file
         .extension()
         .is_none()
         .then(|| cfg_file.set_extension("yaml"));
 
-    let relative_root = PathBuf::from(cfg_file.parent().unwrap());
+    let relative_root = PathBuf::from(
+        cfg_file
+            .parent()
+            .expect("BUG: Unable to obtain parent of cfg_file"),
+    );
 
-    let cfg = Config::new(&cfg_file).unwrap_or_else(|err| {
-        eprintln!(
-            "Problem reading config file '{}: {err:#}",
-            cfg_file.display()
-        );
-        process::exit(2);
-    });
+    let cfg = Config::new(&cfg_file).map_err(MakeError::CfgFileReadError)?;
 
     if only_if_changed & cfg.outputfile.is_some() {
-        let outfile = relative_root.join(cfg.outputfile.as_ref().unwrap());
+        let outfile = relative_root.join(
+            cfg.outputfile
+                .as_ref()
+                .expect("BUG: Unable to unwrap cfg.outputfile"),
+        );
         if outfile.exists() {
-            let file_list =
-                collect_file_list(&cfg, &cfg_file, &relative_root).unwrap_or_else(|err| {
-                    eprintln!("Problem identifying changed files: {err:#}");
-                    process::exit(2)
-                });
-            let dirty = &timestamps_newer_than(&file_list, &outfile).unwrap_or_else(|err| {
-                eprintln!("Problem checking timestamp: '{err:#}'");
-                process::exit(2)
-            });
-            if !dirty {
-                println!("No files have changed. Skipping rebuild.");
-                process::exit(1);
+            let file_list = collect_file_list(&cfg, &cfg_file, &relative_root)
+                .map_err(MakeError::CollectFileList)?;
+            if !timestamps_newer_than(&file_list, &outfile).map_err(MakeError::TimeStampError)? {
+                return Err(MakeError::NoFilesChanged);
             }
         }
     }
 
-    let all_source_data: HashMap<_, _> = cfg
-        .sources
-        .iter()
-        .map(|source| {
-            let reader = match Path::new(&source.filename).extension() {
-                Some(ext) if ext == "xlsx" => {
-                    let reader = ExcelSourceReader::new(
-                        &source.filename,
-                        &relative_root,
-                        source.sheet.as_deref(),
-                    );
-                    Box::new(reader) as Box<dyn DataSourceReader>
-                }
-                Some(ext) if ext == "csv" => {
-                    let delimiter = source.delimiter.unwrap_or(';');
-
-                    let reader =
-                        CsvSourceReader::new(&source.filename, &relative_root, Some(delimiter));
-                    Box::new(reader) as Box<dyn DataSourceReader>
-                }
-                _ => {
-                    eprintln!(
-                        "Unsupported file extension for source file '{}'",
-                        source.filename
-                    );
-                    process::exit(2);
-                }
-            };
-            let source_data = reader.read().unwrap_or_else(|err| {
-                eprintln!(
-                    "Problem reading source file '{0}': {err:#}",
-                    source.filename
-                );
-                process::exit(2);
-            });
-            (source.id.clone(), source_data)
-        })
-        .collect();
+    let all_source_data: HashMap<String, DataSourceRows> =
+        load_all_source_data(&cfg, &relative_root).map_err(MakeError::LoadSourceError)?;
 
     let template_path = relative_root.join(&cfg.templatepath);
     let mut renderer =
-        MiniJinja::new(globals, &template_path, cfg.counters).unwrap_or_else(|err| {
-            eprintln!("{err:#}");
-            process::exit(2);
-        });
+        MiniJinja::new(globals, &template_path, cfg.counters).map_err(MakeError::MiniJinjaError)?;
 
     for (key, source_data) in all_source_data.iter() {
         let values_vec: Vec<HashMap<String, CtxDataType>> = source_data.values().cloned().collect();
@@ -134,10 +146,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
     for template in &cfg.layout {
         rendered +=
             &MiniJinja::render_template(&renderer, template, &all_source_data, cfg.adjustspacing)
-                .unwrap_or_else(|err| {
-                    eprintln!("Template Error: {err:#}");
-                    process::exit(2);
-                });
+                .map_err(MakeError::MiniJinjaError)?
     }
     if cfg.adjustspacing {
         rendered = rendered.trim_end().to_string();
@@ -150,15 +159,19 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         if path.exists() {
             let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
                 .encoding(Some(encoding_rs::WINDOWS_1252))
-                .build(fs::File::open(&path).unwrap());
+                .build(
+                    fs::File::open(&path)
+                        .expect("BUG: Unable to open existing outputfile for diff"),
+                );
             let mut old_file_content = String::new();
-            reader.read_to_string(&mut old_file_content).unwrap();
+            reader
+                .read_to_string(&mut old_file_content)
+                .expect("BUG: Unable to read existing outputfile for diff");
 
             let diff = create_patch(&old_file_content, &rendered);
 
             if diff.hunks().is_empty() {
-                eprintln!("No change from original version, exiting.");
-                process::exit(1);
+                return Err(MakeError::NoChangeFromPrevious);
             } else if cfg.verifycontent {
                 do_write_file =
                     ask_should_overwrite(&diff).expect("error: unable to read user input");
@@ -166,27 +179,68 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) {
         }
         if do_write_file {
             if path.exists() {
-                let backup_path = path.with_extension(format!(
-                    "{}.bak",
-                    path.extension().unwrap().to_str().unwrap()
-                ));
-                fs::rename(&path, backup_path).expect("Failed to create backup file");
+                let backup_path = match path.extension() {
+                    Some(ext) => {
+                        path.with_extension(format!("{}.bak", ext.to_str().unwrap_or_default()))
+                    }
+                    None => path.with_extension("bak"),
+                };
+                fs::rename(&path, backup_path).expect("BUG: Failed to create backup file");
             }
 
-            let mut f = fs::File::create(&path).unwrap_or_else(|err| {
-                eprintln!(
-                    "Problem creating output file '{}': {err:#}",
-                    &path.display()
-                );
-                process::exit(2);
-            });
+            let mut f = fs::File::create(&path)
+                .with_context(|| format!("Problem creating output file '{}'", &path.display()))
+                .map_err(MakeError::CreateOutputFile)?;
+
             let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
-            f.write_all(&cow).unwrap();
+            f.write_all(&cow)
+                .with_context(|| format!("Problem writing output file '{}'", &path.display()))
+                .map_err(MakeError::CreateOutputFile)?
         }
     } else {
         // TODO: || with input argument for writing to stdout
         println!("{rendered}");
     }
+    Ok(())
+}
+
+fn load_all_source_data(
+    cfg: &Config,
+    relative_root: &Path,
+) -> anyhow::Result<HashMap<String, DataSourceRows>> {
+    cfg.sources
+        .iter()
+        .map(|source| {
+            let source_data = load_source_data(source, relative_root)?;
+            Ok((source.id.clone(), source_data))
+        })
+        .collect()
+}
+
+fn load_source_data(source: &Source, relative_root: &Path) -> anyhow::Result<DataSourceRows> {
+    let reader: Box<dyn DataSourceReader> = match Path::new(&source.filename).extension() {
+        Some(ext) if ext == "xlsx" => Box::new(ExcelSourceReader::new(
+            &source.filename,
+            relative_root,
+            source.sheet.as_deref(),
+        )),
+        Some(ext) if ext == "csv" => {
+            let delimiter = source.delimiter.unwrap_or(';');
+
+            Box::new(CsvSourceReader::new(
+                &source.filename,
+                relative_root,
+                Some(delimiter),
+            ))
+        }
+        _ => anyhow::bail!(
+            "Unsupported file extension for source file '{}'",
+            source.filename
+        ),
+    };
+    reader
+        .read()
+        .with_context(|| format!("Problem reading source file '{}'", source.filename))
 }
 
 #[cfg(test)]
@@ -195,7 +249,7 @@ mod tests {
     use crate::config;
     use crate::datasource::{DataSourceReader, DataSourceRows, ExcelSourceReader};
 
-    fn get_all_source_data() -> HashMap<String, DataSourceRows> {
+    fn get_all_source_data() -> anyhow::Result<HashMap<String, DataSourceRows>> {
         let mut all_source_data: HashMap<String, DataSourceRows> = HashMap::new();
         let source_main = config::Source {
             filename: "test.xlsx".to_string(),
@@ -216,21 +270,21 @@ mod tests {
                 source.sheet.as_deref(),
             );
 
-            let source_data = reader.read().unwrap();
+            let source_data = reader.read()?;
             all_source_data.insert(source.id.to_string(), source_data);
         }
-        all_source_data
+        Ok(all_source_data)
     }
 
     #[test]
-    fn render_with_normal_values() {
+    fn render_with_normal_values() -> anyhow::Result<()> {
         let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "01_normals.tmpl".to_string(),
             source: Some("main".to_string()),
             ..Default::default()
         };
-        let all_source_data = get_all_source_data();
+        let all_source_data = get_all_source_data()?;
         let result = renderer
             .render_template(&template, &all_source_data, true)
             .unwrap()
@@ -240,17 +294,18 @@ mod tests {
             result,
             "String: one\nString: one\nBool: true\nInteger: 1\nWhole float: 1\nFloat: 1.234\n\nString: two\nString: two\nBool: false\nInteger: 2\nWhole float: 2\nFloat: 2.3456\n\nString: three\nString: three\nBool: true\nInteger: 3\nWhole float: 3\nFloat: 34.56"
         );
+        Ok(())
     }
 
     #[test]
-    fn render_with_special_values() {
+    fn render_with_special_values() -> anyhow::Result<()> {
         let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "02_specials.tmpl".to_string(),
             source: Some("errors".to_string()),
             ..Default::default()
         };
-        let all_source_data = get_all_source_data();
+        let all_source_data = get_all_source_data()?;
         let result = renderer
             .render_template(&template, &all_source_data, true)
             .unwrap()
@@ -260,10 +315,11 @@ mod tests {
             result,
             "Empty: >|none|<\nError: >|#DIV/0!|<\n\nEmpty: >||<\nError: >|#N/A|<\n\nEmpty: >|\"\"|<\nError: >|#NAME?|<\n\nEmpty: >|\"\"|<\nError: >|#NULL!|<\n\nEmpty: >|none|<\nError: >|#NUM!|<\n\nEmpty: >||<\nError: >|#REF!|<\n\nEmpty: >|\"\"|<\nError: >|#VALUE!|<"
         );
+        Ok(())
     }
 
     #[test]
-    fn render_with_global_variables() {
+    fn render_with_global_variables() -> anyhow::Result<()> {
         let globals = ["glob".to_string(), "globvalue".to_string()];
         let renderer =
             MiniJinja::new(&globals, Path::new("tests/testdata/templates/"), None).unwrap();
@@ -271,24 +327,25 @@ mod tests {
             name: "03_globals.tmpl".to_string(),
             ..Default::default()
         };
-        let all_source_data = get_all_source_data();
+        let all_source_data = get_all_source_data()?;
 
         let result = renderer
             .render_template(&template, &all_source_data, true)
             .unwrap();
         assert_eq!(result.trim_end(), "Global: >|globvalue|<");
+        Ok(())
     }
 
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
-    fn render_with_global_source_no_iteration() {
+    fn render_with_global_source_no_iteration() -> anyhow::Result<()> {
         let mut renderer =
             MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             ..Default::default()
         };
-        let all_source_data = get_all_source_data();
+        let all_source_data = get_all_source_data()?;
         for (key, source_data) in all_source_data.iter() {
             let values_vec: Vec<_> = source_data.values().cloned().collect();
             renderer
@@ -303,11 +360,12 @@ mod tests {
             result,
             "Num rows: 3\nRows in order: onetwothree\nSingle value: 34.56"
         );
+        Ok(())
     }
 
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
-    fn render_with_global_source_and_iteration() {
+    fn render_with_global_source_and_iteration() -> anyhow::Result<()> {
         let mut renderer =
             MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
@@ -316,7 +374,7 @@ mod tests {
             include: Some(vec!["one".to_string()]),
             ..Default::default()
         };
-        let all_source_data = get_all_source_data();
+        let all_source_data = get_all_source_data()?;
         for (key, source_data) in all_source_data.iter() {
             let values_vec: Vec<_> = source_data.values().cloned().collect();
             renderer
@@ -331,6 +389,7 @@ mod tests {
             result,
             "Num rows: 3\nRows in order: onetwothree\nSingle value: 34.56"
         );
+        Ok(())
     }
 
     #[test]

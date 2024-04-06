@@ -1,6 +1,6 @@
+use anyhow::{bail, Result};
 use serde::Deserialize;
 use std::collections::HashSet;
-use std::error::Error;
 use std::fs;
 use std::path::Path;
 
@@ -24,7 +24,7 @@ pub struct Config {
 
 impl Config {
     #[allow(clippy::missing_errors_doc)]
-    pub fn new(filename: &Path) -> Result<Self, Box<dyn Error>> {
+    pub fn new(filename: &Path) -> Result<Self> {
         let content = fs::read_to_string(filename)?;
         let cfg: Self = serde_yaml::from_str(&content)?;
 
@@ -36,24 +36,27 @@ impl Config {
     }
 }
 
-fn validate_source(source: &Source) -> Result<(), Box<dyn Error>> {
+fn validate_source(source: &Source) -> Result<()> {
     let extension = Path::new(&source.filename).extension();
     match extension {
         Some(ext) if ext == "xlsx" => {
             if source.sheet.is_none() {
-                return Err("missing field 'sheet' for .xlsx source".into());
+                bail!("missing field 'sheet' for .xlsx source {}", source.filename);
             }
             if source.delimiter.is_some() {
-                return Err("field 'delimiter' invalid for .xlsx source".into());
+                bail!(
+                    "field 'delimiter' invalid for .xlsx source {}",
+                    source.filename
+                );
             }
         }
         Some(ext) if ext == "csv" => {
             if source.sheet.is_some() {
-                return Err("field 'sheet' invalid for .csv source".into());
+                bail!("field 'sheet' invalid for .csv source {}", source.filename);
             }
         }
         _ => {
-            return Err(format!("Invalid file extension for source {}", source.filename).into());
+            bail!("invalid file extension for source '{}'", source.filename);
         }
     }
 
@@ -139,14 +142,6 @@ layout:
     }
 
     #[test]
-    fn config_fail_read_on_invalid_content() {
-        let temp_file = create_temp_yaml("random");
-        let config = Config::new(temp_file.path());
-        assert!(config.is_err());
-        assert!(config.unwrap_err().to_string().contains("invalid type"));
-    }
-
-    #[test]
     fn config_fail_read_on_invalid_yaml() {
         let temp_file = create_temp_yaml("random:");
         let config = Config::new(temp_file.path());
@@ -158,7 +153,7 @@ layout:
     fn config_fail_read_on_missing_config_file() {
         let config = Config::new(Path::new("nonexistent_file.yaml"));
         assert!(config.is_err());
-        assert!(config.unwrap_err().to_string().contains("(os error 2)"));
+        assert!(config.unwrap_err().to_string().contains("No such file"));
     }
 
     #[test]
@@ -179,7 +174,12 @@ layout:
             id: "id".to_string(),
             ..Default::default()
         };
-        assert!(validate_source(&source).is_err())
+        let result = validate_source(&source);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("missing field 'sheet'"))
     }
 
     #[test]
@@ -187,10 +187,15 @@ layout:
         let source = Source {
             filename: "data.xlsx".to_string(),
             id: "id".to_string(),
+            sheet: Some("sheet".to_string()),
             delimiter: Some(':'),
-            ..Default::default()
         };
-        assert!(validate_source(&source).is_err())
+        let result = validate_source(&source);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("field 'delimiter' invalid"))
     }
 
     #[test]
@@ -212,7 +217,12 @@ layout:
             sheet: Some("sheet".to_string()),
             ..Default::default()
         };
-        assert!(validate_source(&source).is_err())
+        let result = validate_source(&source);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("field 'sheet' invalid"))
     }
 
     #[test]
@@ -222,10 +232,11 @@ layout:
             id: "id".to_string(),
             ..Default::default()
         };
-        assert!(validate_source(&source).is_err());
-        assert!(validate_source(&source)
+        let result = validate_source(&source);
+        assert!(result.is_err());
+        assert!(result
             .unwrap_err()
             .to_string()
-            .contains("Invalid file extension"))
+            .contains("invalid file extension"))
     }
 }

@@ -1,4 +1,5 @@
 use crate::config::Config;
+use anyhow::Context;
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
 use serde::Serialize;
@@ -87,7 +88,7 @@ fn collect_file_list(
     config: &Config,
     cfg_file: &Path,
     relative_root: &Path,
-) -> Result<HashSet<PathBuf>, Box<dyn Error>> {
+) -> anyhow::Result<HashSet<PathBuf>> {
     let mut files = HashSet::new();
 
     // The yaml file
@@ -110,17 +111,14 @@ fn collect_file_list(
     Ok(files)
 }
 
-fn timestamps_newer_than(
-    files: &HashSet<PathBuf>,
-    outfile: &PathBuf,
-) -> Result<bool, Box<dyn Error>> {
+fn timestamps_newer_than(files: &HashSet<PathBuf>, outfile: &PathBuf) -> anyhow::Result<bool> {
     let checktime = fs::metadata(outfile)
-        .map_err(|e| format!("{e} {outfile:?}"))?
-        .modified()?;
+        .and_then(|metadata| metadata.modified())
+        .with_context(|| format!("Failed to read timestamp for {outfile:?}"))?;
     for f in files {
         let systime = fs::metadata(f)
-            .map_err(|e| format!("{e} {f:?}"))?
-            .modified()?;
+            .and_then(|metadata| metadata.modified())
+            .with_context(|| format!("Failed to read timestamp for {f:?}"))?;
         if systime > checktime {
             return Ok(true);
         }
@@ -135,7 +133,7 @@ mod tests {
     use tempfile::tempdir;
 
     #[test]
-    fn collect_file_list_works() {
+    fn collect_file_list_works() -> Result<(), Box<dyn Error>> {
         let sources = vec![
             config::Source {
                 filename: "source1".to_string(),
@@ -149,17 +147,17 @@ mod tests {
         let relative_root = Path::new("relative_root");
         let cfg_file = relative_root.join("config.yaml");
 
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir()?;
         let dir_path = dir.path().to_path_buf();
         let subdir_path = dir_path.join("subdir");
-        fs::create_dir(&subdir_path).unwrap();
+        fs::create_dir(&subdir_path)?;
         let file1 = dir_path.join("temp1");
         let file2 = dir_path.join("temp2");
         let file3 = subdir_path.join("temp3");
 
-        fs::write(&file1, "content1").unwrap();
-        fs::write(&file2, "content2").unwrap();
-        fs::write(&file3, "content3").unwrap();
+        fs::write(&file1, "content1")?;
+        fs::write(&file2, "content2")?;
+        fs::write(&file3, "content3")?;
 
         let layout = vec![];
         let cfg = config::Config {
@@ -170,7 +168,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = collect_file_list(&cfg, &cfg_file, relative_root).unwrap();
+        let result = collect_file_list(&cfg, &cfg_file, relative_root)?;
         let mut expected = HashSet::new();
         for filename in [
             file1.to_str().unwrap(),
@@ -187,6 +185,7 @@ mod tests {
 
         assert!(result.len() == 6);
         assert!(result == expected);
+        Ok(())
     }
 
     #[test]
@@ -227,10 +226,11 @@ mod tests {
         file1.write_all(b"file1 content")?;
 
         let outfile_path = dir.path().join("outfile.txt");
-
         let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("(os error 2)"));
+        let err = result.as_ref().unwrap_err();
+        assert!(err.root_cause().to_string().contains("(os error 2)"));
+        assert!(err.to_string().contains("outfile.txt"));
         Ok(())
     }
 
@@ -240,12 +240,14 @@ mod tests {
         let file1_path = dir.path().join("file1.txt");
 
         let outfile_path = dir.path().join("outfile.txt");
-        let mut outfile = File::create(&file1_path)?;
+        let mut outfile = File::create(&outfile_path)?;
         outfile.write_all(b"file1 content")?;
 
         let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("(os error 2)"));
+        let err = result.as_ref().unwrap_err();
+        assert!(err.root_cause().to_string().contains("(os error 2)"));
+        assert!(err.to_string().contains("file1.txt"));
         Ok(())
     }
 }
