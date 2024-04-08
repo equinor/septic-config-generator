@@ -3,12 +3,11 @@ use calamine::{open_workbook, CellErrorType, Data, DataType, Reader, Xlsx};
 use csv::{self, Trim};
 use indexmap::IndexMap;
 use std::collections::HashMap;
-use std::error::Error;
 use std::path::{Path, PathBuf};
 pub type DataSourceRows = IndexMap<String, HashMap<String, CtxDataType>>;
-
+use anyhow::{bail, Context, Result};
 pub trait DataSourceReader {
-    fn read(&self) -> Result<DataSourceRows, Box<dyn Error>>;
+    fn read(&self) -> Result<DataSourceRows>;
 }
 
 #[derive(Debug, Default)]
@@ -27,7 +26,7 @@ impl CsvSourceReader {
 }
 
 impl DataSourceReader for CsvSourceReader {
-    fn read(&self) -> Result<DataSourceRows, Box<dyn Error>> {
+    fn read(&self) -> Result<DataSourceRows> {
         let mut reader = csv::ReaderBuilder::new()
             .delimiter(self.delimiter as u8)
             .flexible(false)
@@ -40,7 +39,7 @@ impl DataSourceReader for CsvSourceReader {
         let mut rows = IndexMap::new();
 
         for record_result in reader.records() {
-            let record = record_result.map_err(|e| format!("Error reading CSV record: {e}"))?;
+            let record = record_result.with_context(|| "Error reading CSV record")?;
 
             let mut data = HashMap::new();
             for (i, value) in record.iter().enumerate() {
@@ -76,7 +75,7 @@ impl DataSourceReader for CsvSourceReader {
                     _ => true,
                 }
         }) {
-            return Err("First column must contain strings only".into());
+            bail!("First column must contain strings only");
         }
         Ok(rows)
     }
@@ -101,7 +100,7 @@ impl DataSourceReader for ExcelSourceReader {
     #[allow(clippy::missing_errors_doc)]
     #[allow(clippy::missing_panics_doc)]
     #[allow(clippy::cast_possible_truncation)]
-    fn read(&self) -> Result<DataSourceRows, Box<dyn Error>> {
+    fn read(&self) -> Result<DataSourceRows> {
         let mut workbook: Xlsx<_> = open_workbook(&self.file_path)?;
         let sheet = self.sheet.as_ref().unwrap();
 
@@ -112,7 +111,7 @@ impl DataSourceReader for ExcelSourceReader {
             .skip(1)
             .any(|row| row[0].get_string().is_none())
         {
-            return Err("First column must contain strings only".into());
+            bail!("First column must contain strings only");
         }
 
         let row_headers = range.rows().next().unwrap();
@@ -312,7 +311,7 @@ key1  ;   value1  ;    1.1 ; 1  "#;
     }
 
     #[test]
-    fn csv_read_errors_on_invalid_row() {
+    fn csv_read_errors_on_invalid_row() -> Result<()> {
         let csv_content = r#"keys;header1;header2
 key1;value1a;value1b
 key2;value2a"#;
@@ -326,12 +325,13 @@ key2;value2a"#;
         );
 
         let result = reader.read();
-
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
+            .root_cause()
             .to_string()
             .contains("CSV error: record 2"));
+        Ok(())
     }
 
     #[test]

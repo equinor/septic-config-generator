@@ -1,12 +1,8 @@
 use crate::config::Config;
-use crate::renderer::MiniJinja;
-
-use datasource::DataSourceRows;
+use anyhow::Context;
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
-
 use serde::Serialize;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use std::error::Error;
 use std::fs;
@@ -79,84 +75,6 @@ impl Serialize for CtxDataType {
     }
 }
 
-fn _merge_maps(
-    map1: &HashMap<String, String>,
-    map2: &HashMap<String, String>,
-) -> HashMap<String, String> {
-    let mut merged = map1.clone();
-    merged.extend(map2.iter().map(|(k, v)| (k.to_string(), v.to_string())));
-    merged
-}
-
-fn bubble_error(pretext: &str, err: Box<dyn Error>) {
-    eprintln!("{pretext}: {err:#}");
-    let mut err = err.as_ref();
-    while let Some(next_err) = err.source() {
-        eprintln!();
-        eprintln!("Above error caused by: {next_err:#}");
-        err = next_err;
-    }
-}
-
-fn set_extension_if_missing(filename: &Path, extension: &str) -> PathBuf {
-    let mut file = filename.to_path_buf();
-    if file.extension().is_none() {
-        file.set_extension(extension);
-    }
-    file
-}
-
-fn render_template(
-    renderer: &MiniJinja,
-    template: &config::Template,
-    source_data: &HashMap<String, DataSourceRows>,
-    adjust_spacing: bool,
-) -> Result<String, Box<dyn Error>> {
-    let mut rendered = String::new();
-
-    if let Some(src_name) = &template.source {
-        let keys: Vec<String> = source_data[src_name]
-            .iter()
-            .map(|(key, _row)| key.clone())
-            .collect();
-
-        let mut items_set: HashSet<String> = keys.iter().cloned().collect();
-
-        if template.include.is_some() {
-            items_set = items_set
-                .intersection(&template.include_set())
-                .cloned()
-                .collect();
-        }
-
-        items_set = items_set
-            .difference(&template.exclude_set())
-            .cloned()
-            .collect();
-
-        for (key, row) in &source_data[src_name] {
-            if items_set.contains(key) {
-                let mut tmpl_rend = renderer.render(&template.name, Some(row))?;
-
-                if adjust_spacing {
-                    tmpl_rend = tmpl_rend.trim_end().to_string();
-                    tmpl_rend.push_str("\r\n\r\n");
-                }
-                rendered.push_str(&tmpl_rend);
-            }
-        }
-    } else {
-        rendered = renderer.render(&template.name, minijinja::context!())?;
-    }
-
-    if adjust_spacing {
-        rendered = rendered.trim_end().to_string();
-        rendered.push_str("\r\n\r\n");
-    }
-
-    Ok(rendered)
-}
-
 fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, Box<dyn Error>> {
     let f = PatchFormatter::new().with_color();
     print!("{}\n\nReplace original? [Y]es or [N]o: ", f.fmt_patch(diff));
@@ -170,7 +88,7 @@ fn collect_file_list(
     config: &Config,
     cfg_file: &Path,
     relative_root: &Path,
-) -> Result<HashSet<PathBuf>, Box<dyn Error>> {
+) -> anyhow::Result<HashSet<PathBuf>> {
     let mut files = HashSet::new();
 
     // The yaml file
@@ -193,17 +111,14 @@ fn collect_file_list(
     Ok(files)
 }
 
-fn timestamps_newer_than(
-    files: &HashSet<PathBuf>,
-    outfile: &PathBuf,
-) -> Result<bool, Box<dyn Error>> {
+fn timestamps_newer_than(files: &HashSet<PathBuf>, outfile: &PathBuf) -> anyhow::Result<bool> {
     let checktime = fs::metadata(outfile)
-        .map_err(|e| format!("{e} {outfile:?}"))?
-        .modified()?;
+        .and_then(|metadata| metadata.modified())
+        .with_context(|| format!("Failed to read timestamp for {outfile:?}"))?;
     for f in files {
         let systime = fs::metadata(f)
-            .map_err(|e| format!("{e} {f:?}"))?
-            .modified()?;
+            .and_then(|metadata| metadata.modified())
+            .with_context(|| format!("Failed to read timestamp for {f:?}"))?;
         if systime > checktime {
             return Ok(true);
         }
@@ -216,19 +131,9 @@ mod tests {
     use super::*;
     use std::fs::File;
     use tempfile::tempdir;
-    #[test]
-    fn ensure_has_extension_works() {
-        let before = Path::new("file.extension");
-        assert_eq!(before, set_extension_if_missing(before, "extension"));
-        assert_eq!(
-            before,
-            set_extension_if_missing(Path::new("file"), "extension")
-        );
-        assert!(set_extension_if_missing(before, "other") == before);
-    }
 
     #[test]
-    fn collect_file_list_works() {
+    fn collect_file_list_works() -> Result<(), Box<dyn Error>> {
         let sources = vec![
             config::Source {
                 filename: "source1".to_string(),
@@ -242,17 +147,17 @@ mod tests {
         let relative_root = Path::new("relative_root");
         let cfg_file = relative_root.join("config.yaml");
 
-        let dir = tempfile::tempdir().unwrap();
+        let dir = tempfile::tempdir()?;
         let dir_path = dir.path().to_path_buf();
         let subdir_path = dir_path.join("subdir");
-        fs::create_dir(&subdir_path).unwrap();
+        fs::create_dir(&subdir_path)?;
         let file1 = dir_path.join("temp1");
         let file2 = dir_path.join("temp2");
         let file3 = subdir_path.join("temp3");
 
-        fs::write(&file1, "content1").unwrap();
-        fs::write(&file2, "content2").unwrap();
-        fs::write(&file3, "content3").unwrap();
+        fs::write(&file1, "content1")?;
+        fs::write(&file2, "content2")?;
+        fs::write(&file3, "content3")?;
 
         let layout = vec![];
         let cfg = config::Config {
@@ -263,7 +168,7 @@ mod tests {
             ..Default::default()
         };
 
-        let result = collect_file_list(&cfg, &cfg_file, relative_root).unwrap();
+        let result = collect_file_list(&cfg, &cfg_file, relative_root)?;
         let mut expected = HashSet::new();
         for filename in [
             file1.to_str().unwrap(),
@@ -280,6 +185,7 @@ mod tests {
 
         assert!(result.len() == 6);
         assert!(result == expected);
+        Ok(())
     }
 
     #[test]
@@ -320,10 +226,11 @@ mod tests {
         file1.write_all(b"file1 content")?;
 
         let outfile_path = dir.path().join("outfile.txt");
-
         let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("(os error 2)"));
+        let err = result.as_ref().unwrap_err();
+        assert!(err.root_cause().to_string().contains("(os error 2)"));
+        assert!(err.to_string().contains("outfile.txt"));
         Ok(())
     }
 
@@ -333,12 +240,14 @@ mod tests {
         let file1_path = dir.path().join("file1.txt");
 
         let outfile_path = dir.path().join("outfile.txt");
-        let mut outfile = File::create(&file1_path)?;
+        let mut outfile = File::create(&outfile_path)?;
         outfile.write_all(b"file1 content")?;
 
         let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("(os error 2)"));
+        let err = result.as_ref().unwrap_err();
+        assert!(err.root_cause().to_string().contains("(os error 2)"));
+        assert!(err.to_string().contains("file1.txt"));
         Ok(())
     }
 }

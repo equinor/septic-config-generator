@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use colored::Colorize;
 use glob::glob;
@@ -7,13 +8,28 @@ use std::fs;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
-use std::process;
 
 #[derive(Debug)]
 struct ErrorLine {
     line_num: usize,
     content: String,
 }
+
+#[derive(Debug)]
+enum CheckLogsError {
+    CheckError(String),
+    WarningsFound,
+}
+
+impl std::fmt::Display for CheckLogsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CheckLogsError::CheckError(s) => write!(f, "Error checking file: {s}"),
+            CheckLogsError::WarningsFound => write!(f, "Warnings were found"),
+        }
+    }
+}
+impl Error for CheckLogsError {}
 
 #[derive(Parser, Debug)]
 pub struct Checklogs {
@@ -26,111 +42,24 @@ pub struct Checklogs {
 
 impl Checklogs {
     pub fn execute(&self) {
-        cmd_check_logs(&self.rundir);
-    }
-}
-
-fn get_newest_file(files: &[PathBuf]) -> Option<&PathBuf> {
-    let mut newest_file: Option<&PathBuf> = None;
-    let mut newest_time: Option<std::time::SystemTime> = None;
-
-    for file in files {
-        if let Ok(metadata) = fs::metadata(file) {
-            if let Ok(modified_time) = metadata.modified() {
-                if newest_time.is_none() || modified_time > newest_time.unwrap() {
-                    newest_file = Some(file);
-                    newest_time = Some(modified_time);
+        let result = cmd_check_logs(&self.rundir);
+        match result {
+            Ok(_) => (),
+            Err(err) => match err.downcast_ref() {
+                Some(CheckLogsError::CheckError(_)) => {
+                    eprintln!("{:#}", err);
+                    std::process::exit(2);
                 }
-            }
+                Some(CheckLogsError::WarningsFound) => {
+                    std::process::exit(1);
+                }
+                None => (),
+            },
         }
     }
-
-    newest_file
 }
 
-fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>), Box<dyn Error>> {
-    let regex_set = RegexSet::new([
-        r"ERROR",
-        r"WARNING",
-        r"ILLEGAL",
-        r"MISSING",
-        r"FMU error:",
-        r"^No Xvr match",
-        r"^No matching XVR found for SopcEvr",
-        r"INFO:",
-    ])?;
-    let entries = glob(rundir.join("*.out").to_str().unwrap())?;
-    let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
-    let path = match pathvec.len() {
-        0 => return Err(format!("No .out file found in {:?}", &rundir).into()),
-        1 => pathvec[0].clone(),
-        _ => {
-            return Err(format!(
-                "More than one .out file found in {:?}: {:?}",
-                &rundir,
-                pathvec
-                    .iter()
-                    .map(|path| path.file_name().unwrap().to_string_lossy())
-                    .collect::<Vec<_>>()
-            )
-            .into())
-        }
-    };
-    let lines = process_single_startlog(&path, &regex_set)?;
-    Ok((path, lines))
-}
-
-fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>), Box<dyn Error>> {
-    let startlogs_dir = rundir.join("startlogs");
-    let rundir = if startlogs_dir.exists() && startlogs_dir.is_dir() {
-        startlogs_dir
-    } else {
-        rundir.to_owned()
-    };
-    let regex_set = RegexSet::new([r"ERROR", r"UNABLE to connect"])?;
-
-    let entries = glob(rundir.join("*.cnc").to_str().unwrap())?;
-    let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
-    let path = match pathvec.len() {
-        0 => return Err(format!("No .cnc file found in {:?}", &rundir).into()),
-        1 => pathvec[0].clone(),
-        _ => {
-            if let Some(newest_file) = get_newest_file(&pathvec) {
-                newest_file.clone()
-            } else {
-                return Err(
-                    format!("Failed to identify the newest .cnc file in {rundir:?}").into(),
-                );
-            }
-        }
-    };
-
-    let lines = process_single_startlog(&path, &regex_set)?;
-    Ok((path, lines))
-}
-
-fn process_single_startlog(
-    file_name: &Path,
-    regex_set: &RegexSet,
-) -> Result<Vec<ErrorLine>, Box<dyn Error>> {
-    let file = fs::File::open(file_name)?;
-    let reader = BufReader::new(file);
-    let mut result: Vec<ErrorLine> = Vec::new();
-    for (line_number, line) in reader.lines().enumerate() {
-        let line = line?;
-
-        if regex_set.is_match(&line) {
-            let error_line = ErrorLine {
-                line_num: line_number + 1,
-                content: line,
-            };
-            result.push(error_line);
-        }
-    }
-    Ok(result)
-}
-
-pub fn cmd_check_logs(rundir: &Path) {
+fn cmd_check_logs(rundir: &Path) -> Result<()> {
     let check_functions = [check_outfile, check_cncfile];
 
     let mut found_warnings = false;
@@ -153,21 +82,143 @@ pub fn cmd_check_logs(rundir: &Path) {
                 }
             }
             Err(err) => {
-                eprintln!("Error checking file: {err}");
-                process::exit(2);
+                return Err(anyhow!(CheckLogsError::CheckError(err.to_string())));
             }
         }
     }
     if found_warnings {
-        process::exit(1);
+        return Err(anyhow!(CheckLogsError::WarningsFound));
     }
+    Ok(())
+}
+
+fn get_newest_file(files: &[PathBuf]) -> Option<&PathBuf> {
+    files
+        .iter()
+        .filter_map(|file| {
+            fs::metadata(file)
+                .ok()?
+                .modified()
+                .ok()
+                .map(|time| (file, time))
+        })
+        .max_by_key(|&(_, time)| time)
+        .map(|(file, _)| file)
+}
+
+fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>)> {
+    let regex_set = RegexSet::new([
+        r"ERROR",
+        r"WARNING",
+        r"ILLEGAL",
+        r"MISSING",
+        r"FMU error:",
+        r"^No Xvr match",
+        r"^No matching XVR found for SopcEvr",
+        r"INFO:",
+    ])?;
+    let entries = glob(rundir.join("*.out").to_str().unwrap())?;
+    let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
+    let path = match pathvec.len() {
+        0 => return Err(anyhow!("No .out file found in {:?}", &rundir)),
+        1 => pathvec[0].clone(),
+        _ => return Err(anyhow!("More than one .out file found in {:?}", &rundir)),
+    };
+    let lines = process_single_startlog(&path, &regex_set)?;
+    Ok((path, lines))
+}
+
+fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>)> {
+    let startlogs_dir = rundir.join("startlogs");
+    let rundir = if startlogs_dir.exists() && startlogs_dir.is_dir() {
+        startlogs_dir
+    } else {
+        rundir.to_owned()
+    };
+    let regex_set = RegexSet::new([r"ERROR", r"UNABLE to connect"])?;
+    let entries = glob(rundir.join("*.cnc").to_str().unwrap())?;
+    let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
+    let path = match pathvec.len() {
+        0 => return Err(anyhow!("No .cnc file found in {:?}", &rundir)),
+        1 => pathvec[0].clone(),
+        _ => {
+            if let Some(newest_file) = get_newest_file(&pathvec) {
+                newest_file.clone()
+            } else {
+                return Err(anyhow!(
+                    "Failed to identify the newest .cnc file in {rundir:?}"
+                ));
+            }
+        }
+    };
+
+    let lines = process_single_startlog(&path, &regex_set)?;
+    Ok((path, lines))
+}
+
+fn process_single_startlog(file_name: &Path, regex_set: &RegexSet) -> Result<Vec<ErrorLine>> {
+    let file = fs::File::open(file_name)?;
+    let reader = BufReader::new(file);
+    let mut error_lines: Vec<ErrorLine> = Vec::new();
+    for (line_number, line) in reader.lines().enumerate() {
+        let line = line?;
+        if regex_set.is_match(&line) {
+            let error_line = ErrorLine {
+                line_num: line_number + 1,
+                content: line,
+            };
+            error_lines.push(error_line);
+        }
+    }
+    Ok(error_lines)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use filetime::{set_file_mtime, FileTime};
     use std::fs::File;
     use tempfile::tempdir;
+
+    fn create_timestamped_file(dir: &Path, filename: &str, mod_time: i64) -> PathBuf {
+        let file_path = dir.join(filename);
+        File::create(&file_path).unwrap();
+        let file_time = FileTime::from_unix_time(mod_time, 0);
+        set_file_mtime(&file_path, file_time).unwrap();
+        file_path
+    }
+
+    #[test]
+    fn test_get_newest_file_returns_file_when_multiple_files() {
+        let dir = tempdir().unwrap().into_path();
+        let file_path1 = create_timestamped_file(&dir, "file1.txt", 100);
+        let file_path2 = create_timestamped_file(&dir, "file2.txt", 200);
+        let file_path3 = create_timestamped_file(&dir, "file3.txt", 300);
+
+        let files = vec![file_path1, file_path2, file_path3];
+        let newest_file = get_newest_file(&files);
+
+        assert_eq!(newest_file, Some(&files[2]));
+    }
+
+    #[test]
+    fn test_get_newest_file_returns_file_when_single_file() {
+        let dir = tempdir().unwrap().into_path();
+        let file_path1 = create_timestamped_file(&dir, "file1.txt", 100);
+
+        let files = vec![file_path1];
+        let newest_file = get_newest_file(&files);
+
+        assert_eq!(newest_file, Some(&files[0]));
+    }
+
+    #[test]
+    fn test_get_newest_file_returns_none_when_no_files() {
+        let files = vec![];
+        let newest_file = get_newest_file(&files);
+
+        assert_eq!(newest_file, None);
+    }
 
     #[test]
     fn check_outfile_errors_on_nonunique_file() {

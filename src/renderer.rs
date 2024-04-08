@@ -1,9 +1,12 @@
+use crate::config;
 use crate::config::Counter as CounterConfig;
+use crate::datasource::DataSourceRows;
 use chrono::Local;
 use minijinja::value::{from_args, Kwargs, Rest, Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -30,8 +33,8 @@ impl CounterMap {
             .is_some()
         {
             return Err(Error::new(
-                ErrorKind::InvalidOperation,
-                "Counter already exists",
+                ErrorKind::SyntaxError,
+                format!("Counter '{}' already exists", name),
             ));
         }
         Ok(())
@@ -184,9 +187,9 @@ fn erroring_formatter(
 
 #[allow(clippy::unnecessary_wraps)]
 fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, Error> {
-    let mut path = PathBuf::new();
-    path.push(template_path);
+    let mut path = PathBuf::from(template_path);
     path.push(name);
+
     let file = match File::open(path) {
         Ok(f) => f,
         Err(err) => match err.kind() {
@@ -197,6 +200,7 @@ fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, Err
             }
         },
     };
+
     let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
         .encoding(Some(encoding_rs::WINDOWS_1252))
         .build(file);
@@ -220,7 +224,7 @@ impl<'a> MiniJinja<'a> {
         globals: &[String],
         template_path: &Path,
         counter_list: Option<Vec<CounterConfig>>,
-    ) -> MiniJinja<'a> {
+    ) -> Result<MiniJinja<'a>, Error> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
@@ -230,8 +234,7 @@ impl<'a> MiniJinja<'a> {
                 counters
                     .lock()
                     .unwrap()
-                    .create(&counter.name.clone(), counter.value)
-                    .unwrap();
+                    .create(&counter.name.clone(), counter.value)?;
                 let increment_closure = {
                     let counters = counters.clone();
                     let name = counter.name.clone();
@@ -264,24 +267,64 @@ impl<'a> MiniJinja<'a> {
         renderer
             .env
             .set_loader(move |name| load_template(&local_template_path, name));
-        renderer
+        Ok(renderer)
     }
 
     #[allow(clippy::missing_errors_doc)]
-    pub fn render<S: Serialize>(
-        &self,
-        template_name: &str,
-        ctx: S,
-    ) -> Result<String, Box<dyn std::error::Error>> {
-        let tmpl = match self.env.get_template(template_name) {
-            Ok(t) => t,
-            Err(e) => return Err(Box::new(e)),
-        };
+    pub fn render<S: Serialize>(&self, template_name: &str, ctx: S) -> Result<String, Error> {
+        let tmpl = self.env.get_template(template_name)?;
+        tmpl.render(&ctx)
+    }
 
-        match tmpl.render(ctx) {
-            Ok(r) => Ok(r),
-            Err(e) => Err(Box::new(e)),
+    pub fn render_template(
+        &self,
+        template: &config::Template,
+        source_data: &HashMap<String, DataSourceRows>,
+        adjust_spacing: bool,
+    ) -> Result<String, Error> {
+        let mut rendered = String::new();
+
+        if let Some(src_name) = &template.source {
+            let keys: Vec<String> = source_data[src_name]
+                .iter()
+                .map(|(key, _row)| key.clone())
+                .collect();
+
+            let mut items_set: HashSet<String> = keys.iter().cloned().collect();
+
+            if template.include.is_some() {
+                items_set = items_set
+                    .intersection(&template.include_set())
+                    .cloned()
+                    .collect();
+            }
+
+            items_set = items_set
+                .difference(&template.exclude_set())
+                .cloned()
+                .collect();
+
+            for (key, row) in &source_data[src_name] {
+                if items_set.contains(key) {
+                    let mut tmpl_rend = self.render(&template.name, Some(row))?;
+
+                    if adjust_spacing {
+                        tmpl_rend = tmpl_rend.trim_end().to_string();
+                        tmpl_rend.push_str("\r\n\r\n");
+                    }
+                    rendered.push_str(&tmpl_rend);
+                }
+            }
+        } else {
+            rendered = self.render(&template.name, minijinja::context!())?;
         }
+
+        if adjust_spacing {
+            rendered = rendered.trim_end().to_string();
+            rendered.push_str("\r\n\r\n");
+        }
+
+        Ok(rendered)
     }
 
     fn add_globals(&mut self, globals: &[String]) {
