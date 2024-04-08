@@ -15,29 +15,31 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 enum MakeError {
+    NoFilesChanged,
+    NoChangeFromPrevious,
+    MiniJinjaError(minijinja::Error),
     TimeStampError(anyhow::Error),
     CfgFileReadError(anyhow::Error),
     CollectFileList(anyhow::Error),
     CreateOutputFile(anyhow::Error),
     LoadSourceError(anyhow::Error),
-    MiniJinjaError(minijinja::Error),
-    NoFilesChanged,
-    NoChangeFromPrevious,
+    Other(anyhow::Error),
 }
 
 impl std::fmt::Display for MakeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            MakeError::NoFilesChanged => write!(f, "No files have changed, skipping rebuild."),
+            MakeError::NoChangeFromPrevious => {
+                write!(f, "No change from previous version, exiting.")
+            }
+            MakeError::MiniJinjaError(e) => write!(f, "{e:#}"),
             MakeError::TimeStampError(e) => write!(f, "{e:#}"),
             MakeError::CfgFileReadError(e) => write!(f, "Problem reading config file: {e:#}"),
             MakeError::CollectFileList(e) => write!(f, "Problem identifying changed files: {e:#}"),
             MakeError::CreateOutputFile(e) => write!(f, "Problem creating output file: {e:#}"),
             MakeError::LoadSourceError(e) => write!(f, "{e:#}"),
-            MakeError::MiniJinjaError(e) => write!(f, "{e:#}"),
-            MakeError::NoFilesChanged => write!(f, "No files have changed, skipping rebuild."),
-            MakeError::NoChangeFromPrevious => {
-                write!(f, "No change from previous version, exiting.")
-            }
+            MakeError::Other(e) => write!(f, "{e:#}"),
         }
     }
 }
@@ -46,14 +48,9 @@ impl std::error::Error for MakeError {}
 impl From<MakeError> for i32 {
     fn from(err: MakeError) -> i32 {
         match err {
-            MakeError::TimeStampError(_) => 2,
-            MakeError::CfgFileReadError(_) => 2,
-            MakeError::CollectFileList(_) => 2,
-            MakeError::CreateOutputFile(_) => 2,
-            MakeError::LoadSourceError(_) => 2,
-            MakeError::MiniJinjaError(_) => 2,
             MakeError::NoFilesChanged => 1,
             MakeError::NoChangeFromPrevious => 1,
+            _ => 2,
         }
     }
 }
@@ -151,31 +148,8 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     }
 
     if let Some(path) = cfg.outputfile.as_ref().map(|f| relative_root.join(f)) {
-        let mut do_write_file = true;
-
-        if path.exists() {
-            let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-                .encoding(Some(encoding_rs::WINDOWS_1252))
-                .build(
-                    fs::File::open(&path)
-                        .expect("BUG: Unable to open existing outputfile for diff"),
-                );
-            let mut old_file_content = String::new();
-            reader
-                .read_to_string(&mut old_file_content)
-                .expect("BUG: Unable to read existing outputfile for diff");
-
-            let diff = create_patch(&old_file_content, &rendered);
-
-            if diff.hunks().is_empty() {
-                return Err(MakeError::NoChangeFromPrevious);
-            } else if cfg.verifycontent {
-                do_write_file =
-                    ask_should_overwrite(&diff).expect("error: unable to read user input");
-            }
-        }
-        if do_write_file {
-            backup_file(&path);
+        if !path.exists() || check_if_overwrite_outfile(&path, &rendered, cfg.verifycontent)? {
+            backup_file_if_exists(&path);
             let mut f = fs::File::create(&path)
                 .with_context(|| format!("Problem creating output file '{}'", &path.display()))
                 .map_err(MakeError::CreateOutputFile)?;
@@ -192,6 +166,48 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     Ok(())
 }
 
+fn check_if_overwrite_outfile(
+    path: &PathBuf,
+    rendered: &str,
+    verifycontent: bool,
+) -> Result<bool, MakeError> {
+    let file = fs::File::open(path)
+        .with_context(|| format!("Problem opening file '{}'", &path.display()))
+        .map_err(MakeError::Other)?;
+    let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
+        .encoding(Some(encoding_rs::WINDOWS_1252))
+        .build(file);
+    let mut old_file_content = String::new();
+    reader
+        .read_to_string(&mut old_file_content)
+        .with_context(|| format!("Problem reading file '{}'", &path.display()))
+        .map_err(MakeError::Other)?;
+
+    let diff = create_patch(&old_file_content, rendered);
+    if diff.hunks().is_empty() {
+        return Err(MakeError::NoChangeFromPrevious);
+    }
+    if verifycontent {
+        let formatted_diff = PatchFormatter::new()
+            .with_color()
+            .fmt_patch(&diff)
+            .to_string();
+        println!("{formatted_diff}");
+        Ok(ask_should_overwrite()
+            .with_context(|| "Unable to read user input")
+            .map_err(MakeError::Other)?)
+    } else {
+        Ok(true)
+    }
+}
+
+fn ask_should_overwrite() -> Result<bool> {
+    print!("\nReplace original? [Y]es or [N]o: ");
+    std::io::stdout().flush()?;
+    let mut response = String::new();
+    std::io::stdin().read_line(&mut response)?;
+    Ok(response.trim().eq_ignore_ascii_case("y"))
+}
 fn load_all_source_data(
     cfg: &Config,
     relative_root: &Path,
@@ -273,16 +289,7 @@ fn timestamps_newer_than(files: &HashSet<PathBuf>, outfile: &PathBuf) -> Result<
     Ok(false)
 }
 
-fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, std::io::Error> {
-    let f = PatchFormatter::new().with_color();
-    print!("{}\n\nReplace original? [Y]es or [N]o: ", f.fmt_patch(diff));
-    std::io::stdout().flush()?;
-    let mut response = String::new();
-    std::io::stdin().read_line(&mut response)?;
-    Ok(response.trim().eq_ignore_ascii_case("y"))
-}
-
-fn backup_file(path: &PathBuf) {
+fn backup_file_if_exists(path: &PathBuf) {
     if path.exists() {
         let backup_path = match path.extension() {
             Some(ext) => path.with_extension(format!("{}.bak", ext.to_str().unwrap_or_default())),
