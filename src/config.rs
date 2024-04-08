@@ -43,15 +43,15 @@ fn validate_source(source: &Source) -> Result<()> {
             match extension {
                 Some(ext) if ext == "xlsx" => {
                     if source.sheet.is_none() {
-                        bail!("missing field 'sheet' for .xlsx source {}", source.id);
+                        bail!("missing field 'sheet' for .xlsx source '{}'", source.id);
                     }
                     if source.delimiter.is_some() {
-                        bail!("field 'delimiter' invalid for .xlsx source {}", source.id);
+                        bail!("field 'delimiter' invalid for .xlsx source '{}'", source.id);
                     }
                 }
                 Some(ext) if ext == "csv" => {
                     if source.sheet.is_some() {
-                        bail!("field 'sheet' invalid for .csv source {}", source.id);
+                        bail!("field 'sheet' invalid for .csv source '{}'", source.id);
                     }
                 }
                 _ => {
@@ -69,13 +69,7 @@ fn validate_source(source: &Source) -> Result<()> {
                 );
             }
             if source.sheet.is_some() {
-                bail!("field 'sheet' invalid for .csv sources in {}", source.id);
-            }
-            if source.delimiter.is_none() {
-                bail!(
-                    "missing field 'delimiter' for .csv sources in {}",
-                    source.id
-                );
+                bail!("field 'sheet' invalid for .csv sources in '{}'", source.id);
             }
         }
     }
