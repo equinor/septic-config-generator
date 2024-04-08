@@ -1,8 +1,9 @@
 use crate::config::{Config, Source};
-use crate::datasource::{CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader};
+use crate::datasource::{
+    CsvSourceReader, CtxDataType, DataSourceReader, DataSourceRows, ExcelSourceReader,
+};
 use crate::renderer::MiniJinja;
-use crate::CtxDataType;
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use clap::Parser;
 use diffy::{create_patch, PatchFormatter};
 use glob::glob;
@@ -229,7 +230,7 @@ fn load_source_data(source: &Source, relative_root: &Path) -> Result<DataSourceR
                 Some(delimiter),
             ))
         }
-        _ => anyhow::bail!(
+        _ => bail!(
             "Unsupported file extension for source file '{}'",
             source.filename
         ),
