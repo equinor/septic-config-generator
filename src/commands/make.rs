@@ -1,13 +1,13 @@
 use crate::config::{Config, Source};
 use crate::datasource::{CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader};
 use crate::renderer::MiniJinja;
-use crate::{
-    ask_should_overwrite, collect_file_list, create_patch, timestamps_newer_than, CtxDataType,
-};
-use anyhow::Context;
+use crate::CtxDataType;
+use anyhow::{Context, Result};
 use clap::Parser;
+use diffy::{create_patch, PatchFormatter};
+use glob::glob;
 use minijinja::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -93,11 +93,7 @@ impl Make {
     }
 }
 
-fn cmd_make(
-    cfg_file: &Path,
-    only_if_changed: bool,
-    globals: &[String],
-) -> anyhow::Result<(), MakeError> {
+fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Result<(), MakeError> {
     let mut cfg_file = cfg_file.to_path_buf();
     cfg_file
         .extension()
@@ -207,7 +203,7 @@ fn cmd_make(
 fn load_all_source_data(
     cfg: &Config,
     relative_root: &Path,
-) -> anyhow::Result<HashMap<String, DataSourceRows>> {
+) -> Result<HashMap<String, DataSourceRows>> {
     cfg.sources
         .iter()
         .map(|source| {
@@ -217,7 +213,7 @@ fn load_all_source_data(
         .collect()
 }
 
-fn load_source_data(source: &Source, relative_root: &Path) -> anyhow::Result<DataSourceRows> {
+fn load_source_data(source: &Source, relative_root: &Path) -> Result<DataSourceRows> {
     let reader: Box<dyn DataSourceReader> = match Path::new(&source.filename).extension() {
         Some(ext) if ext == "xlsx" => Box::new(ExcelSourceReader::new(
             &source.filename,
@@ -243,13 +239,66 @@ fn load_source_data(source: &Source, relative_root: &Path) -> anyhow::Result<Dat
         .with_context(|| format!("Problem reading source file '{}'", source.filename))
 }
 
+fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, std::io::Error> {
+    let f = PatchFormatter::new().with_color();
+    print!("{}\n\nReplace original? [Y]es or [N]o: ", f.fmt_patch(diff));
+    std::io::stdout().flush()?;
+    let mut response = String::new();
+    std::io::stdin().read_line(&mut response)?;
+    Ok(response.trim().eq_ignore_ascii_case("y"))
+}
+
+fn collect_file_list(
+    config: &Config,
+    cfg_file: &Path,
+    relative_root: &Path,
+) -> Result<HashSet<PathBuf>> {
+    let mut files = HashSet::new();
+
+    // The yaml file
+    files.insert(cfg_file.to_path_buf());
+
+    // All files in templatedir
+    let template_root = relative_root.join(Path::new(&config.templatepath));
+    for entry in glob(&format!("{}/**/*", template_root.display()))? {
+        let path = entry?;
+        if path.is_file() {
+            files.insert(path);
+        }
+    }
+
+    // All sources
+    for source in &config.sources {
+        let source_path = relative_root.join(Path::new(&source.filename));
+        files.insert(source_path.clone());
+    }
+    Ok(files)
+}
+
+fn timestamps_newer_than(files: &HashSet<PathBuf>, outfile: &PathBuf) -> Result<bool> {
+    let checktime = fs::metadata(outfile)
+        .and_then(|metadata| metadata.modified())
+        .with_context(|| format!("Failed to read timestamp for {outfile:?}"))?;
+    for f in files {
+        let systime = fs::metadata(f)
+            .and_then(|metadata| metadata.modified())
+            .with_context(|| format!("Failed to read timestamp for {f:?}"))?;
+        if systime > checktime {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config;
     use crate::datasource::{DataSourceReader, DataSourceRows, ExcelSourceReader};
+    use std::fs::File;
+    use tempfile::tempdir;
 
-    fn get_all_source_data() -> anyhow::Result<HashMap<String, DataSourceRows>> {
+    fn get_all_source_data() -> Result<HashMap<String, DataSourceRows>> {
         let mut all_source_data: HashMap<String, DataSourceRows> = HashMap::new();
         let source_main = config::Source {
             filename: "test.xlsx".to_string(),
@@ -277,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn render_with_normal_values() -> anyhow::Result<()> {
+    fn render_with_normal_values() -> Result<()> {
         let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "01_normals.tmpl".to_string(),
@@ -298,7 +347,7 @@ mod tests {
     }
 
     #[test]
-    fn render_with_special_values() -> anyhow::Result<()> {
+    fn render_with_special_values() -> Result<()> {
         let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
             name: "02_specials.tmpl".to_string(),
@@ -319,7 +368,7 @@ mod tests {
     }
 
     #[test]
-    fn render_with_global_variables() -> anyhow::Result<()> {
+    fn render_with_global_variables() -> Result<()> {
         let globals = ["glob".to_string(), "globvalue".to_string()];
         let renderer =
             MiniJinja::new(&globals, Path::new("tests/testdata/templates/"), None).unwrap();
@@ -338,7 +387,7 @@ mod tests {
 
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
-    fn render_with_global_source_no_iteration() -> anyhow::Result<()> {
+    fn render_with_global_source_no_iteration() -> Result<()> {
         let mut renderer =
             MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
@@ -365,7 +414,7 @@ mod tests {
 
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
-    fn render_with_global_source_and_iteration() -> anyhow::Result<()> {
+    fn render_with_global_source_and_iteration() -> Result<()> {
         let mut renderer =
             MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
         let template = config::Template {
@@ -422,5 +471,124 @@ mod tests {
         assert_eq!(&result_false[result_false.len() - 4..], "c.\r\n");
         #[cfg(not(target_os = "windows"))]
         assert_eq!(&result_false[result_false.len() - 3..], "c.\n");
+    }
+
+    #[test]
+    fn collect_file_list_works() -> Result<(), Box<dyn std::error::Error>> {
+        let sources = vec![
+            config::Source {
+                filename: "source1".to_string(),
+                ..Default::default()
+            },
+            config::Source {
+                filename: "source2".to_string(),
+                ..Default::default()
+            },
+        ];
+        let relative_root = Path::new("relative_root");
+        let cfg_file = relative_root.join("config.yaml");
+
+        let dir = tempfile::tempdir()?;
+        let dir_path = dir.path().to_path_buf();
+        let subdir_path = dir_path.join("subdir");
+        fs::create_dir(&subdir_path)?;
+        let file1 = dir_path.join("temp1");
+        let file2 = dir_path.join("temp2");
+        let file3 = subdir_path.join("temp3");
+
+        fs::write(&file1, "content1")?;
+        fs::write(&file2, "content2")?;
+        fs::write(&file3, "content3")?;
+
+        let layout = vec![];
+        let cfg = config::Config {
+            outputfile: Some("outfile".to_string()),
+            templatepath: String::from(dir.path().to_str().unwrap()),
+            sources,
+            layout,
+            ..Default::default()
+        };
+
+        let result = collect_file_list(&cfg, &cfg_file, relative_root)?;
+        let mut expected = HashSet::new();
+        for filename in [
+            file1.to_str().unwrap(),
+            file2.to_str().unwrap(),
+            file3.to_str().unwrap(),
+        ]
+        .iter()
+        {
+            expected.insert(PathBuf::from("relative_root/templates").join(filename));
+        }
+        for filename in ["source1", "source2", "config.yaml"].iter() {
+            expected.insert(PathBuf::from("relative_root").join(filename));
+        }
+
+        assert!(result.len() == 6);
+        assert!(result == expected);
+        Ok(())
+    }
+
+    #[test]
+    fn timestamps_newer_than_works() -> Result<(), Box<dyn std::error::Error>> {
+        let dir = tempdir()?;
+
+        let file1_path = dir.path().join("file1.txt");
+        let mut file1 = File::create(&file1_path)?;
+        file1.write_all(b"file1 content")?;
+
+        let file2_path = dir.path().join("file2.txt");
+        let mut file2 = File::create(&file2_path)?;
+        file2.write_all(b"file2 content")?;
+
+        let mut files = HashSet::new();
+        files.insert(file1_path);
+        files.insert(file2_path);
+
+        let outfile_path = dir.path().join("outfile.txt");
+        let mut outfile = File::create(&outfile_path)?;
+        outfile.write_all(b"outfile content")?;
+
+        assert!(!timestamps_newer_than(&files, &outfile_path)?);
+
+        // Modify one of the files to make it newer than the outfile
+        std::thread::sleep(std::time::Duration::from_millis(50));
+
+        file2.write_all(b"modified content")?;
+        assert!(timestamps_newer_than(&files, &outfile_path)?);
+        Ok(())
+    }
+
+    #[test]
+    fn timestamps_newer_than_errors_on_missing_outfile() -> Result<(), Box<dyn std::error::Error>> {
+        let dir = tempdir()?;
+        let file1_path = dir.path().join("file1.txt");
+        let mut file1 = File::create(&file1_path)?;
+        file1.write_all(b"file1 content")?;
+
+        let outfile_path = dir.path().join("outfile.txt");
+        let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
+        assert!(result.is_err());
+        let err = result.as_ref().unwrap_err();
+        assert!(err.root_cause().to_string().contains("(os error 2)"));
+        assert!(err.to_string().contains("outfile.txt"));
+        Ok(())
+    }
+
+    #[test]
+    fn timestamps_newer_than_errors_on_missing_infile() -> Result<(), Box<dyn std::error::Error>> {
+        let dir = tempdir()?;
+        let file1_path = dir.path().join("file1.txt");
+
+        let outfile_path = dir.path().join("outfile.txt");
+        let mut outfile = File::create(&outfile_path)?;
+        outfile.write_all(b"file1 content")?;
+
+        let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
+        assert!(result.is_err());
+        let err = result.as_ref().unwrap_err();
+        assert!(err.root_cause().to_string().contains("(os error 2)"));
+        assert!(err.to_string().contains("file1.txt"));
+        Ok(())
     }
 }
