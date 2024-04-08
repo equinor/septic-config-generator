@@ -175,16 +175,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
             }
         }
         if do_write_file {
-            if path.exists() {
-                let backup_path = match path.extension() {
-                    Some(ext) => {
-                        path.with_extension(format!("{}.bak", ext.to_str().unwrap_or_default()))
-                    }
-                    None => path.with_extension("bak"),
-                };
-                fs::rename(&path, backup_path).expect("BUG: Failed to create backup file");
-            }
-
+            backup_file(&path);
             let mut f = fs::File::create(&path)
                 .with_context(|| format!("Problem creating output file '{}'", &path.display()))
                 .map_err(MakeError::CreateOutputFile)?;
@@ -240,15 +231,6 @@ fn load_source_data(source: &Source, relative_root: &Path) -> Result<DataSourceR
         .with_context(|| format!("Problem reading source file '{}'", source.filename))
 }
 
-fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, std::io::Error> {
-    let f = PatchFormatter::new().with_color();
-    print!("{}\n\nReplace original? [Y]es or [N]o: ", f.fmt_patch(diff));
-    std::io::stdout().flush()?;
-    let mut response = String::new();
-    std::io::stdin().read_line(&mut response)?;
-    Ok(response.trim().eq_ignore_ascii_case("y"))
-}
-
 fn collect_file_list(
     config: &Config,
     cfg_file: &Path,
@@ -289,6 +271,25 @@ fn timestamps_newer_than(files: &HashSet<PathBuf>, outfile: &PathBuf) -> Result<
         }
     }
     Ok(false)
+}
+
+fn ask_should_overwrite(diff: &diffy::Patch<str>) -> Result<bool, std::io::Error> {
+    let f = PatchFormatter::new().with_color();
+    print!("{}\n\nReplace original? [Y]es or [N]o: ", f.fmt_patch(diff));
+    std::io::stdout().flush()?;
+    let mut response = String::new();
+    std::io::stdin().read_line(&mut response)?;
+    Ok(response.trim().eq_ignore_ascii_case("y"))
+}
+
+fn backup_file(path: &PathBuf) {
+    if path.exists() {
+        let backup_path = match path.extension() {
+            Some(ext) => path.with_extension(format!("{}.bak", ext.to_str().unwrap_or_default())),
+            None => path.with_extension("bak"),
+        };
+        fs::rename(path, backup_path).expect("BUG: Failed to create backup file");
+    }
 }
 
 #[cfg(test)]
