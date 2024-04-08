@@ -37,29 +37,48 @@ impl Config {
 }
 
 fn validate_source(source: &Source) -> Result<()> {
-    let extension = Path::new(&source.filename).extension();
-    match extension {
-        Some(ext) if ext == "xlsx" => {
-            if source.sheet.is_none() {
-                bail!("missing field 'sheet' for .xlsx source {}", source.filename);
+    match &source.filename {
+        Filename::Single(filename) => {
+            let extension = Path::new(filename).extension();
+            match extension {
+                Some(ext) if ext == "xlsx" => {
+                    if source.sheet.is_none() {
+                        bail!("missing field 'sheet' for .xlsx source {}", source.id);
+                    }
+                    if source.delimiter.is_some() {
+                        bail!("field 'delimiter' invalid for .xlsx source {}", source.id);
+                    }
+                }
+                Some(ext) if ext == "csv" => {
+                    if source.sheet.is_some() {
+                        bail!("field 'sheet' invalid for .csv source {}", source.id);
+                    }
+                }
+                _ => {
+                    bail!("invalid file extension for source '{}'", source.id);
+                }
             }
-            if source.delimiter.is_some() {
+        }
+        Filename::Multiple(filenames) => {
+            if filenames.iter().any(|filename| {
+                Path::new(filename).extension().and_then(|s| s.to_str()) != Some("csv")
+            }) {
                 bail!(
-                    "field 'delimiter' invalid for .xlsx source {}",
-                    source.filename
+                    "All files in multi-file source '{}' must be .csv",
+                    source.id
+                );
+            }
+            if source.sheet.is_some() {
+                bail!("field 'sheet' invalid for .csv sources in {}", source.id);
+            }
+            if source.delimiter.is_none() {
+                bail!(
+                    "missing field 'delimiter' for .csv sources in {}",
+                    source.id
                 );
             }
         }
-        Some(ext) if ext == "csv" => {
-            if source.sheet.is_some() {
-                bail!("field 'sheet' invalid for .csv source {}", source.filename);
-            }
-        }
-        _ => {
-            bail!("invalid file extension for source '{}'", source.filename);
-        }
     }
-
     Ok(())
 }
 
@@ -71,10 +90,36 @@ pub struct Counter {
     pub value: Option<i32>,
 }
 
+#[derive(Deserialize, Debug)]
+#[serde(untagged)] // Allows for multiple representations of the data
+pub enum Filename {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+impl Default for Filename {
+    fn default() -> Self {
+        Filename::Single(String::new())
+    }
+}
+
+impl From<&str> for Filename {
+    fn from(s: &str) -> Filename {
+        Filename::Single(s.to_string())
+    }
+}
+
+impl From<Vec<&str>> for Filename {
+    fn from(v: Vec<&str>) -> Filename {
+        let owned_strings: Vec<String> = v.into_iter().map(|s| s.to_string()).collect();
+        Filename::Multiple(owned_strings)
+    }
+}
+
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Source {
-    pub filename: String,
+    pub filename: Filename,
     pub id: String,
     pub sheet: Option<String>,
     pub delimiter: Option<char>,
@@ -159,7 +204,7 @@ layout:
     #[test]
     fn validate_source_good_xlsx() {
         let source = Source {
-            filename: "data.xlsx".to_string(),
+            filename: "data.xlsx".into(),
             id: "id".to_string(),
             sheet: Some("sheet".to_string()),
             ..Default::default()
@@ -170,7 +215,7 @@ layout:
     #[test]
     fn fail_validate_source_xlsx_no_sheet() {
         let source = Source {
-            filename: "data.xlsx".to_string(),
+            filename: "data.xlsx".into(),
             id: "id".to_string(),
             ..Default::default()
         };
@@ -185,7 +230,7 @@ layout:
     #[test]
     fn fail_validate_source_xlsx_with_delimiter() {
         let source = Source {
-            filename: "data.xlsx".to_string(),
+            filename: "data.xlsx".into(),
             id: "id".to_string(),
             sheet: Some("sheet".to_string()),
             delimiter: Some(':'),
@@ -201,7 +246,7 @@ layout:
     #[test]
     fn validate_source_good_csv() {
         let source = Source {
-            filename: "data.csv".to_string(),
+            filename: "data.csv".into(),
             id: "id".to_string(),
             delimiter: Some(':'),
             ..Default::default()
@@ -212,7 +257,50 @@ layout:
     #[test]
     fn fail_validate_source_csv_with_sheet() {
         let source = Source {
-            filename: "data.csv".to_string(),
+            filename: "data.csv".into(),
+            id: "id".to_string(),
+            sheet: Some("sheet".to_string()),
+            ..Default::default()
+        };
+        let result = validate_source(&source);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("field 'sheet' invalid"))
+    }
+
+    #[test]
+    fn validate_multisource_good_csv() {
+        let source = Source {
+            filename: vec!["data1.csv", "data2.csv"].into(),
+            id: "id".to_string(),
+            delimiter: Some(':'),
+            ..Default::default()
+        };
+        assert!(validate_source(&source).is_ok())
+    }
+
+    #[test]
+    fn fail_validate_multisource_with_xlsx() {
+        let source = Source {
+            filename: vec!["data1.csv", "data2.xlsx"].into(),
+            id: "id".to_string(),
+            delimiter: Some(':'),
+            ..Default::default()
+        };
+        let result = validate_source(&source);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("in multi-file source 'id' must be .csv"),)
+    }
+
+    #[test]
+    fn fail_validate_multisource_with_sheet() {
+        let source = Source {
+            filename: vec!["data1.csv", "data2.csv"].into(),
             id: "id".to_string(),
             sheet: Some("sheet".to_string()),
             ..Default::default()
@@ -228,7 +316,7 @@ layout:
     #[test]
     fn fail_validate_unknown_source_type() {
         let source = Source {
-            filename: "data.whatever".to_string(),
+            filename: "data.whatever".into(),
             id: "id".to_string(),
             ..Default::default()
         };

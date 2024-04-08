@@ -1,6 +1,7 @@
-use crate::config::{Config, Source};
+use crate::config::{Config, Filename, Source};
 use crate::datasource::{
     CsvSourceReader, CtxDataType, DataSourceReader, DataSourceRows, ExcelSourceReader,
+    MultiSourceReader,
 };
 use crate::renderer::MiniJinja;
 use anyhow::{bail, Context, Result};
@@ -222,29 +223,37 @@ fn load_all_source_data(
 }
 
 fn load_source_data(source: &Source, relative_root: &Path) -> Result<DataSourceRows> {
-    let reader: Box<dyn DataSourceReader> = match Path::new(&source.filename).extension() {
-        Some(ext) if ext == "xlsx" => Box::new(ExcelSourceReader::new(
-            &source.filename,
-            relative_root,
-            source.sheet.as_deref(),
-        )),
-        Some(ext) if ext == "csv" => {
+    let reader: Box<dyn DataSourceReader> = match &source.filename {
+        Filename::Single(filename) => match Path::new(filename).extension() {
+            Some(ext) if ext == "xlsx" => Box::new(ExcelSourceReader::new(
+                filename,
+                relative_root,
+                source.sheet.as_deref(),
+            )),
+            Some(ext) if ext == "csv" => {
+                let delimiter = source.delimiter.unwrap_or(';');
+
+                Box::new(CsvSourceReader::new(
+                    filename,
+                    relative_root,
+                    Some(delimiter),
+                ))
+            }
+            _ => bail!("Unsupported file extension for source file '{}'", filename),
+        },
+        Filename::Multiple(filenames) => {
             let delimiter = source.delimiter.unwrap_or(';');
 
-            Box::new(CsvSourceReader::new(
-                &source.filename,
+            Box::new(MultiSourceReader::new(
+                filenames.iter().map(|f| f.as_str()).collect(),
                 relative_root,
                 Some(delimiter),
             ))
         }
-        _ => bail!(
-            "Unsupported file extension for source file '{}'",
-            source.filename
-        ),
     };
     reader
         .read()
-        .with_context(|| format!("Problem reading source file '{}'", source.filename))
+        .with_context(|| format!("Problem reading source '{}'", source.id))
 }
 
 fn collect_file_list(
@@ -268,8 +277,18 @@ fn collect_file_list(
 
     // All sources
     for source in &config.sources {
-        let source_path = relative_root.join(Path::new(&source.filename));
-        files.insert(source_path.clone());
+        match &source.filename {
+            Filename::Single(filename) => {
+                let source_path = relative_root.join(Path::new(filename));
+                files.insert(source_path);
+            }
+            Filename::Multiple(filenames) => {
+                for filename in filenames {
+                    let source_path = relative_root.join(Path::new(filename));
+                    files.insert(source_path);
+                }
+            }
+        }
     }
     Ok(files)
 }
@@ -310,20 +329,25 @@ mod tests {
     fn get_all_source_data() -> Result<HashMap<String, DataSourceRows>> {
         let mut all_source_data: HashMap<String, DataSourceRows> = HashMap::new();
         let source_main = config::Source {
-            filename: "test.xlsx".to_string(),
+            filename: Filename::Single("test.xlsx".to_string()),
             id: "main".to_string(),
             sheet: Some("Normals".to_string()),
             ..Default::default()
         };
         let source_errors = config::Source {
-            filename: "test.xlsx".to_string(),
+            filename: "test.xlsx".into(),
             id: "errors".to_string(),
             sheet: Some("Specials".to_string()),
             ..Default::default()
         };
         for source in [source_main, source_errors] {
+            let filename = match &source.filename {
+                Filename::Single(filename) => filename,
+                _ => panic!("Expected a single filename, but got multiple filenames"),
+            };
+
             let reader = ExcelSourceReader::new(
-                &source.filename,
+                filename,
                 Path::new("tests/testdata/"),
                 source.sheet.as_deref(),
             );
@@ -486,11 +510,11 @@ mod tests {
     fn collect_file_list_works() -> Result<(), Box<dyn std::error::Error>> {
         let sources = vec![
             config::Source {
-                filename: "source1".to_string(),
+                filename: Filename::Single("source1".to_string()),
                 ..Default::default()
             },
             config::Source {
-                filename: "source2".to_string(),
+                filename: Filename::Single("source2".to_string()),
                 ..Default::default()
             },
         ];
