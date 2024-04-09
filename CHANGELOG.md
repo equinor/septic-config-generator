@@ -1,5 +1,42 @@
 # Changelog
 
+## [2.11.0](https://github.com/equinor/septic-config-generator/compare/v2.10.0...v2.11.0) (2024-04-09)
+
+
+### ✨ Features
+
+* add support for multi-file sources (csv) ([6590a6d](https://github.com/equinor/septic-config-generator/commit/6590a6dcbe9c3ba48c54b0554588f6d35238c520))
+
+
+### 🧹 Chores
+
+* **deps:** bump h2 from 0.3.24 to 0.3.26 ([#253](https://github.com/equinor/septic-config-generator/issues/253)) ([512b1c4](https://github.com/equinor/septic-config-generator/commit/512b1c45e11e31552ec8a78595a191c7cf3f9278))
+* **deps:** bump minijinja from 1.0.12 to 1.0.16 ([#255](https://github.com/equinor/septic-config-generator/issues/255)) ([3918b19](https://github.com/equinor/septic-config-generator/commit/3918b192919d85e40a9cf7af0b3773c34dbcdc73))
+* **deps:** bump regex from 1.10.3 to 1.10.4 ([#254](https://github.com/equinor/septic-config-generator/issues/254)) ([aebcb84](https://github.com/equinor/septic-config-generator/commit/aebcb84346b7850838be0c6bf3bd9a29f679310d))
+* **deps:** bump self_update from 0.38.0 to 0.39.0 ([6590a6d](https://github.com/equinor/septic-config-generator/commit/6590a6dcbe9c3ba48c54b0554588f6d35238c520))
+* **deps:** bump tempfile from 3.8.0 to 3.10.1 ([#256](https://github.com/equinor/septic-config-generator/issues/256)) ([da85038](https://github.com/equinor/septic-config-generator/commit/da85038c01a7700b70297f28c2fdf5b2828fb07e))
+
+
+### 👷 CI/CD
+
+* disable annoying codecov patch fails ([#258](https://github.com/equinor/septic-config-generator/issues/258)) ([fe05c29](https://github.com/equinor/septic-config-generator/commit/fe05c29c8eeed26ac9f29f54dc9bf22005664566))
+
+
+### 🔨 Refactor
+
+* better error handling and reporting ([14e1e48](https://github.com/equinor/septic-config-generator/commit/14e1e488867e000ffc3c9fbc2059554b35466509))
+* clean up lib.rs ([406342f](https://github.com/equinor/septic-config-generator/commit/406342fe6052147fd8a4771335e12351d56168c2))
+* clean up overwriting of existing output file ([406342f](https://github.com/equinor/septic-config-generator/commit/406342fe6052147fd8a4771335e12351d56168c2))
+* make cmd_*() non-public ([14e1e48](https://github.com/equinor/septic-config-generator/commit/14e1e488867e000ffc3c9fbc2059554b35466509))
+* make render_template() a method ([14e1e48](https://github.com/equinor/septic-config-generator/commit/14e1e488867e000ffc3c9fbc2059554b35466509))
+* remove unused functions  ([14e1e48](https://github.com/equinor/septic-config-generator/commit/14e1e488867e000ffc3c9fbc2059554b35466509))
+
+
+### 🧪 Tests
+
+* fix broken test ([e98b77a](https://github.com/equinor/septic-config-generator/commit/e98b77aa08ceb750604b00ad32ebf92d461914a3))
+* fix broken tests in Windows ([#260](https://github.com/equinor/septic-config-generator/issues/260)) ([e6443a4](https://github.com/equinor/septic-config-generator/commit/e6443a4ce99aaf103cc4efe7078acb6f2b025b54))
+
 ## [2.10.0](https://github.com/equinor/septic-config-generator/compare/v2.9.1...v2.10.0) (2024-04-02)
 
 
