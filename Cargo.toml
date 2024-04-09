@@ -38,7 +38,7 @@ glob = "0.3.1"
 indexmap = { version = "2.2.3", features = ["serde"] }
 minijinja = { version = "1.0.5", features = ["loader", "preserve_order"] }
 regex = "1.7.1"
-self_update = { version = "0.38.0", features = [
+self_update = { version = "0.39.0", features = [
     "archive-zip",
     "archive-tar",
     "compression-flate2",
