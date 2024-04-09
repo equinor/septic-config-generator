@@ -73,7 +73,7 @@ mod tests {
         let result = cmd_diff(file1.path(), file2);
         assert!(result.is_err());
         let error_message = result.unwrap_err().root_cause().to_string();
-        assert!(error_message.contains("No such file"));
+        assert!(error_message.contains("(os error 2)"));
         Ok(())
     }
 

@@ -153,7 +153,7 @@ layout:
     fn config_fail_read_on_missing_config_file() {
         let config = Config::new(Path::new("nonexistent_file.yaml"));
         assert!(config.is_err());
-        assert!(config.unwrap_err().to_string().contains("No such file"));
+        assert!(config.unwrap_err().to_string().contains("os error 2"));
     }
 
     #[test]
