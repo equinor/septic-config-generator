@@ -14,13 +14,14 @@ using 1.0 to 2.x, expect having to change a few lines in your templates and YAML
 - [Installation](#installation)
 - [Usage overview](#usage-overview)
 - [scg make](#scg-make)
-  - [The configuration file](#the-configuration-file)
+  - [Configuration file](#configuration-file)
     - [Counters](#counters)
     - [Sources](#sources)
     - [Layout](#layout)
-  - [The source files](#the-source-files)
+  - [Source files](#source-files)
     - [Excel source](#excel-source)
     - [CSV source](#csv-source)
+    - [Combined source](#combined-source)
   - [Command-line options](#command-line-options)
   - [The template engine](#the-template-engine)
   - [Custom keywords, filters and functions](#custom-keywords-filters-and-functions)
@@ -40,9 +41,9 @@ using 1.0 to 2.x, expect having to change a few lines in your templates and YAML
 
 ## About
 
-SEPTIC config generator (scg) is a tool to generate SEPTIC configs based on one or more templates files, one or more
-tables in Excel- or CSV format containing substitution values, and a config file that defines how the templates should
-be combined by inserting values from the Excel tables in uniquely identified locations.
+SEPTIC config generator (scg) is a tool to generate SEPTIC config files based on one or more template files and one or
+more Excel- or CSV-tables containing substitution values. A yaml-based config file specifies how the templates should be
+combined by inserting values from the tables in locations identified by labels.
 
 ## Introduction
 
@@ -89,7 +90,7 @@ The exit status is 0 if a file was output, 1 if no file was output and 2 if ther
 Example:  
 `scg make MyApplication.yaml`
 
-### The configuration file
+### Configuration file
 
 SCG uses a configuration file in the YAML format to define its behavior. The configuration file should follow the format
 in the example below:
@@ -97,11 +98,13 @@ in the example below:
 ```yaml
 outputfile: example.cnfg
 templatepath: templates
-adjustsspacing: true
+adjustspacing: true
 verifycontent: true
+
 counters:
   - name: mycounter
     value: 0
+
 sources:
   - filename: example.xlsx
     id: wells
@@ -109,6 +112,7 @@ sources:
   - filename: example.csv
     id: flowlines
     delimiter: ";"
+
 layout:
   - name: 010_System.cnfg
   - name: 020_SopcProc.cnfg
@@ -149,30 +153,34 @@ For each counter that is defined, a Jinja custom function with the same name is 
   the first time it is called.
 - `countername(somevalue)`: The counter is set to the provided value and the new value is returned.
 
-The counters are true globals: Any change to a counter value, either by incrementing or by setting to a new value in a
-template, will be retained for subsequent templates.
+The counters are global values: Any change to a counter value, either by incrementing or by setting to a new value in a
+template, will be retained for subsequent rendered templates.
 
-In the example above, the function will be called `mycounter()` . It is called as other Jinja custom functions by
-placing it inside double braces: `{{ mycounter() }}`, `{{ mycounter(13) }}`.
+In the example above, the function will be called `mycounter()`. It is called as other Jinja custom functions by placing
+it inside double braces: `{{ mycounter() }}`, `{{ mycounter(13) }}`.
 
-To avoid printout when setting the value, try something like this: `{% if "" == mycounter(5) %}{% endif %}`
+To avoid printout when setting the value, try `{% do mycounter(5) %}`
+([link](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-do-)) or `{% if "" == mycounter(5) %}{% endif %}`.
 
 #### Sources
 
 The `source` struct represents a file that is used for replacing values in the templates. The file can be either an
-Excel file or a CSV file (_since v2.5_), where the file type is identified by the extension (`.xlsx` or `.csv`).
+Excel file or a CSV file (_since v2.5_), where the file type is identified by the extension (`.xlsx` or `.csv`). Since
+v2.11, it is also possible to specify a list of `.csv` files that will be combined to a single source.
 
 The structure has the following fields:
 
 - `id` (string): A unique id used to reference the source file from the layout section.
-- `filename` (string): The file name that contains the substitution values. The extension must be either `.xlsx` or
-  `.csv` _(since v2.5)_.
+- `filename` (string or list of strings): The file name that contains the substitution values. The extension must be
+  either `.xlsx` or `.csv`. A third option is to specify a list of `.csv` files that will be combined into a single
+  source.
 - `sheet` (string): The name of the sheet where the substitution values are found. Only valid for Excel files.
-- `delimiter` (optional character, default: ';'): The delimiter used a CSV file.
+- `delimiter` (optional character, default: ';'): The delimiter used in a CSV file. Only valid for `.csv` source files
+  and multi-file source.
 
 Since v2.8, each source can be accessed from within any template regardless of whether the layout item is set to iterate
 over a source or not. The source is represented as a list of the rows where each row is represented as a hashmap of the
-values. This makes it possible to obtain any value from any row in all sources. For more on this topic, see the
+values. This makes it possible to obtain any value from any source in any template. For more on this topic, see the
 [unpack](#unpack) filter.
 
 #### Layout
@@ -193,7 +201,7 @@ Combining `include` and `exclude` will render the template only for rows listed 
 
 The templates will be rendered in the order they are listed.
 
-### The source files
+### Source files
 
 The source files referenced in the configuration file contain data tables used by the templates. SCG accepts two file
 formats:
@@ -221,21 +229,30 @@ distinguish between integers and floats. Therefore a numerical value that deviat
 will be converted to an integer instead of to a float. Cells that contain errors will be rendered with an error text
 string, e.g. "#DIV/0!" or "#N/A".
 
+For Excel sources, the sheet must be provided. Example:
+
+```yaml
+sources:
+  - filename: wells.xlsx
+    sheet: well_overview
+    id: wells
+```
+
 #### CSV source
 
-The advantage to using CSV files as source is that they are plain text files. This means they are very well suited for
-source control. The primary disadvantage is that CSV files can only contain static values. And since they can only
-contain one table, it may be necessary to use two or more CSV files, for instance one for iterating over wells and one
-for iterating over flowlines, separator trains or something else. Advanced users may consider generating CSV files by
-e.g. crating Python scripts to extract information from Excel files that are not part of their repository or via other
-sources.
+The advantage to using CSV files as source is that they are plain text files and therefore very well suited for source
+control. The primary disadvantage is that CSV files can only contain static values. And since they can only contain one
+table, it may be necessary to use two or more CSV files, for instance one for iterating over wells and one for iterating
+over flowlines, separator trains or something else. Advanced users may consider generating CSV files by e.g. crating
+Python scripts to extract information from Excel files that are not part of their repository or via other sources.
 
-Any row starts with '#' will be ignored.
+Any row that starts with '#' will be ignored.
 
 As opposed to Excel files, cell values in CSV files are always text. However, SCG will try to parse and convert the
-values as follows:
+values in the following order:
 
 - Empty value
+- Integer that starts with 0 but is not 0, e.g. `00110`, becomes string
 - Integer
 - Float
 - Boolean
@@ -243,14 +260,62 @@ values as follows:
 String is the fallback type. When parsing floats, both ',' and '.' are valid decimal separators.
 
 All cell values are trimmed before parsing. This means that `a;1.0;2` and ` a ; 1.0 ; 2` are equivalent. Which again
-means that "proper-looking" tables can be created: Set delimiter to `|` and keep maintain constant column width.
+means that "proper-looking" tables can be created: Set delimiter to e.g. `|` and maintain constant column width.
+
+Specifying the delimiter is optional. The default value is `;`.
+
+Example:
+
+```yaml
+sources:
+  - filename: wells.csv
+    delimiter: ","
+    id: wells
+```
+
+#### Combined source
+
+_(Added in v2.11)_
+
+A number of `.csv` files can be combined into a single source. This makes it possible to keep different sections of data
+separate, which can give a better overview of the data. This can also be used to semi-dynamically combine different
+kinds of information, e.g. topside and subsea sections of a well for wells with reconfigurable risers.
+
+As for single `.csv` sources, specifying the delimiter is optional. All files must use the same delimiter.
+
+The first `.csv` file listed is the _primary_ file and will define which row labels to use (first column). All
+subsequent `.csv` files are _secondary_. The _secondary_ files must as a minimum contain the same labels as those in the
+_primary_ file. If a label is missing, an error message will be issued and scg will stop execution. Any row labels in
+_secondary_ files that are not defined in the _primary_ file will be silently ignored.
+
+Example: Here `wells.csv` is the _primary_ file, while `risers.csv` and `well_tuning_parameters.cvs` are _secondary_
+files.
+
+```yaml
+sources:
+  - filename:
+      - wells.csv
+      - risers.csv
+      - well_tuning_parameters.csv
+    delimiter: ","
+    id: wells
+```
+
+This is equivalent:
+
+```yaml
+sources:
+  - filename: [wells.csv, risers.csv, well_tuning_parameters.csv]
+    delimiter: ","
+    id: wells
+```
 
 ### Command-line options
 
 #### `--var <name> <value>` <!-- omit in toc -->
 
-Add a global variable that can be used by all templates in the layout. The value will be parsed to integer, float,
-boolean or string.
+Adds a global variable that can be used by all templates in the layout. The value will be parsed to boolean, integer,
+float or string, in that order.
 
 Example:
 
@@ -291,8 +356,8 @@ underlying mechanisms that are used. The parameter replacement performed by the 
 [Jinja2](https://jinja.palletsprojects.com/) Python module which was used by scg 1.0. MiniJinja is a very powerful
 templating engine that can do lots more than simply replacing variable names with values. Some examples are expressions
 (e.g. calculate offsets for placing display elements based on well id number), statements for inheriting or including
-other template files, conditionals and loops etc. This makes scg very flexible. We can, for example, easily handle
-SEPTIC configs with non-similar wells by wrapping selected lines in conditionals.
+other template files, conditionals, loops and filter functions. This makes scg very flexible. We can, for example,
+easily handle SEPTIC configs with non-similar wells by wrapping selected lines in conditionals.
 
 For further information, please take a look at the
 [MiniJinja documentation](https://docs.rs/minijinja/latest/minijinja/). In particular:
@@ -329,7 +394,7 @@ Given a source called `wells` with this content:
 Printing selected values for all rows:
 
 ```jinja
-{% for well, flowline in main | unpack("well", "flowline") %}
+{% for well, flowline in wells | unpack("well", "flowline") %}
 {{ well }}: {{ flowline }}
 {%- endfor %}
 ```
@@ -341,10 +406,12 @@ D01: FL1
 D02: FL2
 ```
 
-Printing selected values for all wells that are connected to flowline 2:
+Printing selected values for all wells that are connected to flowline 2, using the MiniJinja
+[filter function](https://docs.rs/minijinja/latest/minijinja/filters/index.html#functions) `selectattr` and
+[test function](https://docs.rs/minijinja/latest/minijinja/tests/index.html#functions) `endingwith`:
 
 ```jinja
-{% for (well, pdc) in main | selectattr("flowline", "endingwith", 2) | unpack("well", "pdc") %}
+{% for (well, pdc) in wells | selectattr("flowline", "endingwith", 2) | unpack("well", "pdc") %}
 {{ well }}: {{ pdc }}
 {%- endfor %}
 ```
@@ -390,7 +457,7 @@ Example:
 
 #### `now()`
 
-Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S"`. The format can be customized by providing
+Function that inserts a datestamp. The default format is `%Y-%m-%d %H:%M:%S`. The format can be customized by providing
 an [strftime string](https://docs.rs/chrono/latest/chrono/format/strftime/index.html) as function argument.
 
 Examples:  
@@ -418,7 +485,9 @@ v2.85), `scg checklogs` will look there for `.cnc` files.
 The exit status is 0 if everything went fine, 1 if one or more errors or warnings were found, and 2 if the check
 encountered an error (e.g. unable to find or read a .cnc or .out file).
 
-```bat
+Example:
+
+```text
 scg checklogs ..\run_main
 MYAPP.out[21]: No Xvr match for Pvr TestPvr
 MYAPP_20230601_1415.cnc[51]: ERROR adding Item: SomeTag
@@ -432,11 +501,13 @@ update. The update procedure replaces the called executable with the updated ver
 Please note that while connected to office network, the GitHub
 [rate limit](https://docs.github.com/en/rest/overview/resources-in-the-rest-api?apiVersion=2022-11-28#rate-limiting) can
 cause the update to fail with an HTTP 403 error. If that happens, you can either wait for at least 15 minutes before you
-try again or connect to a different network, e.g. your home network or mobile network.
+try again or connect to a different network, e.g. your home network or mobile network. Alternatively you can provide a
+[GitHub authorization token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens)
+via the hidden `--token` argument.
 
 ## Howto/tutorial
 
-It may be easier to understand how to use the tool by example. In the file-set in this repository, you will find a
+It may be easier to understand how to use the tool by example. In the docs-directory in this repository, you will find a
 directory called `basic example`. This directory contains the following directories and files:
 
 - templates: A directory containing the templates that make up a SEPTIC config file.
@@ -530,9 +601,9 @@ If there are other groups of elements that you wish to create templates and subs
 or separator trains, or to distinguish between non-similar groups of wells such as production wells and injection wells,
 simply create another sheet (in the same or a new Excel file) and define the new source similarly with a unique id.
 
-A template file can only iterate over one source, so in some cases it may be necessary to repeat information in two or more
-sources. If using Excel files, it may be a good idea to maintain one complete set of values in one sheet and reference
-the corresponding cells from the other sheets.
+A template file can only iterate over one source, so in some cases it may be necessary to repeat information in two or
+more sources. If using Excel files, it may be a good idea to maintain one complete set of values in one sheet and
+reference the corresponding cells from the other sheets.
 
 Finally we have the layout definition:
 
@@ -561,10 +632,10 @@ If a `source` is defined, then the source is used as a look-up table for substit
 the template is rendered once per row in the source. So the template `03_SopcProc_well.cnfg` will be replicated three
 times, once for each of the rows `D01`, `D02` and `D03` that are specified in the source.
 
-It is possible to specify exactly which rows to include from the source. An example of this is shown for `07_DspGroupTables_well.cnfg`
-which will only be generated for `D01` and `D03`. It is also possible to use the keyword `exclude` in the same way to
-skip specific rows from the source. If both `include` and `exclude` are defined, then only rows that are part of
-`include` and not in `exclude` are included.
+It is possible to specify exactly which rows to include from the source. An example of this is shown for
+`07_DspGroupTables_well.cnfg` which will only be generated for `D01` and `D03`. It is also possible to use the keyword
+`exclude` in the same way to skip specific rows from the source. If both `include` and `exclude` are defined, then only
+rows that are part of `include` and not in `exclude` are included.
 
 ### Generate a config
 

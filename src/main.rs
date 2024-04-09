@@ -12,17 +12,9 @@ fn main() {
     let args = Cli::parse();
 
     match args.command {
-        Commands::Make(make) => {
-            make.execute();
-        }
-        Commands::Diff(diff) => {
-            diff.execute();
-        }
-        Commands::Checklogs(checklogs) => {
-            checklogs.execute();
-        }
-        Commands::Update(update) => {
-            update.execute();
-        }
+        Commands::Make(make) => make.execute(),
+        Commands::Diff(diff) => diff.execute(),
+        Commands::Checklogs(checklogs) => checklogs.execute(),
+        Commands::Update(update) => update.execute(),
     }
 }

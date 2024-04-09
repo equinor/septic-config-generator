@@ -72,6 +72,66 @@ impl Serialize for CtxDataType {
 }
 
 #[derive(Debug, Default)]
+pub struct MultiSourceReader {
+    file_paths: Vec<PathBuf>,
+    delimiter: char,
+}
+
+impl MultiSourceReader {
+    pub fn new(file_names: Vec<&str>, relative_root: &Path, delimiter: Option<char>) -> Self {
+        Self {
+            file_paths: file_names.iter().map(|f| relative_root.join(f)).collect(),
+            delimiter: delimiter.unwrap_or(';'),
+        }
+    }
+}
+
+impl DataSourceReader for MultiSourceReader {
+    fn read(&self) -> Result<DataSourceRows> {
+        let mut rows = IndexMap::new();
+        if let Some((first, rest)) = self.file_paths.split_first() {
+            let first_reader = CsvSourceReader {
+                file_path: first.to_owned(),
+                delimiter: self.delimiter,
+            };
+            rows = first_reader
+                .read()
+                .with_context(|| format!("Problem reading source file '{}'", first.display()))?;
+
+            for file_path in rest {
+                let reader = CsvSourceReader {
+                    file_path: file_path.to_owned(),
+                    delimiter: self.delimiter,
+                };
+                let new_rows = reader.read().with_context(|| {
+                    format!("Problem reading source file '{}'", file_path.display())
+                })?;
+
+                for key in rows.keys() {
+                    if !new_rows.contains_key(key) {
+                        anyhow::bail!(
+                            "Key '{}' from '{}' is missing in '{}'",
+                            key,
+                            first.file_name().unwrap().to_string_lossy(),
+                            file_path.file_name().unwrap().to_string_lossy()
+                        );
+                    }
+                }
+
+                for (key, values) in new_rows {
+                    if let Some(row) = rows.get_mut(&key) {
+                        for (col, value) in values {
+                            row.insert(col, value);
+                        }
+                    } // TODO: warn if first csv does not contain key?
+                }
+            }
+        }
+        Ok(rows)
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct CsvSourceReader {
     file_path: PathBuf,
     delimiter: char,
@@ -222,6 +282,117 @@ impl DataSourceReader for ExcelSourceReader {
             })
             .collect::<DataSourceRows>();
         Ok(data)
+    }
+}
+
+#[cfg(test)]
+mod multisourcetests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn multi_merges_same_keys() {
+        let csv_content1 = r#"keys;text
+        key1;value1
+        key2;value2"#;
+        let csv_content2 = r#"keys;float;int
+        key2;2.2;2
+        key1;1.1;1"#;
+        let mut tmp_file1 = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file1, "{}", csv_content1).unwrap();
+        let mut tmp_file2 = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file2, "{}", csv_content2).unwrap();
+
+        let reader = MultiSourceReader::new(
+            vec![
+                tmp_file1.path().to_str().unwrap(),
+                tmp_file2.path().to_str().unwrap(),
+            ],
+            std::path::Path::new(""),
+            Some(';'),
+        );
+        let result = reader.read();
+        assert!(result.is_ok());
+        let data = result.unwrap();
+        println!("{data:?}");
+        assert_eq!(data.len(), 2);
+
+        let vals_key1 = &data["key1"];
+        assert_eq!(
+            vals_key1.get("text"),
+            Some(&CtxDataType::String("value1".to_string()))
+        );
+        assert_eq!(vals_key1.get("float"), Some(&CtxDataType::Float(1.1)));
+        assert_eq!(vals_key1.get("int"), Some(&CtxDataType::Int(1)));
+        let vals_key2 = &data["key2"];
+        assert_eq!(
+            vals_key2.get("text"),
+            Some(&CtxDataType::String("value2".to_string()))
+        );
+        assert_eq!(vals_key2.get("float"), Some(&CtxDataType::Float(2.2)));
+        assert_eq!(vals_key2.get("int"), Some(&CtxDataType::Int(2)));
+    }
+
+    #[test]
+    fn multi_ignores_new_keys() {
+        let csv_content1 = r#"keys;text
+        key1;value1
+        key2;value2"#;
+        let csv_content2 = r#"keys;float;int
+        key2;2.2;2
+        key1;1.1;1
+        key3;3.3;3"#;
+        let mut tmp_file1 = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file1, "{}", csv_content1).unwrap();
+        let mut tmp_file2 = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file2, "{}", csv_content2).unwrap();
+
+        let reader = MultiSourceReader::new(
+            vec![
+                tmp_file1.path().to_str().unwrap(),
+                tmp_file2.path().to_str().unwrap(),
+            ],
+            std::path::Path::new(""),
+            Some(';'),
+        );
+        let result = reader.read();
+        println!("{result:?}");
+        assert!(result.is_ok());
+        let data = result.unwrap();
+        println!("{data:?}");
+        assert_eq!(data.len(), 2);
+    }
+
+    #[test]
+    fn multi_bails_on_missing_keys() {
+        let csv_content1 = r#"keys;text
+        key1;value1
+        key2;value2
+        key3;value3"#;
+        let csv_content2 = r#"keys;float;int
+        key1;1.1;1
+        key3;3.3;3"#;
+        let mut tmp_file1 = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file1, "{}", csv_content1).unwrap();
+        let mut tmp_file2 = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file2, "{}", csv_content2).unwrap();
+
+        let reader = MultiSourceReader::new(
+            vec![
+                tmp_file1.path().to_str().unwrap(),
+                tmp_file2.path().to_str().unwrap(),
+            ],
+            std::path::Path::new(""),
+            Some(';'),
+        );
+        let result = reader.read();
+        println!("{result:?}");
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .root_cause()
+            .to_string()
+            .contains("Key 'key2' from"))
     }
 }
 
