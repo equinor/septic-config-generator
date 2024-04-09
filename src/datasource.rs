@@ -394,38 +394,6 @@ mod multisourcetests {
             .to_string()
             .contains("Key 'key2' from"))
     }
-
-    // #[test]
-    // fn multi_bails_on_redundant_cols() {
-    //     let csv_content1 = r#"keys;text
-    //     key1;value1
-    //     key2;value2"#;
-    //     let csv_content2 = r#"keys;float;text
-    //     key2;2.2;value22
-    //     key1;1.1;value11
-    //     key3;3.3;value33"#;
-    //     let mut tmp_file1 = tempfile::NamedTempFile::new().unwrap();
-    //     write!(tmp_file1, "{}", csv_content1).unwrap();
-    //     let mut tmp_file2 = tempfile::NamedTempFile::new().unwrap();
-    //     write!(tmp_file2, "{}", csv_content2).unwrap();
-
-    //     let reader = MultiSourceReader::new(
-    //         vec![
-    //             tmp_file1.path().to_str().unwrap(),
-    //             tmp_file2.path().to_str().unwrap(),
-    //         ],
-    //         std::path::Path::new(""),
-    //         Some(';'),
-    //     );
-    //     let result = reader.read();
-    //     println!("{result:?}");
-    //     assert!(result.is_err());
-    //     assert!(result
-    //         .unwrap_err()
-    //         .root_cause()
-    //         .to_string()
-    //         .contains("Key 'key2' from"))
-    // }
 }
 
 #[cfg(test)]
