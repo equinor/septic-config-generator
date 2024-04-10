@@ -285,10 +285,16 @@ impl<'a> MiniJinja<'a> {
         let mut rendered = String::new();
 
         if let Some(src_name) = &template.source {
-            let keys: Vec<String> = source_data[src_name]
-                .iter()
-                .map(|(key, _row)| key.clone())
-                .collect();
+            let keys: Vec<String> = match source_data.get(src_name) {
+                Some(data) => Ok(data.iter().map(|(key, _row)| key.clone()).collect()),
+                None => Err(Error::new(
+                    ErrorKind::InvalidOperation,
+                    format!(
+                        "Unknown source '{}' referenced in {}",
+                        src_name, template.name
+                    ),
+                )),
+            }?;
 
             let mut items_set: HashSet<String> = keys.iter().cloned().collect();
 
@@ -304,15 +310,17 @@ impl<'a> MiniJinja<'a> {
                 .cloned()
                 .collect();
 
-            for (key, row) in &source_data[src_name] {
-                if items_set.contains(key) {
-                    let mut tmpl_rend = self.render(&template.name, Some(row))?;
+            if let Some(data) = source_data.get(src_name) {
+                for (key, row) in data {
+                    if items_set.contains(key) {
+                        let mut tmpl_rend = self.render(&template.name, Some(row))?;
 
-                    if adjust_spacing {
-                        tmpl_rend = tmpl_rend.trim_end().to_string();
-                        tmpl_rend.push_str("\r\n\r\n");
+                        if adjust_spacing {
+                            tmpl_rend = tmpl_rend.trim_end().to_string();
+                            tmpl_rend.push_str("\r\n\r\n");
+                        }
+                        rendered.push_str(&tmpl_rend);
                     }
-                    rendered.push_str(&tmpl_rend);
                 }
             }
         } else {
