@@ -26,16 +26,13 @@ impl CounterMap {
         }
     }
 
-    pub fn create(&mut self, name: &str, init_val: Option<i32>) -> Result<(), Error> {
+    pub fn create(&mut self, name: &str, init_val: Option<i32>) -> anyhow::Result<()> {
         if self
             .counters
             .insert(name.to_owned(), init_val.unwrap_or(0))
             .is_some()
         {
-            return Err(Error::new(
-                ErrorKind::SyntaxError,
-                format!("Counter '{}' already exists", name),
-            ));
+            anyhow::bail!("Counter '{}' already exists", name)
         }
         Ok(())
     }
@@ -72,7 +69,7 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
                 Ok(rv)
             } else {
                 Err(Error::new(
-                    ErrorKind::InvalidOperation,
+                    ErrorKind::CannotUnpack,
                     "input is not a list of maps (source) or map (source row)",
                 ))
             }
@@ -101,13 +98,13 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
                 Ok(rv)
             } else {
                 Err(Error::new(
-                    ErrorKind::InvalidOperation,
+                    ErrorKind::CannotUnpack,
                     "input is not a list of maps (source) or map (source row)",
                 ))
             }
         }
         _ => Err(Error::new(
-            ErrorKind::InvalidOperation,
+            ErrorKind::CannotUnpack,
             "input is not a list of maps (source) or map (source row)",
         )),
     }
@@ -224,7 +221,7 @@ impl<'a> MiniJinja<'a> {
         globals: &[String],
         template_path: &Path,
         counter_list: Option<Vec<CounterConfig>>,
-    ) -> Result<MiniJinja<'a>, Error> {
+    ) -> anyhow::Result<MiniJinja<'a>> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
@@ -261,6 +258,7 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_filter("values", filt_values);
         renderer.env.add_filter("unpack", filt_unpack);
         renderer.env.set_formatter(erroring_formatter);
+        // renderer.env.set_debug(false);  // TODO: enable via cmdline flag?
 
         let local_template_path = template_path.to_path_buf();
 
@@ -271,9 +269,9 @@ impl<'a> MiniJinja<'a> {
     }
 
     #[allow(clippy::missing_errors_doc)]
-    pub fn render<S: Serialize>(&self, template_name: &str, ctx: S) -> Result<String, Error> {
+    pub fn render<S: Serialize>(&self, template_name: &str, ctx: S) -> anyhow::Result<String> {
         let tmpl = self.env.get_template(template_name)?;
-        tmpl.render(&ctx)
+        Ok(tmpl.render(&ctx)?)
     }
 
     pub fn render_template(
@@ -281,14 +279,18 @@ impl<'a> MiniJinja<'a> {
         template: &config::Template,
         source_data: &HashMap<String, DataSourceRows>,
         adjust_spacing: bool,
-    ) -> Result<String, Error> {
+    ) -> anyhow::Result<String> {
         let mut rendered = String::new();
 
         if let Some(src_name) = &template.source {
-            let keys: Vec<String> = source_data[src_name]
-                .iter()
-                .map(|(key, _row)| key.clone())
-                .collect();
+            let keys: Vec<String> = match source_data.get(src_name) {
+                Some(data) => data.iter().map(|(key, _row)| key.clone()).collect(),
+                None => anyhow::bail!(
+                    "unknown source '{}' referenced in {}",
+                    src_name,
+                    template.name
+                ),
+            };
 
             let mut items_set: HashSet<String> = keys.iter().cloned().collect();
 
@@ -304,15 +306,17 @@ impl<'a> MiniJinja<'a> {
                 .cloned()
                 .collect();
 
-            for (key, row) in &source_data[src_name] {
-                if items_set.contains(key) {
-                    let mut tmpl_rend = self.render(&template.name, Some(row))?;
+            if let Some(data) = source_data.get(src_name) {
+                for (key, row) in data {
+                    if items_set.contains(key) {
+                        let mut tmpl_rend = self.render(&template.name, Some(row))?;
 
-                    if adjust_spacing {
-                        tmpl_rend = tmpl_rend.trim_end().to_string();
-                        tmpl_rend.push_str("\r\n\r\n");
+                        if adjust_spacing {
+                            tmpl_rend = tmpl_rend.trim_end().to_string();
+                            tmpl_rend.push_str("\r\n\r\n");
+                        }
+                        rendered.push_str(&tmpl_rend);
                     }
-                    rendered.push_str(&tmpl_rend);
                 }
             }
         } else {
