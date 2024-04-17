@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.11.1](https://github.com/equinor/septic-config-generator/compare/v2.11.0...v2.11.1) (2024-04-17)
+
+
+### 🐛 Bug Fixes
+
+* don't panic on undefined source ([#263](https://github.com/equinor/septic-config-generator/issues/263)) ([a9be6ef](https://github.com/equinor/septic-config-generator/commit/a9be6ef89451c2adb57d0cbad533741e268348c5))
+
+
+### 🧹 Chores
+
+* **deps:** bump chrono from 0.4.37 to 0.4.38 ([#264](https://github.com/equinor/septic-config-generator/issues/264)) ([598a4b6](https://github.com/equinor/septic-config-generator/commit/598a4b6172c7efa9633a0a9f8b2b0f6237603b05))
+* **deps:** bump encoding_rs from 0.8.33 to 0.8.34 ([#267](https://github.com/equinor/septic-config-generator/issues/267)) ([cf274c0](https://github.com/equinor/septic-config-generator/commit/cf274c0a71922547ca79b038d12392fe62d64ef0))
+* **deps:** bump minijinja from 1.0.16 to 1.0.20 ([#271](https://github.com/equinor/septic-config-generator/issues/271)) ([d3a242c](https://github.com/equinor/septic-config-generator/commit/d3a242c03146d56529e6e459f3943317f15dcc7b))
+
+
+### 👷 CI/CD
+
+* new attempt to disable annoying codecov ([#269](https://github.com/equinor/septic-config-generator/issues/269)) ([775ef91](https://github.com/equinor/septic-config-generator/commit/775ef91260bddf3c1a24703356df21ba04984bf2))
+
 ## [2.11.0](https://github.com/equinor/septic-config-generator/compare/v2.10.0...v2.11.0) (2024-04-09)
 
 
