@@ -69,7 +69,7 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
                 Ok(rv)
             } else {
                 Err(Error::new(
-                    ErrorKind::InvalidOperation,
+                    ErrorKind::CannotUnpack,
                     "input is not a list of maps (source) or map (source row)",
                 ))
             }
@@ -98,13 +98,13 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
                 Ok(rv)
             } else {
                 Err(Error::new(
-                    ErrorKind::InvalidOperation,
+                    ErrorKind::CannotUnpack,
                     "input is not a list of maps (source) or map (source row)",
                 ))
             }
         }
         _ => Err(Error::new(
-            ErrorKind::InvalidOperation,
+            ErrorKind::CannotUnpack,
             "input is not a list of maps (source) or map (source row)",
         )),
     }
