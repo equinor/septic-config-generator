@@ -18,7 +18,7 @@ use std::path::{Path, PathBuf};
 enum MakeError {
     NoFilesChanged,
     NoChangeFromPrevious,
-    MiniJinjaError(minijinja::Error),
+    MiniJinjaError(anyhow::Error),
     TimeStampError(anyhow::Error),
     CfgFileReadError(anyhow::Error),
     CollectFileList(anyhow::Error),
@@ -34,7 +34,15 @@ impl std::fmt::Display for MakeError {
             MakeError::NoChangeFromPrevious => {
                 write!(f, "No change from previous version, exiting.")
             }
-            MakeError::MiniJinjaError(e) => write!(f, "{e:#}"),
+            MakeError::MiniJinjaError(err) => {
+                let mut msg = format!("error: {err}");
+                if let Some(err) = err.downcast_ref::<minijinja::Error>() {
+                    if err.name().is_some() {
+                        msg = format!("{msg}{}", err.display_debug_info());
+                    }
+                }
+                write!(f, "{msg:#}")
+            }
             MakeError::TimeStampError(e) => write!(f, "{e:#}"),
             MakeError::CfgFileReadError(e) => write!(f, "Problem reading config file: {e:#}"),
             MakeError::CollectFileList(e) => write!(f, "Problem identifying changed files: {e:#}"),
