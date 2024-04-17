@@ -1,7 +1,6 @@
 use crate::config::{Config, Filename, Source};
 use crate::datasource::{
-    CsvSourceReader, CtxDataType, DataSourceReader, DataSourceRows, ExcelSourceReader,
-    MultiSourceReader,
+    CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
 };
 use crate::renderer::MiniJinja;
 use anyhow::{bail, Context, Result};
@@ -138,10 +137,10 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         MiniJinja::new(globals, &template_path, cfg.counters).map_err(MakeError::MiniJinjaError)?;
 
     for (key, source_data) in all_source_data.iter() {
-        let values_vec: Vec<HashMap<String, CtxDataType>> = source_data.values().cloned().collect();
-        renderer
-            .env
-            .add_global(key, Value::from_serializable(&values_vec));
+        renderer.env.add_global(
+            key,
+            Value::from_serialize(source_data.values().collect::<Vec<_>>()),
+        );
     }
 
     let mut rendered = String::new();
@@ -437,10 +436,10 @@ mod tests {
         };
         let all_source_data = get_all_source_data()?;
         for (key, source_data) in all_source_data.iter() {
-            let values_vec: Vec<_> = source_data.values().cloned().collect();
-            renderer
-                .env
-                .add_global(key, Value::from_serializable(&values_vec));
+            renderer.env.add_global(
+                key,
+                Value::from_serialize(source_data.values().collect::<Vec<_>>()),
+            );
         }
         let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)
             .unwrap()
@@ -466,10 +465,10 @@ mod tests {
         };
         let all_source_data = get_all_source_data()?;
         for (key, source_data) in all_source_data.iter() {
-            let values_vec: Vec<_> = source_data.values().cloned().collect();
-            renderer
-                .env
-                .add_global(key, Value::from_serializable(&values_vec));
+            renderer.env.add_global(
+                key,
+                Value::from_serialize(source_data.values().collect::<Vec<_>>()),
+            );
         }
         let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)
             .unwrap()
