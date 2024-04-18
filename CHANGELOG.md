@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.11.2](https://github.com/equinor/septic-config-generator/compare/v2.11.1...v2.11.2) (2024-04-18)
+
+
+### 🐛 Bug Fixes
+
+* include filename in yaml error message ([#273](https://github.com/equinor/septic-config-generator/issues/273)) ([5137ddc](https://github.com/equinor/septic-config-generator/commit/5137ddc78d5c60174230d8dc59814074bba00d9e))
+
 ## [2.11.1](https://github.com/equinor/septic-config-generator/compare/v2.11.0...v2.11.1) (2024-04-17)
 
 
