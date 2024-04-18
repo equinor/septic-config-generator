@@ -43,7 +43,7 @@ impl std::fmt::Display for MakeError {
                 write!(f, "{msg:#}")
             }
             MakeError::TimeStampError(e) => write!(f, "{e:#}"),
-            MakeError::CfgFileReadError(e) => write!(f, "Problem reading config file: {e:#}"),
+            MakeError::CfgFileReadError(e) => write!(f, "Problem reading {e:#}"),
             MakeError::CollectFileList(e) => write!(f, "Problem identifying changed files: {e:#}"),
             MakeError::CreateOutputFile(e) => write!(f, "Problem creating output file: {e:#}"),
             MakeError::LoadSourceError(e) => write!(f, "{e:#}"),
@@ -112,7 +112,9 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
             .expect("BUG: Unable to obtain parent of cfg_file"),
     );
 
-    let cfg = Config::new(&cfg_file).map_err(MakeError::CfgFileReadError)?;
+    let cfg = Config::new(&cfg_file)
+        .with_context(|| format!("'{}'", cfg_file.display()))
+        .map_err(MakeError::CfgFileReadError)?;
 
     if only_if_changed & cfg.outputfile.is_some() {
         let outfile = relative_root.join(
