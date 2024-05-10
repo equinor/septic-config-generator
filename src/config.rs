@@ -153,7 +153,7 @@ pub struct Source {
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct IncludeConditional {
-    items: Option<Vec<String>>,
+    items: Vec<String>,
     condition: String,
 }
 
@@ -186,12 +186,7 @@ impl Template {
                         let expr = env.compile_expression(elem.condition.as_str()).unwrap();
                         let eval = expr.eval(context! {}).unwrap();
                         if eval.is_true() {
-                            match &elem.items {
-                                Some(elems) => result.extend(elems.iter().cloned()),
-                                None => {
-                                    todo!("Can only filter source includes on global variables")
-                                }
-                            }
+                            result.extend(elem.items.clone());
                         }
                     }
                 }
@@ -212,12 +207,7 @@ impl Template {
                         let expr = env.compile_expression(elem.condition.as_str()).unwrap();
                         let eval = expr.eval(context! {}).unwrap();
                         if eval.is_true() {
-                            match &elem.items {
-                                Some(elems) => result.extend(elems.iter().cloned()),
-                                None => {
-                                    todo!("Can only filter source excludes on global variables")
-                                }
-                            }
+                            result.extend(elem.items.clone());
                         }
                     }
                 }
