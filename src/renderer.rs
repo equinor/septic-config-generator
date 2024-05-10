@@ -296,7 +296,7 @@ impl<'a> MiniJinja<'a> {
 
             if template.include.is_some() {
                 items_set = items_set
-                    .intersection(&template.include_set())
+                    .intersection(&template.include_set(&self.env))
                     .cloned()
                     .collect();
             }

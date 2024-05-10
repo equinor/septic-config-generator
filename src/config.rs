@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use minijinja::{context, Environment};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
@@ -32,7 +33,28 @@ impl Config {
             validate_source(source)?;
         }
 
+        cfg.validate_includes()?;
+
         Ok(cfg)
+    }
+
+    pub fn validate_includes(&self) -> Result<()> {
+        for template in &self.layout {
+            if let Some(includes) = &template.include {
+                let all_lists = includes.iter().all(|inc| matches!(inc, Include::List(_)));
+                let all_conditionals = includes
+                    .iter()
+                    .all(|inc| matches!(inc, Include::Conditional(_)));
+
+                if !all_lists && !all_conditionals {
+                    anyhow::bail!(
+                        "All elements of 'include' for template '{}' must be of the same type",
+                        template.name
+                    );
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -121,18 +143,52 @@ pub struct Source {
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
+pub struct IncludeConditional {
+    items: Option<Vec<String>>,
+    condition: String,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum Include {
+    List(String),
+    Conditional(IncludeConditional),
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Template {
     pub name: String,
     pub source: Option<String>,
-    pub include: Option<Vec<String>>,
+    pub include: Option<Vec<Include>>,
     pub exclude: Option<Vec<String>>,
 }
 
 impl Template {
-    pub fn include_set(&self) -> HashSet<String> {
-        self.include.as_ref().map_or_else(HashSet::new, |include| {
-            include.iter().cloned().collect::<HashSet<String>>()
-        })
+    pub fn include_set(&self, env: &Environment) -> HashSet<String> {
+        let mut result: HashSet<String> = HashSet::new();
+        if let Some(includes) = self.include.as_ref() {
+            for inc_item in includes {
+                match inc_item {
+                    Include::List(elem) => {
+                        result.insert(elem.clone());
+                    }
+                    Include::Conditional(elem) => {
+                        let expr = env.compile_expression(elem.condition.as_str()).unwrap();
+                        let eval = expr.eval(context! {}).unwrap();
+                        if eval.is_true() {
+                            match &elem.items {
+                                Some(elems) => result.extend(elems.iter().cloned()),
+                                None => {
+                                    todo!("Can only filter source includes on global variables")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        result
     }
 
     pub fn exclude_set(&self) -> HashSet<String> {
