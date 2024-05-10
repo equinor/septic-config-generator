@@ -302,7 +302,7 @@ impl<'a> MiniJinja<'a> {
             }
 
             items_set = items_set
-                .difference(&template.exclude_set())
+                .difference(&template.exclude_set(&self.env))
                 .cloned()
                 .collect();
 

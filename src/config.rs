@@ -56,6 +56,25 @@ impl Config {
         }
         Ok(())
     }
+
+    pub fn validate_excludes(&self) -> Result<()> {
+        for template in &self.layout {
+            if let Some(excludes) = &template.exclude {
+                let all_lists = excludes.iter().all(|exc| matches!(exc, Include::List(_)));
+                let all_conditionals = excludes
+                    .iter()
+                    .all(|inc| matches!(inc, Include::Conditional(_)));
+
+                if !all_lists && !all_conditionals {
+                    anyhow::bail!(
+                        "All elements of 'exclude' for template '{}' must be of the same type",
+                        template.name
+                    );
+                }
+            }
+        }
+        Ok(())
+    }
 }
 
 fn validate_source(source: &Source) -> Result<()> {
@@ -161,7 +180,7 @@ pub struct Template {
     pub name: String,
     pub source: Option<String>,
     pub include: Option<Vec<Include>>,
-    pub exclude: Option<Vec<String>>,
+    pub exclude: Option<Vec<Include>>,
 }
 
 impl Template {
@@ -191,10 +210,30 @@ impl Template {
         result
     }
 
-    pub fn exclude_set(&self) -> HashSet<String> {
-        self.exclude.as_ref().map_or_else(HashSet::new, |exclude| {
-            exclude.iter().cloned().collect::<HashSet<String>>()
-        })
+    pub fn exclude_set(&self, env: &Environment) -> HashSet<String> {
+        let mut result: HashSet<String> = HashSet::new();
+        if let Some(excludes) = self.exclude.as_ref() {
+            for inc_item in excludes {
+                match inc_item {
+                    Include::List(elem) => {
+                        result.insert(elem.clone());
+                    }
+                    Include::Conditional(elem) => {
+                        let expr = env.compile_expression(elem.condition.as_str()).unwrap();
+                        let eval = expr.eval(context! {}).unwrap();
+                        if eval.is_true() {
+                            match &elem.items {
+                                Some(elems) => result.extend(elems.iter().cloned()),
+                                None => {
+                                    todo!("Can only filter source excludes on global variables")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        result
     }
 }
 
