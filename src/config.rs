@@ -33,43 +33,33 @@ impl Config {
             validate_source(source)?;
         }
 
-        cfg.validate_includes()?;
+        cfg.validate_include_exclude()?;
 
         Ok(cfg)
     }
 
-    pub fn validate_includes(&self) -> Result<()> {
+    pub fn validate_include_exclude(&self) -> Result<()> {
         for template in &self.layout {
-            if let Some(includes) = &template.include {
-                let all_lists = includes.iter().all(|inc| matches!(inc, Include::List(_)));
-                let all_conditionals = includes
-                    .iter()
-                    .all(|inc| matches!(inc, Include::Conditional(_)));
+            for field in ["include", "exclude"] {
+                let includes_or_excludes = match field {
+                    "include" => &template.include,
+                    "exclude" => &template.exclude,
+                    _ => unreachable!(), // We should never reach this case if we use the function correctly.
+                };
 
-                if !all_lists && !all_conditionals {
-                    anyhow::bail!(
-                        "All elements of 'include' for template '{}' must be of the same type",
-                        template.name
-                    );
-                }
-            }
-        }
-        Ok(())
-    }
+                if let Some(items) = includes_or_excludes {
+                    let all_lists = items.iter().all(|item| matches!(item, Include::List(_)));
+                    let all_conditionals = items
+                        .iter()
+                        .all(|item| matches!(item, Include::Conditional(_)));
 
-    pub fn validate_excludes(&self) -> Result<()> {
-        for template in &self.layout {
-            if let Some(excludes) = &template.exclude {
-                let all_lists = excludes.iter().all(|exc| matches!(exc, Include::List(_)));
-                let all_conditionals = excludes
-                    .iter()
-                    .all(|inc| matches!(inc, Include::Conditional(_)));
-
-                if !all_lists && !all_conditionals {
-                    anyhow::bail!(
-                        "All elements of 'exclude' for template '{}' must be of the same type",
-                        template.name
-                    );
+                    if !all_lists && !all_conditionals {
+                        anyhow::bail!(
+                            "All '{}' items for template '{}' must be of the same type",
+                            field,
+                            template.name
+                        );
+                    }
                 }
             }
         }
