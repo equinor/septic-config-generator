@@ -5,6 +5,8 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
+use crate::datasource::DataSourceRows;
+
 const fn _default_true() -> bool {
     true
 }
@@ -153,7 +155,7 @@ pub struct Source {
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct IncludeConditional {
-    items: Vec<String>,
+    items: Option<Vec<String>>,
     condition: String,
 }
 
@@ -174,42 +176,66 @@ pub struct Template {
 }
 
 impl Template {
-    pub fn include_set(&self, env: &Environment) -> HashSet<String> {
+    pub fn include_set(&self, env: &Environment, source_data: &DataSourceRows) -> HashSet<String> {
         let mut result: HashSet<String> = HashSet::new();
+        self.source.as_ref().unwrap();
         if let Some(includes) = self.include.as_ref() {
             for inc_item in includes {
                 match inc_item {
                     Include::List(elem) => {
                         result.insert(elem.clone());
                     }
-                    Include::Conditional(elem) => {
-                        let expr = env.compile_expression(elem.condition.as_str()).unwrap();
-                        let eval = expr.eval(context! {}).unwrap();
-                        if eval.is_true() {
-                            result.extend(elem.items.clone());
+                    Include::Conditional(elem) => match &elem.items {
+                        Some(items) => {
+                            let expr = env.compile_expression(elem.condition.as_str()).unwrap();
+                            let eval = expr.eval(context! {}).unwrap();
+                            if eval.is_true() {
+                                result.extend(items.clone());
+                            }
                         }
-                    }
+                        None => {
+                            for (key, row) in source_data {
+                                let expr = env.compile_expression(elem.condition.as_str()).unwrap();
+                                let eval = expr.eval(row).unwrap();
+                                if eval.is_true() {
+                                    result.insert(key.clone());
+                                }
+                            }
+                        }
+                    },
                 }
             }
         }
         result
     }
 
-    pub fn exclude_set(&self, env: &Environment) -> HashSet<String> {
+    pub fn exclude_set(&self, env: &Environment, source_data: &DataSourceRows) -> HashSet<String> {
         let mut result: HashSet<String> = HashSet::new();
+        self.source.as_ref().unwrap();
         if let Some(excludes) = self.exclude.as_ref() {
-            for inc_item in excludes {
-                match inc_item {
+            for exc_item in excludes {
+                match exc_item {
                     Include::List(elem) => {
                         result.insert(elem.clone());
                     }
-                    Include::Conditional(elem) => {
-                        let expr = env.compile_expression(elem.condition.as_str()).unwrap();
-                        let eval = expr.eval(context! {}).unwrap();
-                        if eval.is_true() {
-                            result.extend(elem.items.clone());
+                    Include::Conditional(elem) => match &elem.items {
+                        Some(items) => {
+                            let expr = env.compile_expression(elem.condition.as_str()).unwrap();
+                            let eval = expr.eval(context! {}).unwrap();
+                            if eval.is_true() {
+                                result.extend(items.clone());
+                            }
                         }
-                    }
+                        None => {
+                            for (key, row) in source_data {
+                                let expr = env.compile_expression(elem.condition.as_str()).unwrap();
+                                let eval = expr.eval(row).unwrap();
+                                if eval.is_true() {
+                                    result.insert(key.clone());
+                                }
+                            }
+                        }
+                    },
                 }
             }
         }

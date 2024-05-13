@@ -296,13 +296,15 @@ impl<'a> MiniJinja<'a> {
 
             if template.include.is_some() {
                 items_set = items_set
-                    .intersection(&template.include_set(&self.env))
+                    .intersection(
+                        &template.include_set(&self.env, source_data.get(src_name).unwrap()),
+                    )
                     .cloned()
                     .collect();
             }
 
             items_set = items_set
-                .difference(&template.exclude_set(&self.env))
+                .difference(&template.exclude_set(&self.env, source_data.get(src_name).unwrap()))
                 .cloned()
                 .collect();
 
