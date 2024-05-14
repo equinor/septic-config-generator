@@ -462,7 +462,7 @@ mod tests {
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             source: Some("main".to_string()),
-            include: Some(vec![config::Include::List("one".to_string())]),
+            include: Some(vec![config::Include::Element("one".to_string())]),
             ..Default::default()
         };
         let all_source_data = get_all_source_data()?;

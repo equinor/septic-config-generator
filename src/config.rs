@@ -35,37 +35,7 @@ impl Config {
             validate_source(source)?;
         }
 
-        cfg.validate_include_exclude()?;
-
         Ok(cfg)
-    }
-
-    pub fn validate_include_exclude(&self) -> Result<()> {
-        for template in &self.layout {
-            for field in ["include", "exclude"] {
-                let includes_or_excludes = match field {
-                    "include" => &template.include,
-                    "exclude" => &template.exclude,
-                    _ => unreachable!(), // We should never reach this case if we use the function correctly.
-                };
-
-                if let Some(items) = includes_or_excludes {
-                    let all_lists = items.iter().all(|item| matches!(item, Include::List(_)));
-                    let all_conditionals = items
-                        .iter()
-                        .all(|item| matches!(item, Include::Conditional(_)));
-
-                    if !all_lists && !all_conditionals {
-                        anyhow::bail!(
-                            "All '{}' items for template '{}' must be of the same type",
-                            field,
-                            template.name
-                        );
-                    }
-                }
-            }
-        }
-        Ok(())
     }
 }
 
@@ -156,13 +126,16 @@ pub struct Source {
 #[serde(deny_unknown_fields)]
 pub struct IncludeConditional {
     items: Option<Vec<String>>,
+    #[serde(rename = "if")]
     condition: String,
+    #[serde(rename = "continue")]
+    continue_: Option<bool>,
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(untagged)]
 pub enum Include {
-    List(String),
+    Element(String),
     Conditional(IncludeConditional),
 }
 
@@ -178,11 +151,10 @@ pub struct Template {
 impl Template {
     pub fn include_set(&self, env: &Environment, source_data: &DataSourceRows) -> HashSet<String> {
         let mut result: HashSet<String> = HashSet::new();
-        self.source.as_ref().unwrap();
         if let Some(includes) = self.include.as_ref() {
             for inc_item in includes {
                 match inc_item {
-                    Include::List(elem) => {
+                    Include::Element(elem) => {
                         result.insert(elem.clone());
                     }
                     Include::Conditional(elem) => match &elem.items {
@@ -191,6 +163,9 @@ impl Template {
                             let eval = expr.eval(context! {}).unwrap();
                             if eval.is_true() {
                                 result.extend(items.clone());
+                                if matches!(elem.continue_, Some(false) | None) {
+                                    return result;
+                                }
                             }
                         }
                         None => {
@@ -215,7 +190,7 @@ impl Template {
         if let Some(excludes) = self.exclude.as_ref() {
             for exc_item in excludes {
                 match exc_item {
-                    Include::List(elem) => {
+                    Include::Element(elem) => {
                         result.insert(elem.clone());
                     }
                     Include::Conditional(elem) => match &elem.items {
@@ -246,6 +221,7 @@ impl Template {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indexmap::IndexMap;
     use std::io::Write;
     use tempfile::NamedTempFile;
 
