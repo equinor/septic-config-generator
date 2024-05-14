@@ -1,6 +1,7 @@
 use crate::config;
 use crate::config::Counter as CounterConfig;
 use crate::datasource::DataSourceRows;
+use crate::NEWLINE;
 use chrono::Local;
 use minijinja::value::{from_args, Kwargs, Rest, Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
@@ -313,7 +314,8 @@ impl<'a> MiniJinja<'a> {
 
                         if adjust_spacing {
                             tmpl_rend = tmpl_rend.trim_end().to_string();
-                            tmpl_rend.push_str("\r\n\r\n");
+                            tmpl_rend.push_str(NEWLINE);
+                            tmpl_rend.push_str(NEWLINE);
                         }
                         rendered.push_str(&tmpl_rend);
                     }
@@ -325,7 +327,8 @@ impl<'a> MiniJinja<'a> {
 
         if adjust_spacing {
             rendered = rendered.trim_end().to_string();
-            rendered.push_str("\r\n\r\n");
+            rendered.push_str(NEWLINE);
+            rendered.push_str(NEWLINE);
         }
 
         Ok(rendered)

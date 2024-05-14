@@ -3,6 +3,7 @@ use crate::datasource::{
     CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
 };
 use crate::renderer::MiniJinja;
+use crate::NEWLINE;
 use anyhow::{bail, Context, Result};
 use clap::Parser;
 use diffy::{create_patch, PatchFormatter};
@@ -154,7 +155,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     }
     if cfg.adjustspacing {
         rendered = rendered.trim_end().to_string();
-        rendered.push('\n');
+        rendered.push_str(NEWLINE);
     }
 
     if let Some(path) = cfg.outputfile.as_ref().map(|f| relative_root.join(f)) {
