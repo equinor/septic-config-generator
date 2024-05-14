@@ -398,4 +398,45 @@ layout:
             .to_string()
             .contains("invalid file extension"))
     }
+
+    fn create_template_with_includes(
+        include_condition: &str,
+        include_continue: Option<bool>,
+    ) -> Template {
+        Template {
+            name: "templatename".to_string(),
+            source: None,
+            include: Some(vec![
+                Include::Element("one".to_string()),
+                Include::Conditional(IncludeConditional {
+                    items: Some(vec!["two".to_string()]),
+                    condition: include_condition.to_string(),
+                    continue_: include_continue,
+                }),
+                Include::Element("three".to_string()),
+            ]),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn include_set_break_at_conditional_match() {
+        let template = create_template_with_includes("true", None);
+        let res = template.include_set(&minijinja::Environment::new(), &IndexMap::new());
+        assert!(res == HashSet::from(["one".to_string(), "two".to_string()]));
+    }
+
+    #[test]
+    fn include_set_continue_at_conditional_nonmatch() {
+        let template = create_template_with_includes("false", None);
+        let res = template.include_set(&minijinja::Environment::new(), &IndexMap::new());
+        assert!(res == HashSet::from(["one".to_string(), "three".to_string()]));
+    }
+
+    #[test]
+    fn include_set_continue_when_specified() {
+        let template = create_template_with_includes("true", Some(true));
+        let res = template.include_set(&minijinja::Environment::new(), &IndexMap::new());
+        assert!(res == HashSet::from(["one".to_string(), "two".to_string(), "three".to_string()]));
+    }
 }
