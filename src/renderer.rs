@@ -297,18 +297,29 @@ impl<'a> MiniJinja<'a> {
 
             if template.include.is_some() {
                 let include_set = template
-                    .include_set(
+                    .include_exclude_set(
                         &self.env,
                         source_data.get(src_name).expect(
                             "render_template: unable to fetch source. This should not be possible!",
                         ),
+                        config::IncludeExclude::Include,
                     )
                     .with_context(|| format!("template {:?}", &template.name))?;
                 items_set = items_set.intersection(&include_set).cloned().collect();
             }
 
             items_set = items_set
-                .difference(&template.exclude_set(&self.env, source_data.get(src_name).unwrap()))
+                .difference(
+                    &template
+                        .include_exclude_set(
+                            &self.env,
+                            source_data.get(src_name).expect(
+                                "render_template: unable to fetch source. This should not be possible!",
+                            ),
+                            config::IncludeExclude::Exclude,
+                        )
+                        .with_context(|| format!("template {:?}", &template.name))?,
+                )
                 .cloned()
                 .collect();
 

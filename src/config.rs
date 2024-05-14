@@ -148,22 +148,33 @@ pub struct Template {
     pub exclude: Option<Vec<Include>>,
 }
 
+pub enum IncludeExclude {
+    Include,
+    Exclude,
+}
+
 impl Template {
-    pub fn include_set(
+    pub fn include_exclude_set(
         &self,
         env: &Environment,
         source_data: &DataSourceRows,
+        include_exclude: IncludeExclude,
     ) -> Result<HashSet<String>, minijinja::Error> {
         let mut result: HashSet<String> = HashSet::new();
-        if let Some(includes) = self.include.as_ref() {
-            for inc_item in includes {
+        let items = match include_exclude {
+            IncludeExclude::Include => self.include.as_ref(),
+            IncludeExclude::Exclude => self.exclude.as_ref(),
+        };
+
+        if let Some(items) = items {
+            for inc_item in items {
                 match inc_item {
                     Include::Element(elem) => {
                         result.insert(elem.clone());
                     }
-                    Include::Conditional(elem) => match &elem.items {
-                        Some(items) => {
-                            let expr = env.compile_expression(elem.condition.as_str())?;
+                    Include::Conditional(elem) => {
+                        let expr = env.compile_expression(elem.condition.as_str())?;
+                        if let Some(items) = &elem.items {
                             let eval = expr.eval(context! {})?;
                             if eval.is_true() {
                                 result.extend(items.clone());
@@ -171,54 +182,19 @@ impl Template {
                                     return Ok(result);
                                 }
                             }
-                        }
-                        None => {
-                            let expr = env.compile_expression(elem.condition.as_str())?;
-                            for (key, row) in source_data {
-                                let eval = expr.eval(row)?;
-                                if eval.is_true() {
-                                    result.insert(key.clone());
+                        } else {
+                            result.extend(source_data.iter().filter_map(|(key, row)| {
+                                match expr.eval(row) {
+                                    Ok(eval) if eval.is_true() => Some(key.clone()),
+                                    _ => None,
                                 }
-                            }
+                            }));
                         }
-                    },
+                    }
                 }
             }
         }
         Ok(result)
-    }
-
-    pub fn exclude_set(&self, env: &Environment, source_data: &DataSourceRows) -> HashSet<String> {
-        let mut result: HashSet<String> = HashSet::new();
-        self.source.as_ref().unwrap();
-        if let Some(excludes) = self.exclude.as_ref() {
-            for exc_item in excludes {
-                match exc_item {
-                    Include::Element(elem) => {
-                        result.insert(elem.clone());
-                    }
-                    Include::Conditional(elem) => match &elem.items {
-                        Some(items) => {
-                            let expr = env.compile_expression(elem.condition.as_str()).unwrap();
-                            let eval = expr.eval(context! {}).unwrap();
-                            if eval.is_true() {
-                                result.extend(items.clone());
-                            }
-                        }
-                        None => {
-                            for (key, row) in source_data {
-                                let expr = env.compile_expression(elem.condition.as_str()).unwrap();
-                                let eval = expr.eval(row).unwrap();
-                                if eval.is_true() {
-                                    result.insert(key.clone());
-                                }
-                            }
-                        }
-                    },
-                }
-            }
-        }
-        result
     }
 }
 
@@ -424,28 +400,40 @@ layout:
     }
 
     #[test]
-    fn include_set_break_at_conditional_match() {
+    fn include_exclude_set_break_when_condition_matches() {
         let template = create_template_with_includes("true", None);
         let res = template
-            .include_set(&minijinja::Environment::new(), &IndexMap::new())
+            .include_exclude_set(
+                &minijinja::Environment::new(),
+                &IndexMap::new(),
+                IncludeExclude::Include,
+            )
             .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "two".to_string()]));
     }
 
     #[test]
-    fn include_set_continue_at_conditional_nonmatch() {
+    fn include_exclude_set_continue_when_condition_not_matched() {
         let template = create_template_with_includes("false", None);
         let res = template
-            .include_set(&minijinja::Environment::new(), &IndexMap::new())
+            .include_exclude_set(
+                &minijinja::Environment::new(),
+                &IndexMap::new(),
+                IncludeExclude::Include,
+            )
             .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "three".to_string()]));
     }
 
     #[test]
-    fn include_set_continue_when_specified() {
+    fn include_exclude_set_continue_when_continue_true() {
         let template = create_template_with_includes("true", Some(true));
         let res = template
-            .include_set(&minijinja::Environment::new(), &IndexMap::new())
+            .include_exclude_set(
+                &minijinja::Environment::new(),
+                &IndexMap::new(),
+                IncludeExclude::Include,
+            )
             .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "two".to_string(), "three".to_string()]));
     }
