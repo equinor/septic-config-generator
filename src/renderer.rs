@@ -129,7 +129,7 @@ fn filt_bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
     let length = length.unwrap_or(31);
 
     let mut mask = vec!['0'; length];
-    for elem in value.as_seq().unwrap().iter() {
+    for elem in value.try_iter()? {
         let pos = usize::try_from(elem).map_err(|_| {
             Error::new(
                 ErrorKind::InvalidOperation,

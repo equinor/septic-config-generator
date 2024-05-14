@@ -36,7 +36,7 @@ encoding_rs = "0.8.32"
 encoding_rs_io = "0.1.7"
 glob = "0.3.1"
 indexmap = { version = "2.2.3", features = ["serde"] }
-minijinja = { version = "1.0.20", features = ["loader", "preserve_order"] }
+minijinja = { version = "2.0.1", features = ["loader", "preserve_order"] }
 regex = "1.7.1"
 self_update = { version = "0.39.0", features = [
     "archive-zip",
