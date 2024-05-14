@@ -191,8 +191,8 @@ impl Template {
                                 }
                             }
                         }
-                        if matched && matches!(elem.continue_, Some(false) | None) {
-                            return Ok(result);
+                        if matched && !elem.continue_.unwrap_or(false) {
+                            break;
                         }
                     }
                 }
