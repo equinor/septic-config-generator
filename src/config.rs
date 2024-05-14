@@ -125,9 +125,10 @@ pub struct Source {
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct IncludeConditional {
-    items: Option<Vec<String>>,
     #[serde(rename = "if")]
     condition: String,
+    #[serde(rename = "then")]
+    items: Option<Vec<String>>,
     #[serde(rename = "continue")]
     continue_: Option<bool>,
 }
