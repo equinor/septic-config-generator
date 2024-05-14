@@ -149,7 +149,11 @@ pub struct Template {
 }
 
 impl Template {
-    pub fn include_set(&self, env: &Environment, source_data: &DataSourceRows) -> HashSet<String> {
+    pub fn include_set(
+        &self,
+        env: &Environment,
+        source_data: &DataSourceRows,
+    ) -> Result<HashSet<String>, minijinja::Error> {
         let mut result: HashSet<String> = HashSet::new();
         if let Some(includes) = self.include.as_ref() {
             for inc_item in includes {
@@ -159,19 +163,19 @@ impl Template {
                     }
                     Include::Conditional(elem) => match &elem.items {
                         Some(items) => {
-                            let expr = env.compile_expression(elem.condition.as_str()).unwrap();
-                            let eval = expr.eval(context! {}).unwrap();
+                            let expr = env.compile_expression(elem.condition.as_str())?;
+                            let eval = expr.eval(context! {})?;
                             if eval.is_true() {
                                 result.extend(items.clone());
                                 if matches!(elem.continue_, Some(false) | None) {
-                                    return result;
+                                    return Ok(result);
                                 }
                             }
                         }
                         None => {
+                            let expr = env.compile_expression(elem.condition.as_str())?;
                             for (key, row) in source_data {
-                                let expr = env.compile_expression(elem.condition.as_str()).unwrap();
-                                let eval = expr.eval(row).unwrap();
+                                let eval = expr.eval(row)?;
                                 if eval.is_true() {
                                     result.insert(key.clone());
                                 }
@@ -181,7 +185,7 @@ impl Template {
                 }
             }
         }
-        result
+        Ok(result)
     }
 
     pub fn exclude_set(&self, env: &Environment, source_data: &DataSourceRows) -> HashSet<String> {
@@ -422,21 +426,27 @@ layout:
     #[test]
     fn include_set_break_at_conditional_match() {
         let template = create_template_with_includes("true", None);
-        let res = template.include_set(&minijinja::Environment::new(), &IndexMap::new());
+        let res = template
+            .include_set(&minijinja::Environment::new(), &IndexMap::new())
+            .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "two".to_string()]));
     }
 
     #[test]
     fn include_set_continue_at_conditional_nonmatch() {
         let template = create_template_with_includes("false", None);
-        let res = template.include_set(&minijinja::Environment::new(), &IndexMap::new());
+        let res = template
+            .include_set(&minijinja::Environment::new(), &IndexMap::new())
+            .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "three".to_string()]));
     }
 
     #[test]
     fn include_set_continue_when_specified() {
         let template = create_template_with_includes("true", Some(true));
-        let res = template.include_set(&minijinja::Environment::new(), &IndexMap::new());
+        let res = template
+            .include_set(&minijinja::Environment::new(), &IndexMap::new())
+            .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "two".to_string(), "three".to_string()]));
     }
 }
