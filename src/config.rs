@@ -168,6 +168,7 @@ impl Template {
 
         if let Some(items) = items {
             for inc_item in items {
+                let mut matched = false;
                 match inc_item {
                     Include::Element(elem) => {
                         result.insert(elem.clone());
@@ -177,18 +178,20 @@ impl Template {
                         if let Some(items) = &elem.items {
                             let eval = expr.eval(context! {})?;
                             if eval.is_true() {
+                                matched = true;
                                 result.extend(items.clone());
-                                if matches!(elem.continue_, Some(false) | None) {
-                                    return Ok(result);
-                                }
                             }
                         } else {
-                            result.extend(source_data.iter().filter_map(|(key, row)| {
-                                match expr.eval(row) {
-                                    Ok(eval) if eval.is_true() => Some(key.clone()),
-                                    _ => None,
+                            for (key, row) in source_data {
+                                let eval = expr.eval(row)?;
+                                if eval.is_true() {
+                                    matched = true;
+                                    result.insert(key.clone());
                                 }
-                            }));
+                            }
+                        }
+                        if matched && matches!(elem.continue_, Some(false) | None) {
+                            return Ok(result);
                         }
                     }
                 }
