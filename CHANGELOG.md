@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.12.0](https://github.com/equinor/septic-config-generator/compare/v2.11.2...v2.12.0) (2024-05-16)
+
+
+### ✨ Features
+
+* add conditional includes/excludes for templates ([#277](https://github.com/equinor/septic-config-generator/issues/277)) ([ab097cf](https://github.com/equinor/septic-config-generator/commit/ab097cf4bf1b79a1d7aa6bca2bd39c1b92b0eabd))
+
+
+### 🧹 Chores
+
+* **deps:** bump anyhow from 1.0.81 to 1.0.83 ([#278](https://github.com/equinor/septic-config-generator/issues/278)) ([15c0ad3](https://github.com/equinor/septic-config-generator/commit/15c0ad3d4e2324bedd3e6084b625bfd9c1b175e0))
+
+
+### 🔨 Refactor
+
+* bump minijinja from 1.0.20 to 2.0.1 ([#279](https://github.com/equinor/septic-config-generator/issues/279)) ([a5583e5](https://github.com/equinor/septic-config-generator/commit/a5583e55ff0fd4d0da745ca8934df8ba6c068927))
+
 ## [2.11.2](https://github.com/equinor/septic-config-generator/compare/v2.11.1...v2.11.2) (2024-04-18)
 
 
