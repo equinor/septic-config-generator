@@ -186,20 +186,71 @@ values. This makes it possible to obtain any value from any source in any templa
 #### Layout
 
 The `layout` section contains one or more `template` structs that each represent a template file and how it should be
-rendered to the `outputfile`. It has the following fields:
+rendered to the `outputfile`. The templates will be rendered in the order they are listed. The `template` struct has the
+following fields:
 
 - `name` (string): The name of the template file. It should be located in the directory pointed to by the `templatepath`
   field.
 - `source` (optional string): If provided, will iterate over each row in the source file with the provided id and render
   once per iteration.
-- `include` (optional list of strings): The template will be rendered only for the rows listed.
-- `exclude` (optional list of strings): The template will be rendered for all rows in the source file except those
-  listed.
+- `include` (optional list of strings or `conditional items`): The template will be rendered only for the specified
+  rows.
+- `exclude` (optional list of strings or `conditional items`): The template will not be rendered for any of the
+  specified rows.
 
-Combining `include` and `exclude` will render the template only for rows listed under `include` and not listed under
-`exclude`.
+Combining `include` and `exclude` will render the template for only those rows that are specified under `include` but
+not specified under `exclude`. The row order in the source always determines the rendering order.
 
-The templates will be rendered in the order they are listed.
+##### Including and excluding rows from sources <!-- omit in toc -->
+
+The `include` and `exclude` sections require a bit more explanation. Both sections consist of a list that contains
+either strings that reference values in the first column in the source, or `conditional items`. The latter was added in
+v2.12 and follows this structure:
+
+- `if` (string): A [MiniJinja expression](https://docs.rs/minijinja/latest/minijinja/index.html#expression-usage). All
+  variables, whether defined on the command line with the `--vars` argument, global sources and rows from the current
+  source can be used in the expression.
+- `then` (optional list of strings): A list of items that will be included if the `if`-expression evaluates to `true`.
+- `continue` (optional boolean): If not set or if `false`, stop evaluating further include (or exclude) items for this
+  template. If `true`, continue evaluating following include (or exclude) items.
+
+If `then` is not specified, the `if`-expression will be evaluated for each row in the source. Any row that causes the
+expression to evaluate to `true` will be included. Use this format for including individual rows based on some property,
+e.g. wells that have a downhole pressure gauge or wells that are connected to a specific flowline.
+
+If `then` is specified, all items in the list will be included if the `if`-expression evaluates to `true`. Use this
+format for including one or more rows based on a global parameter, typically specified from the command line. E.g. to
+generate smaller configs with fewer wells for faster simulation times when the variable `testing` is `true`.
+
+A contrived example of a layout item (template):
+
+```yaml
+- name: 030_SopcProc_well.cnfg
+  source: wells
+  include:
+    - D01
+    - if: "WellName is startingwith('B')"
+    - if: "final == true"
+      then: [D02, D03]
+      continue: true
+    - D04
+```
+
+Here `D01` will always be included. Next, the `startingwith()`
+[MiniJinja test-function](https://docs.rs/minijinja/latest/minijinja/tests/index.html#functions) will evaluate to `true`
+for any row where `WellName` starts with "B". If there is at least one match, then all matching rows will be included.
+Since `continue` was not specified, the evaluation stops here and only `D01` and any `Bnn` wells are included in the
+template rendering.
+
+If the first `if`-expression had no matches, the evaluation continues to the next item. If the global variable `final`
+is set to `true`, then `D02` and `D03` will be included. Since `continue` is `true`, the evaluation continues to the
+next line, and `D04` is also included. The template will therefore be rendered once for each of `D01`, `D02`, `D03` and
+`D04`.
+
+Tip: By default, all rows in the source file are used for iteration, but an `include` statement effectively empties that
+set and replaces it with the result of the `include` items. To have a default of including all items in case none of the
+`if`-expressions match, simply add `if: "true"` as the last `conditional item`. This will evaluate to `true` for every
+row and therefore re-add them.
 
 ### Source files
 

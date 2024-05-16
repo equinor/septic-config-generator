@@ -1,8 +1,11 @@
 use anyhow::{bail, Result};
+use minijinja::{context, Environment};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
+
+use crate::datasource::DataSourceRows;
 
 const fn _default_true() -> bool {
     true
@@ -121,30 +124,88 @@ pub struct Source {
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
+pub struct IncludeConditional {
+    #[serde(rename = "if")]
+    condition: String,
+    #[serde(rename = "then")]
+    items: Option<Vec<String>>,
+    #[serde(rename = "continue")]
+    continue_: Option<bool>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(untagged)]
+pub enum Include {
+    Element(String),
+    Conditional(IncludeConditional),
+}
+
+#[derive(Deserialize, Debug, Default)]
+#[serde(deny_unknown_fields)]
 pub struct Template {
     pub name: String,
     pub source: Option<String>,
-    pub include: Option<Vec<String>>,
-    pub exclude: Option<Vec<String>>,
+    pub include: Option<Vec<Include>>,
+    pub exclude: Option<Vec<Include>>,
+}
+
+pub enum IncludeExclude {
+    Include,
+    Exclude,
 }
 
 impl Template {
-    pub fn include_set(&self) -> HashSet<String> {
-        self.include.as_ref().map_or_else(HashSet::new, |include| {
-            include.iter().cloned().collect::<HashSet<String>>()
-        })
-    }
+    pub fn include_exclude_set(
+        &self,
+        env: &Environment,
+        source_data: &DataSourceRows,
+        include_exclude: IncludeExclude,
+    ) -> Result<HashSet<String>, minijinja::Error> {
+        let mut result: HashSet<String> = HashSet::new();
+        let items = match include_exclude {
+            IncludeExclude::Include => self.include.as_ref(),
+            IncludeExclude::Exclude => self.exclude.as_ref(),
+        };
 
-    pub fn exclude_set(&self) -> HashSet<String> {
-        self.exclude.as_ref().map_or_else(HashSet::new, |exclude| {
-            exclude.iter().cloned().collect::<HashSet<String>>()
-        })
+        if let Some(items) = items {
+            for inc_item in items {
+                let mut matched = false;
+                match inc_item {
+                    Include::Element(elem) => {
+                        result.insert(elem.clone());
+                    }
+                    Include::Conditional(elem) => {
+                        let expr = env.compile_expression(elem.condition.as_str())?;
+                        if let Some(items) = &elem.items {
+                            let eval = expr.eval(context! {})?;
+                            if eval.is_true() {
+                                matched = true;
+                                result.extend(items.clone());
+                            }
+                        } else {
+                            for (key, row) in source_data {
+                                let eval = expr.eval(row)?;
+                                if eval.is_true() {
+                                    matched = true;
+                                    result.insert(key.clone());
+                                }
+                            }
+                        }
+                        if matched && !elem.continue_.unwrap_or(false) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(result)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indexmap::IndexMap;
     use std::io::Write;
     use tempfile::NamedTempFile;
 
@@ -320,5 +381,64 @@ layout:
             .unwrap_err()
             .to_string()
             .contains("invalid file extension"))
+    }
+
+    fn create_template_with_includes(
+        include_condition: &str,
+        include_continue: Option<bool>,
+    ) -> Template {
+        Template {
+            name: "templatename".to_string(),
+            source: None,
+            include: Some(vec![
+                Include::Element("one".to_string()),
+                Include::Conditional(IncludeConditional {
+                    items: Some(vec!["two".to_string()]),
+                    condition: include_condition.to_string(),
+                    continue_: include_continue,
+                }),
+                Include::Element("three".to_string()),
+            ]),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn include_exclude_set_break_when_condition_matches() {
+        let template = create_template_with_includes("true", None);
+        let res = template
+            .include_exclude_set(
+                &minijinja::Environment::new(),
+                &IndexMap::new(),
+                IncludeExclude::Include,
+            )
+            .unwrap();
+        assert!(res == HashSet::from(["one".to_string(), "two".to_string()]));
+    }
+
+    #[test]
+    fn include_exclude_set_continue_when_condition_not_matched() {
+        let template = create_template_with_includes("false", None);
+        let res = template
+            .include_exclude_set(
+                &minijinja::Environment::new(),
+                &IndexMap::new(),
+                IncludeExclude::Include,
+            )
+            .unwrap();
+        assert!(res == HashSet::from(["one".to_string(), "three".to_string()]));
+    }
+
+    #[test]
+    fn include_exclude_set_continue_when_continue_true() {
+        let template = create_template_with_includes("true", Some(true));
+        let res = template
+            .include_exclude_set(
+                &minijinja::Environment::new(),
+                &IndexMap::new(),
+                IncludeExclude::Include,
+            )
+            .unwrap();
+        assert!(res == HashSet::from(["one".to_string(), "two".to_string(), "three".to_string()]));
     }
 }

@@ -1,6 +1,7 @@
 use crate::config;
 use crate::config::Counter as CounterConfig;
 use crate::datasource::DataSourceRows;
+use anyhow::Context;
 use chrono::Local;
 use minijinja::value::{from_args, Kwargs, Rest, Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
@@ -295,14 +296,30 @@ impl<'a> MiniJinja<'a> {
             let mut items_set: HashSet<String> = keys.iter().cloned().collect();
 
             if template.include.is_some() {
-                items_set = items_set
-                    .intersection(&template.include_set())
-                    .cloned()
-                    .collect();
+                let include_set = template
+                    .include_exclude_set(
+                        &self.env,
+                        source_data.get(src_name).expect(
+                            "render_template: unable to fetch source. This should not be possible!",
+                        ),
+                        config::IncludeExclude::Include,
+                    )
+                    .with_context(|| format!("template {:?}", &template.name))?;
+                items_set = items_set.intersection(&include_set).cloned().collect();
             }
 
             items_set = items_set
-                .difference(&template.exclude_set())
+                .difference(
+                    &template
+                        .include_exclude_set(
+                            &self.env,
+                            source_data.get(src_name).expect(
+                                "render_template: unable to fetch source. This should not be possible!",
+                            ),
+                            config::IncludeExclude::Exclude,
+                        )
+                        .with_context(|| format!("template {:?}", &template.name))?,
+                )
                 .cloned()
                 .collect();
 
