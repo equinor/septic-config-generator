@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.12.1](https://github.com/equinor/septic-config-generator/compare/v2.12.0...v2.12.1) (2024-11-18)
+
+
+### 🧹 Chores
+
+* add SECURITY.md ([#299](https://github.com/equinor/septic-config-generator/issues/299)) ([3e05320](https://github.com/equinor/septic-config-generator/commit/3e0532055ff21f56b105d3323ecd5f2028bfd3be))
+
 ## [2.12.0](https://github.com/equinor/septic-config-generator/compare/v2.11.2...v2.12.0) (2024-05-16)
 
 
