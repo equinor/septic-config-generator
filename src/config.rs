@@ -11,10 +11,16 @@ const fn _default_true() -> bool {
     true
 }
 
+fn _default_encoding() -> String {
+    "Windows-1252".to_string()
+}
+
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub outputfile: Option<String>,
+    #[serde(default = "_default_encoding")]
+    pub encoding: String,
     pub templatepath: String,
     #[serde(default = "_default_true")]
     pub adjustspacing: bool,
@@ -35,8 +41,17 @@ impl Config {
             validate_source(source)?;
         }
 
+        validate_encoding(&cfg.encoding)?;
+
         Ok(cfg)
     }
+}
+
+fn validate_encoding(encoding: &str) -> Result<()> {
+    if encoding_rs::Encoding::for_label(encoding.as_bytes()).is_none() {
+        bail!("invalid encoding '{}'", encoding);
+    }
+    Ok(())
 }
 
 fn validate_source(source: &Source) -> Result<()> {
@@ -219,6 +234,7 @@ mod tests {
     fn config_read_valid_content() {
         let content = r#"
 outputfile: test.cnfg
+encoding: Windows-1252
 templatepath: templates
 adjustspacing: true
 verifycontent: true
@@ -239,6 +255,34 @@ layout:
         let temp_file = create_temp_yaml(content);
         let config = Config::new(temp_file.path());
         assert!(config.is_ok())
+    }
+
+    #[test]
+    fn config_correct_default_values() {
+        let content = r#"
+outputfile: test.cnfg
+templatepath: templates
+sources:
+  - filename: test.csv
+    id: main
+layout:
+  - name: template1.cnfg
+    source: main
+"#;
+        let temp_file = create_temp_yaml(content);
+        let config = Config::new(temp_file.path());
+        assert!(config.is_ok());
+        let config = config.unwrap();
+        assert!(config.adjustspacing);
+        assert!(config.verifycontent);
+        assert_eq!(config.encoding, "Windows-1252");
+    }
+
+    #[test]
+    fn fail_validate_encoding_unknown() {
+        let result = validate_encoding("unknown");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("invalid encoding"));
     }
 
     #[test]
