@@ -1,23 +1,15 @@
-
   System:        CVMVtest
-         Text1=  "Small system for SEPTIC test of three CVs and three MVs. OPC connection to simulator "
+         Text1=  "Small system for Septic test of three CVs and three MVs. OPC connection to simulator "
          Text2=  ""
          Nsecs=  10
        PlotMax=  10
          Nhist=  10
          Npred=  10
-	     Nmodl=  10
-         Nxupd=  1
-        ClipOn=  OFF
+         Nmodl=  10
      ChngLogOn=  ON
-         WdwDx=  800
-         WdwDy=  400
-         Xline=  0
-         Xback=  0.7
           Grps=  3
                  "Group1"  "Group2"  "Group3"
        GrpLock=  0000
-        Xgroup=  0001
       MaxLogon=  ROOT
        RootPwd=  ""
        MngrPwd=  ""
@@ -26,12 +18,6 @@
           Terr=  0
        DebugNR=  1000
        DebugOn=  00000000
-         Zname=  225
-         Zhilo=  275
-        Zstate=  225
-         Zopen=  225
-         Zfont=  275
-         Zline=  275
       FontSize=  -1
   InitialGroup=  -1
 ShowText1WithName=  OFF
@@ -48,9 +34,9 @@ MinimizeByHide=  OFF
 HideCloseButton=  OFF
 OPCSampleTimeOffset=  0
 
-ExprProc:      CVMVtest
+  ExprProc:      CVMVtest
 
-SopcProc:      CVMVtest
+  SopcProc:      CVMVtest
          Text1=  ""
          Text2=  ""
           Site=  SITENONE
@@ -73,10 +59,10 @@ LoopcheckReadTag=  "DUMMY_TAG"
  BadCountLimit=  0
 SampleAgeLimit=  -1
 BlockWritingIfBad=  OFF
-    WriteGroups=  1
+   WriteGroups=  1
 WriteGroupPause=  1000
 
-   SopcCvr:    	 D01Qg
+  SopcCvr:       D01Qg
          Text1=  "D01:GasRate"
          Text2=  ""
         CvrTag=  "D06Qg"
@@ -94,7 +80,7 @@ WriteGroupPause=  1000
          Scale=  1
         Offset=  0
 
-   SopcMvr:    	 D01Zpc
+  SopcMvr:       D01Zpc
          Text1=  "D01 Production choke"
          Text2=  ""
         MvrTag=  "D01Zpc"
@@ -114,7 +100,7 @@ WriteGroupPause=  1000
     MaxDownTag=  "18HCV0600.XRCD"
        AutoTag=  "18HCV0600.YBA"
 
-   SopcCvr:    	 D02Qg
+  SopcCvr:       D02Qg
          Text1=  "D02:GasRate"
          Text2=  ""
         CvrTag=  "D07Qg"
@@ -132,7 +118,7 @@ WriteGroupPause=  1000
          Scale=  1
         Offset=  0
 
-   SopcMvr:    	 D02Zpc
+  SopcMvr:       D02Zpc
          Text1=  "D02 Production choke"
          Text2=  ""
         MvrTag=  "D02Zpc"
@@ -152,7 +138,7 @@ WriteGroupPause=  1000
     MaxDownTag=  "18HCV0700.XRCD"
        AutoTag=  "18HCV0700.YBA"
 
-   SopcCvr:    	 D03Qg
+  SopcCvr:       D03Qg
          Text1=  "D03:GasRate"
          Text2=  ""
         CvrTag=  "D08Qg"
@@ -170,7 +156,7 @@ WriteGroupPause=  1000
          Scale=  1
         Offset=  0
 
-   SopcMvr:    	 D03Zpc
+  SopcMvr:       D03Zpc
          Text1=  "D03 Production choke"
          Text2=  ""
         MvrTag=  "D03Zpc"
@@ -189,7 +175,7 @@ WriteGroupPause=  1000
       MaxUpTag=  "18HCV0800.XRCU"
     MaxDownTag=  "18HCV0800.XRCD"
        AutoTag=  "18HCV0800.YBA"
- 
+
   SmpcAppl:      CVMVtest
          Text1=  ""
          Text2=  ""
@@ -198,7 +184,6 @@ WriteGroupPause=  1000
        PlotMax=  25
          Nhorz=  80
         Nstart=  0
-      MasterOn=  ON
        DesMode=  ACTIVE
        FailMax=  0
        PriceOn=  ON
@@ -228,20 +213,18 @@ WriteGroupPause=  1000
      EachParam=  OFF
    LinErrorLim=  1000
      ColdStart=  OFF
-    SimOptimal=  OFF
      PrintSens=  0
      SensLimSS=  1e-006
     SensLimDyn=  1e-006
 
-         Cvr:  D01Qg
-           Text1=  "D01: Gas rate"
+  Cvr:           D01Qg
+         Text1=  "D01: Gas rate"
          Text2=  ""
           Mode=  ACTIVE
           Auto=  OFF
        PlotMax=  250000
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  -1
           Unit=  "Sm3/h"
@@ -260,9 +243,7 @@ WriteGroupPause=  1000
           Fulf=  1
      HighPnlty=  1
       LowPnlty=  1
-     HighLimit=  1000
-      LowLimit=  1000
-     RelxParam=  3    1   30   80
+     RelxParam=  3    1    30    80
    FulfReScale=  0.001
       SetpTref=  1.4116
      BiasTfilt=  1
@@ -282,8 +263,8 @@ MeasValidation=  OFF
         LockSP=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
-  
-    Mvr:  D01Zpc            
+
+  Mvr:           D01Zpc
          Text1=  "D01: Production choke"
          Text2=  ""
           Mode=  ACTIVE
@@ -291,7 +272,6 @@ UseFactorWeight=  0
        PlotMax=  100
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  100
           Unit=  "%"
@@ -311,7 +291,7 @@ UseFactorWeight=  0
           Fulf=  10
    FulfReScale=  1
          Price=  0
-      Blocking=  8    1    2    4    8   16   32   64   96
+      Blocking=  8    1     2     4     8    16    32    64    96
 MeasValidation=  OFF
  MeasHighLimit=  1e+010
   MeasLowLimit=  -1e+010
@@ -320,15 +300,14 @@ MeasValidation=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
 
-         Cvr:  D02Qg
-           Text1=  "D02: Gas rate"
+  Cvr:           D02Qg
+         Text1=  "D02: Gas rate"
          Text2=  ""
           Mode=  ACTIVE
           Auto=  OFF
        PlotMax=  250000
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  -1
           Unit=  "Sm3/h"
@@ -347,9 +326,7 @@ UseFactorWeight=  0
           Fulf=  1
      HighPnlty=  1
       LowPnlty=  1
-     HighLimit=  1000
-      LowLimit=  1000
-     RelxParam=  3    1   30   80
+     RelxParam=  3    1    30    80
    FulfReScale=  0.001
       SetpTref=  1.4116
      BiasTfilt=  1
@@ -369,8 +346,8 @@ MeasValidation=  OFF
         LockSP=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
-  
-    Mvr:  D02Zpc            
+
+  Mvr:           D02Zpc
          Text1=  "D02: Production choke"
          Text2=  ""
           Mode=  ACTIVE
@@ -378,7 +355,6 @@ UseFactorWeight=  0
        PlotMax=  100
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  100
           Unit=  "%"
@@ -398,7 +374,7 @@ UseFactorWeight=  0
           Fulf=  10
    FulfReScale=  1
          Price=  0
-      Blocking=  8    1    2    4    8   16   32   64   96
+      Blocking=  8    1     2     4     8    16    32    64    96
 MeasValidation=  OFF
  MeasHighLimit=  1e+010
   MeasLowLimit=  -1e+010
@@ -407,15 +383,14 @@ MeasValidation=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
 
-         Cvr:  D03Qg
-           Text1=  "D03: Gas rate"
+  Cvr:           D03Qg
+         Text1=  "D03: Gas rate"
          Text2=  ""
           Mode=  ACTIVE
           Auto=  OFF
        PlotMax=  250000
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  -1
           Unit=  "Sm3/h"
@@ -434,9 +409,7 @@ UseFactorWeight=  0
           Fulf=  1
      HighPnlty=  1
       LowPnlty=  1
-     HighLimit=  1000
-      LowLimit=  1000
-     RelxParam=  3    1   30   80
+     RelxParam=  3    1    30    80
    FulfReScale=  0.001
       SetpTref=  1.4116
      BiasTfilt=  1
@@ -456,8 +429,8 @@ MeasValidation=  OFF
         LockSP=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
-  
-    Mvr:  D03Zpc            
+
+  Mvr:           D03Zpc
          Text1=  "D03: Production choke"
          Text2=  ""
           Mode=  ACTIVE
@@ -465,7 +438,6 @@ UseFactorWeight=  0
        PlotMax=  100
        PlotMin=  0
       PlotSpan=  -1
-       PlotGrp=  0000000000000000000000000000000
           Nfix=  1
         MaxChg=  100
           Unit=  "%"
@@ -485,7 +457,7 @@ UseFactorWeight=  0
           Fulf=  10
    FulfReScale=  1
          Price=  0
-      Blocking=  8    1    2    4    8   16   32   64   96
+      Blocking=  8    1     2     4     8    16    32    64    96
 MeasValidation=  OFF
  MeasHighLimit=  1e+010
   MeasLowLimit=  -1e+010
@@ -493,8 +465,10 @@ MeasValidation=  OFF
         LockIV=  OFF
         LockLL=  OFF
 UseFactorWeight=  0
-  
-	  DisplayGroup:  Tables
+
+  ExprModl:      modell
+
+  DisplayGroup:  Tables
        GroupNo=  1
         Locked=  OFF
           Rows=  -1
@@ -527,12 +501,12 @@ UseFactorWeight=  0
   CvrList:       CVList
           Text=  "CV"
           Cvrs=  1
-                 "D01Qg"  
+                 "D01Qg"
 
   MvrList:       MVlist
           Text=  "MV"
           Mvrs=  1
-                 "D01Zpc"  
+                 "D01Zpc"
 
   Spacer:        s1
           Size=  2
@@ -544,9 +518,9 @@ UseFactorWeight=  0
   CvrList:       CVList
           Text=  "CV"
           Cvrs=  1
-                 "D02Qg"  
+                 "D02Qg"
 
   MvrList:       MVlist
           Text=  "MV"
           Mvrs=  1
-                 "D02Zpc"  
+                 "D02Zpc"

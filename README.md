@@ -1,4 +1,4 @@
-# SEPTIC config generator
+# Septic config generator
 
 ![Build status](https://img.shields.io/github/actions/workflow/status/equinor/septic-config-generator/ci.yml)
 ![Codecov](https://img.shields.io/codecov/c/github/equinor/septic-config-generator)
@@ -6,13 +6,13 @@
 ![GitHub tag (with filter)](https://img.shields.io/github/v/tag/equinor/septic-config-generator?label=latest)
 ![GitHub release (by tag)](https://img.shields.io/github/downloads/equinor/septic-config-generator/latest/total)
 
-SEPTIC config generator (scg) is a tool to generate SEPTIC config files based on one or more template files and one or
+Septic config generator (scg) is a tool to generate Septic config files based on one or more template files and one or
 more Excel- or CSV-tables containing substitution values. A yaml-based config file specifies how the templates should be
 combined by inserting values from the tables in locations identified by labels.
 
 Scg uses [MiniJinja](https://docs.rs/minijinja/latest/minijinja/syntax/index.html) as template engine.
 
-Although scg was written specifically to make it easier to create config files for SEPTIC, it can be used to merge any
+Although scg was written specifically to make it easier to create config files for Septic, it can be used to merge any
 kind of text files where one or more files needs to be repeated while iterating over table rows.
 
 Documentation can be found in [docs/Howto_SCG.md](docs/Howto_SCG.md).

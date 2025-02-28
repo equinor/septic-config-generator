@@ -1,5 +1,4 @@
-
-   SopcCvr:    	 D{{ Id }}Qg
+  SopcCvr:       D{{ Id }}Qg
          Text1=  "D{{ Id }}:GasRate"
          Text2=  ""
         CvrTag=  "D{{ TagId }}Qg"
@@ -17,7 +16,7 @@
          Scale=  1
         Offset=  0
 
-   SopcMvr:    	 D{{ Id }}Zpc
+  SopcMvr:       D{{ Id }}Zpc
          Text1=  "D{{ Id }} Production choke"
          Text2=  ""
         MvrTag=  "D{{ Id }}Zpc"

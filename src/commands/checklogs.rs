@@ -35,7 +35,7 @@ impl Error for CheckLogsError {}
 pub struct Checklogs {
     #[arg(
         value_name = "RUNDIR",
-        help = "The SEPTIC rundir to search for outfiles"
+        help = "The Septic rundir to search for outfiles"
     )]
     pub rundir: PathBuf,
 }

@@ -2,13 +2,13 @@
 name = "septic-config-generator"
 version = "2.12.0"
 edition = "2021"
-description = "A tool to generate SEPTIC config file from template files"
+description = "A tool to generate Septic config file from template files"
 license = "MIT"
 publish = false
 build = "build.rs"
 
 [package.metadata.winresource]
-FileDescription = "SEPTIC config generator"
+FileDescription = "Septic config generator"
 OriginalFilename = "scg.exe"
 LegalCopyright = "Copyright © Equinor ASA 2023"
 
