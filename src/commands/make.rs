@@ -109,7 +109,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     let relative_root = PathBuf::from(
         cfg_file
             .parent()
-            .expect("BUG: Unable to obtain parent of cfg_file"),
+            .expect("cmd_make: Unable to obtain parent of cfg_file"),
     );
 
     let cfg = Config::new(&cfg_file)
@@ -120,7 +120,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         let outfile = relative_root.join(
             cfg.outputfile
                 .as_ref()
-                .expect("BUG: Unable to unwrap cfg.outputfile"),
+                .expect("cmd_make: Unable to unwrap cfg.outputfile"),
         );
         if outfile.exists() {
             let file_list = collect_file_list(&cfg, &cfg_file, &relative_root)
@@ -135,8 +135,8 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         load_all_source_data(&cfg, &relative_root).map_err(MakeError::LoadSourceError)?;
 
     let template_path = relative_root.join(&cfg.templatepath);
-    let mut renderer =
-        MiniJinja::new(globals, &template_path, cfg.counters).map_err(MakeError::MiniJinjaError)?;
+    let mut renderer = MiniJinja::new(globals, &template_path, &cfg.encoding, cfg.counters)
+        .map_err(MakeError::MiniJinjaError)?;
 
     for (key, source_data) in all_source_data.iter() {
         renderer.env.add_global(
@@ -158,14 +158,20 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     }
 
     if let Some(path) = cfg.outputfile.as_ref().map(|f| relative_root.join(f)) {
-        if !path.exists() || check_if_overwrite_outfile(&path, &rendered, cfg.verifycontent)? {
+        if !path.exists()
+            || check_if_overwrite_outfile(&path, &cfg.encoding, &rendered, cfg.verifycontent)?
+        {
             backup_file_if_exists(&path);
             let mut f = fs::File::create(&path)
                 .with_context(|| format!("Problem creating output file '{}'", &path.display()))
                 .map_err(MakeError::CreateOutputFile)?;
 
-            let (cow, _encoding, _b) = encoding_rs::WINDOWS_1252.encode(&rendered);
-            f.write_all(&cow)
+            let encoding = encoding_rs::Encoding::for_label(cfg.encoding.as_bytes())
+                .expect("cmd_make: Unknown encoding");
+
+            let (buffer, _encoding, _b) = encoding.encode(&rendered);
+
+            f.write_all(&buffer)
                 .with_context(|| format!("Problem writing output file '{}'", &path.display()))
                 .map_err(MakeError::CreateOutputFile)?
         }
@@ -178,14 +184,18 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
 
 fn check_if_overwrite_outfile(
     path: &PathBuf,
+    encoding: &str,
     rendered: &str,
     verifycontent: bool,
 ) -> Result<bool, MakeError> {
     let file = fs::File::open(path)
         .with_context(|| format!("Problem opening file '{}'", &path.display()))
         .map_err(MakeError::Other)?;
+
+    let encoding =
+        encoding_rs::Encoding::for_label(encoding.as_bytes()).expect("cmd_make: Unknown encoding");
     let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-        .encoding(Some(encoding_rs::WINDOWS_1252))
+        .encoding(Some(encoding))
         .build(file);
     let mut old_file_content = String::new();
     reader
@@ -323,7 +333,7 @@ fn backup_file_if_exists(path: &PathBuf) {
             Some(ext) => path.with_extension(format!("{}.bak", ext.to_str().unwrap_or_default())),
             None => path.with_extension("bak"),
         };
-        fs::rename(path, backup_path).expect("BUG: Failed to create backup file");
+        fs::rename(path, backup_path).expect("cmd_make: Failed to create backup file");
     }
 }
 
@@ -369,7 +379,13 @@ mod tests {
 
     #[test]
     fn render_with_normal_values() -> Result<()> {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
+        let renderer = MiniJinja::new(
+            &[],
+            Path::new("tests/testdata/templates/"),
+            "Windows-1252",
+            None,
+        )
+        .unwrap();
         let template = config::Template {
             name: "01_normals.tmpl".to_string(),
             source: Some("main".to_string()),
@@ -390,7 +406,13 @@ mod tests {
 
     #[test]
     fn render_with_special_values() -> Result<()> {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
+        let renderer = MiniJinja::new(
+            &[],
+            Path::new("tests/testdata/templates/"),
+            "Windows-1252",
+            None,
+        )
+        .unwrap();
         let template = config::Template {
             name: "02_specials.tmpl".to_string(),
             source: Some("errors".to_string()),
@@ -412,8 +434,13 @@ mod tests {
     #[test]
     fn render_with_global_variables() -> Result<()> {
         let globals = ["glob".to_string(), "globvalue".to_string()];
-        let renderer =
-            MiniJinja::new(&globals, Path::new("tests/testdata/templates/"), None).unwrap();
+        let renderer = MiniJinja::new(
+            &globals,
+            Path::new("tests/testdata/templates/"),
+            "Windows-1252",
+            None,
+        )
+        .unwrap();
         let template = config::Template {
             name: "03_globals.tmpl".to_string(),
             ..Default::default()
@@ -430,8 +457,13 @@ mod tests {
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
     fn render_with_global_source_no_iteration() -> Result<()> {
-        let mut renderer =
-            MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
+        let mut renderer = MiniJinja::new(
+            &[],
+            Path::new("tests/testdata/templates/"),
+            "Windows-1252",
+            None,
+        )
+        .unwrap();
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             ..Default::default()
@@ -457,8 +489,13 @@ mod tests {
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
     fn render_with_global_source_and_iteration() -> Result<()> {
-        let mut renderer =
-            MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
+        let mut renderer = MiniJinja::new(
+            &[],
+            Path::new("tests/testdata/templates/"),
+            "Windows-1252",
+            None,
+        )
+        .unwrap();
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             source: Some("main".to_string()),
@@ -485,7 +522,13 @@ mod tests {
 
     #[test]
     fn render_uses_latin1_encoding() {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
+        let renderer = MiniJinja::new(
+            &[],
+            Path::new("tests/testdata/templates/"),
+            "Windows-1252",
+            None,
+        )
+        .unwrap();
         let template = config::Template {
             name: "06_encoding.tmpl".to_string(),
             ..Default::default()
@@ -499,7 +542,13 @@ mod tests {
 
     #[test]
     fn render_adjusts_spacing() {
-        let renderer = MiniJinja::new(&[], Path::new("tests/testdata/templates/"), None).unwrap();
+        let renderer = MiniJinja::new(
+            &[],
+            Path::new("tests/testdata/templates/"),
+            "Windows-1252",
+            None,
+        )
+        .unwrap();
         let template = config::Template {
             name: "00_plaintext.tmpl".to_string(),
             ..Default::default()

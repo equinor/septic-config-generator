@@ -1,6 +1,7 @@
 # outputfile: test.cnfg
 
 templatepath: templates
+encoding: windows-1252
 
 adjustspacing: true
 

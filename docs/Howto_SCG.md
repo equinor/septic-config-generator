@@ -97,6 +97,7 @@ in the example below:
 
 ```yaml
 outputfile: example.cnfg
+encoding: utf-8
 templatepath: templates
 adjustspacing: true
 verifycontent: true
@@ -126,6 +127,9 @@ layout:
 ```
 
 - `outputfile` (optional string): The file that will be generated. Writes to stdout if not provided.
+- `encoding` (optional string, default: windows-1252): Specify the encoding for template files and the outputfile. Use
+  any label specified in the [get an encoding](https://encoding.spec.whatwg.org/#concept-encoding-get) algorithm. The
+  default may be changed to utf-8 at a later time. _(Added in v2.13)_
 - `templatepath` (string): The directory that contains all template files.
 - `adjustspacing` (boolean, default: true): Specifies whether to ensure exactly one newline between rendered template
   files. If `false`, then the rendering will default to
