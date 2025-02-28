@@ -184,7 +184,11 @@ fn erroring_formatter(
 }
 
 #[allow(clippy::unnecessary_wraps)]
-fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, Error> {
+fn load_template(
+    template_path: &Path,
+    encoding_name: &str,
+    name: &str,
+) -> Result<Option<String>, Error> {
     let mut path = PathBuf::from(template_path);
     path.push(name);
 
@@ -198,9 +202,10 @@ fn load_template(template_path: &Path, name: &str) -> Result<Option<String>, Err
             }
         },
     };
-
+    let encoding = encoding_rs::Encoding::for_label(encoding_name.as_bytes())
+        .expect("cmd_make: Unknown encoding");
     let mut reader = encoding_rs_io::DecodeReaderBytesBuilder::new()
-        .encoding(Some(encoding_rs::WINDOWS_1252))
+        .encoding(Some(encoding))
         .build(file);
     let mut content = String::new();
 
@@ -221,6 +226,7 @@ impl<'a> MiniJinja<'a> {
     pub fn new(
         globals: &[String],
         template_path: &Path,
+        encoding: &str,
         counter_list: Option<Vec<CounterConfig>>,
     ) -> anyhow::Result<MiniJinja<'a>> {
         let mut renderer = MiniJinja {
@@ -261,11 +267,12 @@ impl<'a> MiniJinja<'a> {
         renderer.env.set_formatter(erroring_formatter);
         // renderer.env.set_debug(false);  // TODO: enable via cmdline flag?
 
-        let local_template_path = template_path.to_path_buf();
+        let closure_template_path = template_path.to_path_buf();
+        let closure_encoding = encoding.to_string();
 
         renderer
             .env
-            .set_loader(move |name| load_template(&local_template_path, name));
+            .set_loader(move |name| load_template(&closure_template_path, &closure_encoding, name));
         Ok(renderer)
     }
 
