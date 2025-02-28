@@ -24,8 +24,6 @@
           Fulf=  1
      HighPnlty=  1
       LowPnlty=  1
-     HighLimit=  1000
-      LowLimit=  1000
      RelxParam=  3    1    30    80
    FulfReScale=  0.001
       SetpTref=  1.4116
