@@ -1,4 +1,4 @@
-# SEPTIC config generator <!-- omit in toc -->
+# Septic config generator <!-- omit in toc -->
 
 This is the documentation for the Rust-based SCG 2.x. If you are looking for documentation for the legacy Python-based
 1.x version, please go [here](docs/HOWTO_SCG_legacy.md).
@@ -41,22 +41,22 @@ using 1.0 to 2.x, expect having to change a few lines in your templates and YAML
 
 ## About
 
-SEPTIC config generator (scg) is a tool to generate SEPTIC config files based on one or more template files and one or
+Septic config generator (scg) is a tool to generate Septic config files based on one or more template files and one or
 more Excel- or CSV-tables containing substitution values. A yaml-based config file specifies how the templates should be
 combined by inserting values from the tables in locations identified by labels.
 
 ## Introduction
 
-Upon inspecting a SEPTIC configuration file, you will find that it can be divided into segments where some segments are
+Upon inspecting a Septic configuration file, you will find that it can be divided into segments where some segments are
 static while others are repeated for several wells (or some other entity) with only minor modifications.
 
-For example: The initial `System` section of the SEPTIC config is a static part that only occurs once. The following
+For example: The initial `System` section of the Septic config is a static part that only occurs once. The following
 `SopcProc` section usually contains a static header followed by the definition of a number of `SopcXvr` . The latter
 part usually consists of many repeating values for all wells. Following this, you will normally have one or more
 `DmmyAppl` sections that contain a mixture of common elements and per-well elements, and similarly for other sections.
 
 By extracting these segments and placing them into separate template files, where the repeating parts are replaced by
-identifier tags, this tool can recombine the templates into a fully working SEPTIC config. Some key advantages are:
+identifier tags, this tool can recombine the templates into a fully working Septic config. Some key advantages are:
 
 - Changes made to one well can be quickly propagated to other wells.
 - Adding wells to an existing config can be is as simple as specifying some key information for the new wells and
@@ -74,7 +74,7 @@ Download the latest version from the Releases-section on GitHub and extract scg.
 The tool has four commands (or modes of operation):
 
 - make: Generate complete config file based on templates
-- checklogs: Inspect SEPTIC log files and report errors. _(Added in 2.4)_
+- checklogs: Inspect Septic log files and report errors. _(Added in 2.4)_
 - diff: Simple utility to show difference between two files.
 - update: Check GitHub for new release. If available, ask user whether to update. _(Added in 2.6)_
 
@@ -412,7 +412,7 @@ underlying mechanisms that are used. The parameter replacement performed by the 
 templating engine that can do lots more than simply replacing variable names with values. Some examples are expressions
 (e.g. calculate offsets for placing display elements based on well id number), statements for inheriting or including
 other template files, conditionals, loops and filter functions. This makes scg very flexible. We can, for example,
-easily handle SEPTIC configs with non-similar wells by wrapping selected lines in conditionals.
+easily handle Septic configs with non-similar wells by wrapping selected lines in conditionals.
 
 For further information, please take a look at the
 [MiniJinja documentation](https://docs.rs/minijinja/latest/minijinja/). In particular:
@@ -534,7 +534,7 @@ Try for example to add the following line at the top of the first template file:
 ## scg checklogs
 
 This command is used to inspect the `.out` file and the newest (by timestamp) `.cnc` file in the specified run directory
-and report any errors or warnings found. If the run directory contains a `startlogs` directory (in use since SEPTIC
+and report any errors or warnings found. If the run directory contains a `startlogs` directory (in use since Septic
 v2.85), `scg checklogs` will look there for `.cnc` files.
 
 The exit status is 0 if everything went fine, 1 if one or more errors or warnings were found, and 2 if the check
@@ -565,12 +565,12 @@ via the hidden `--token` argument.
 It may be easier to understand how to use the tool by example. In the docs-directory in this repository, you will find a
 directory called `basic example`. This directory contains the following directories and files:
 
-- templates: A directory containing the templates that make up a SEPTIC config file.
+- templates: A directory containing the templates that make up a Septic config file.
 - example.yaml: Defines how the template files should be combined to create example_final.conf
 - example.xlsx: An Excel file that contains data to insert into the templates.
-- example.cnfg: The resulting SEPTIC config file.
+- example.cnfg: The resulting Septic config file.
 
-Download and copy the entire directory called `basic example` to `C:\Appl\SEPTIC` .
+Download and copy the entire directory called `basic example` to `C:\Appl\Septic` .
 
 ### The template files
 
@@ -696,7 +696,7 @@ rows that are part of `include` and not in `exclude` are included.
 
 Now that you know how the files are used, let's try to generate a config. Start by making a copy of `example.cnfg`.
 Rename the copy to `example_original.cnfg`. Make sure that scg.exe is somewhere in your path, open a command line and
-change directory to `C:\appl\SEPTIC\Basic Example`.
+change directory to `C:\appl\Septic\Basic Example`.
 
 To generate example.cnfg, type:
 

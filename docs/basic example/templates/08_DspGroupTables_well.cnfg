@@ -1,4 +1,3 @@
-
   Spacer:        s1
           Size=  2
 
@@ -9,9 +8,9 @@
   CvrList:       CVList
           Text=  "CV"
           Cvrs=  1
-                 "D{{ Id }}Qg"  
+                 "D{{ Id }}Qg"
 
   MvrList:       MVlist
           Text=  "MV"
           Mvrs=  1
-                 "D{{ Id }}Zpc"  
+                 "D{{ Id }}Zpc"

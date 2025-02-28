@@ -4,7 +4,7 @@ templatepath: templates
 
 verifycontent: true
 
-adjustsspacing: true
+adjustspacing: true
 
 sources:
   - filename: example.xlsx
@@ -17,10 +17,11 @@ layout:
   - name: 03_SopcProc_well.cnfg
     source: main
   - name: 04_SmpcAppl.cnfg
-  - name: 05_ExprModl_well.cnfg
+  - name: 05_SmpcAppl_well.cnfg
     source: main
-  - name: 06_DspGroupTables.cnfg
-  - name: 07_DspGroupTables_well.cnfg
+  - name: 06_ExprModl.cnfg    
+  - name: 07_DspGroupTables.cnfg
+  - name: 08_DspGroupTables_well.cnfg
     source: main
     include:
       - D01

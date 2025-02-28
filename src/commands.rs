@@ -2,7 +2,7 @@ use clap::Subcommand;
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-    /// Generate SEPTIC config
+    /// Generate Septic config
     Make(Make),
     /// Show difference between two text files
     Diff(Diff),
