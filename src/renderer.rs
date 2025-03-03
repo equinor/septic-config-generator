@@ -3,7 +3,7 @@ use crate::config::Counter as CounterConfig;
 use crate::datasource::DataSourceRows;
 use anyhow::Context;
 use chrono::Local;
-use minijinja::value::{from_args, Kwargs, Rest, Value, ValueKind};
+use minijinja::value::{Kwargs, Rest, Value, ValueKind, from_args};
 use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -112,7 +112,9 @@ fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
 }
 
 fn filt_values(v: Value) -> Result<Value, Error> {
-    eprintln!("The 'values' filter has been deprecated as it is no longer needed. Will be removed in an upcoming release. Please do not use.");
+    eprintln!(
+        "The 'values' filter has been deprecated as it is no longer needed. Will be removed in an upcoming release. Please do not use."
+    );
     Ok(v)
 }
 
@@ -124,7 +126,7 @@ fn filt_bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
             return Err(Error::new(
                 ErrorKind::InvalidOperation,
                 "input value must be a sequence of integers or an integer",
-            ))
+            ));
         }
     };
     let length = length.unwrap_or(31);
@@ -548,18 +550,22 @@ mod tests {
     fn customfunction_bitmask_errors_on_integer_oor() {
         let result = filt_bitmask(Value::from(-1), Some(31));
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("input value must be "));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("input value must be ")
+        );
         let result = filt_bitmask(Value::from(0), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000000");
         let result = filt_bitmask(Value::from(32), Some(31));
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("value is larger than"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("value is larger than")
+        );
     }
 
     #[test]
@@ -576,17 +582,21 @@ mod tests {
     fn customfunction_bitmask_errors_on_sequence_oor() {
         let result = filt_bitmask(Value::from(vec![-1, 1, 3]), Some(31));
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("input value must be "));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("input value must be ")
+        );
         let result = filt_bitmask(Value::from(vec![0, 1, 3]), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000101");
         let result = filt_bitmask(Value::from(vec![1, 3, 32]), Some(31));
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("value is larger than"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("value is larger than")
+        );
     }
 }

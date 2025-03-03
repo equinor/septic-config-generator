@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use diffy::{create_patch, PatchFormatter};
+use diffy::{PatchFormatter, create_patch};
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use std::fs;
 use std::io::prelude::*;

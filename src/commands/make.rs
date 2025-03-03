@@ -3,9 +3,9 @@ use crate::datasource::{
     CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
 };
 use crate::renderer::MiniJinja;
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::Parser;
-use diffy::{create_patch, PatchFormatter};
+use diffy::{PatchFormatter, create_patch};
 use glob::glob;
 use minijinja::Value;
 use std::collections::{HashMap, HashSet};
