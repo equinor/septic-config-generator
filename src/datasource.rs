@@ -1,5 +1,5 @@
-use anyhow::{bail, Context, Result};
-use calamine::{open_workbook, CellErrorType, Data, DataType, Reader, Xlsx};
+use anyhow::{Context, Result, bail};
+use calamine::{CellErrorType, Data, DataType, Reader, Xlsx, open_workbook};
 use csv::{self, Trim};
 use indexmap::IndexMap;
 use serde::Serialize;
@@ -388,11 +388,13 @@ mod multisourcetests {
         let result = reader.read();
         println!("{result:?}");
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .root_cause()
-            .to_string()
-            .contains("Key 'key2' from"))
+        assert!(
+            result
+                .unwrap_err()
+                .root_cause()
+                .to_string()
+                .contains("Key 'key2' from")
+        )
     }
 }
 
@@ -558,11 +560,13 @@ key2;value2a"#;
 
         let result = reader.read();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .root_cause()
-            .to_string()
-            .contains("CSV error: record 2"));
+        assert!(
+            result
+                .unwrap_err()
+                .root_cause()
+                .to_string()
+                .contains("CSV error: record 2")
+        );
         Ok(())
     }
 
@@ -583,10 +587,12 @@ key1;value1;1.1;1
         let result = reader.read();
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("First column must contain strings only"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("First column must contain strings only")
+        );
     }
 
     #[test]
@@ -606,10 +612,12 @@ key1;value1;1.1;1
         let result = reader.read();
 
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("First column must contain strings only"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("First column must contain strings only")
+        );
     }
 }
 
@@ -637,9 +645,11 @@ mod xlsxtests {
 
         let result = reader.read();
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Worksheet 'nonexistent_sheet' not found"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Worksheet 'nonexistent_sheet' not found")
+        );
     }
 }

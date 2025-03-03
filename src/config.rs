@@ -1,5 +1,5 @@
-use anyhow::{bail, Result};
-use minijinja::{context, Environment};
+use anyhow::{Result, bail};
+use minijinja::{Environment, context};
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
@@ -320,10 +320,12 @@ layout:
         };
         let result = validate_source(&source);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("missing field 'sheet'"))
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("missing field 'sheet'")
+        )
     }
 
     #[test]
@@ -336,10 +338,12 @@ layout:
         };
         let result = validate_source(&source);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("field 'delimiter' invalid"))
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("field 'delimiter' invalid")
+        )
     }
 
     #[test]
@@ -363,10 +367,12 @@ layout:
         };
         let result = validate_source(&source);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("field 'sheet' invalid"))
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("field 'sheet' invalid")
+        )
     }
 
     #[test]
@@ -390,10 +396,12 @@ layout:
         };
         let result = validate_source(&source);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("in multi-file source 'id' must be .csv"),)
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("in multi-file source 'id' must be .csv"),
+        )
     }
 
     #[test]
@@ -406,10 +414,12 @@ layout:
         };
         let result = validate_source(&source);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("field 'sheet' invalid"))
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("field 'sheet' invalid")
+        )
     }
 
     #[test]
@@ -421,10 +431,12 @@ layout:
         };
         let result = validate_source(&source);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("invalid file extension"))
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("invalid file extension")
+        )
     }
 
     fn create_template_with_includes(

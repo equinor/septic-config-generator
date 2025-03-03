@@ -1,12 +1,12 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::Parser;
 use colored::Colorize;
 use glob::glob;
 use regex::RegexSet;
 use std::error::Error;
 use std::fs;
-use std::io::prelude::*;
 use std::io::BufReader;
+use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
@@ -177,7 +177,7 @@ fn process_single_startlog(file_name: &Path, regex_set: &RegexSet) -> Result<Vec
 #[cfg(test)]
 mod tests {
     use super::*;
-    use filetime::{set_file_mtime, FileTime};
+    use filetime::{FileTime, set_file_mtime};
     use std::fs::File;
     use tempfile::tempdir;
 
@@ -229,10 +229,12 @@ mod tests {
         let result = check_outfile(dir.path());
         assert!(result.is_err());
         println!("{result:?}");
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("No .out file found in"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("No .out file found in")
+        );
 
         // Add two .out files
         let file1_path = dir.path().join("file1.out");
@@ -243,10 +245,12 @@ mod tests {
 
         let result = check_outfile(dir.path());
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("More than one .out file found in"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("More than one .out file found in")
+        );
     }
 
     #[test]
