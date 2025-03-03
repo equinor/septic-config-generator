@@ -65,7 +65,8 @@ fn cmd_check_logs(rundir: &Path) -> Result<()> {
     let mut found_warnings = false;
 
     for check_fn in &check_functions {
-        match check_fn(rundir) {
+        let check_result = check_fn(rundir);
+        match check_result {
             Ok((file, lines)) => {
                 let file_name = file.file_name().unwrap().to_str().unwrap();
                 if !lines.is_empty() {
