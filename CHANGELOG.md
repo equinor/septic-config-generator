@@ -1,5 +1,43 @@
 # Changelog
 
+## [2.13.0](https://github.com/equinor/septic-config-generator/compare/v2.12.0...v2.13.0) (2025-03-13)
+
+
+### ✨ Features
+
+* add support for specifying encoding ([#304](https://github.com/equinor/septic-config-generator/issues/304)) ([fa6737a](https://github.com/equinor/septic-config-generator/commit/fa6737a6b34bcb1a64e0ac9c531f49efebfe7447))
+
+
+### 📚 Documentation
+
+* decapitalize Septic, fix example files ([#316](https://github.com/equinor/septic-config-generator/issues/316)) ([702c255](https://github.com/equinor/septic-config-generator/commit/702c2558593293d8a33dfa355f54e15113a823e3))
+* remove legacy documentation ([#317](https://github.com/equinor/septic-config-generator/issues/317)) ([1727045](https://github.com/equinor/septic-config-generator/commit/17270457c7f07dc4a588cc6a6bb7e05ebc7f28be))
+* update example cnfg files to Septic v3.1.1 ([#312](https://github.com/equinor/septic-config-generator/issues/312)) ([ddf9f5d](https://github.com/equinor/septic-config-generator/commit/ddf9f5dbe198144fc9e022e494d6193801a56ff1))
+
+
+### 🧹 Chores
+
+* add SECURITY.md ([#299](https://github.com/equinor/septic-config-generator/issues/299)) ([3e05320](https://github.com/equinor/septic-config-generator/commit/3e0532055ff21f56b105d3323ecd5f2028bfd3be))
+* **deps:** bump anyhow from 1.0.83 to 1.0.96 ([#308](https://github.com/equinor/septic-config-generator/issues/308)) ([944f047](https://github.com/equinor/septic-config-generator/commit/944f0472c79c85d320009cded96fedce89f54cc4))
+* **deps:** bump calamine from 0.24.0 to 0.26.1 ([#313](https://github.com/equinor/septic-config-generator/issues/313)) ([117a853](https://github.com/equinor/septic-config-generator/commit/117a8530a178802c6c49ff9b03f83c03d0ba3e73))
+* **deps:** bump clap from 4.5.4 to 4.5.31 ([#303](https://github.com/equinor/septic-config-generator/issues/303)) ([1d31701](https://github.com/equinor/septic-config-generator/commit/1d317016392f53af00079dc79d07105774f80873))
+* **deps:** bump codecov/codecov-action from 4 to 5 ([#320](https://github.com/equinor/septic-config-generator/issues/320)) ([152391e](https://github.com/equinor/septic-config-generator/commit/152391e278ae516800ac73dc723165fa7f9969b2))
+* **deps:** bump colored from 2.1.0 to 3.0.0 ([#309](https://github.com/equinor/septic-config-generator/issues/309)) ([cf2a903](https://github.com/equinor/septic-config-generator/commit/cf2a90336f4862d89a60564e2fc1d217259742e6))
+* **deps:** bump curve25519-dalek from 4.1.2 to 4.1.3 ([#287](https://github.com/equinor/septic-config-generator/issues/287)) ([96d9239](https://github.com/equinor/septic-config-generator/commit/96d9239969be7378fff46af3467aebedcb807ab9))
+* **deps:** bump diffy from 0.3.0 to 0.4.2 ([#310](https://github.com/equinor/septic-config-generator/issues/310)) ([0aed6e8](https://github.com/equinor/septic-config-generator/commit/0aed6e82ddae9ca05adbbc0b6301bd23c23e5fdc))
+* **deps:** bump minijinja from 2.0.1 to 2.7.0 ([#306](https://github.com/equinor/septic-config-generator/issues/306)) ([a58d7f1](https://github.com/equinor/septic-config-generator/commit/a58d7f1dab20683b958a29f256150ce10643e352))
+* **deps:** bump openssl from 0.10.64 to 0.10.71 ([#305](https://github.com/equinor/septic-config-generator/issues/305)) ([d638616](https://github.com/equinor/septic-config-generator/commit/d638616792459f1c21843b08b53113025f335fff))
+* **deps:** bump regex from 1.10.4 to 1.11.1 ([#307](https://github.com/equinor/septic-config-generator/issues/307)) ([2cecc76](https://github.com/equinor/septic-config-generator/commit/2cecc7698684c91c79591ece34b478a7c51e86d5))
+* **deps:** bump rustsec/audit-check from 1 to 2 ([#319](https://github.com/equinor/septic-config-generator/issues/319)) ([d20f53e](https://github.com/equinor/septic-config-generator/commit/d20f53e53d65881bcf0ff1325b29713e7a4d1dac))
+* **deps:** bump self_update from 0.39.0 to 0.42.0 ([#311](https://github.com/equinor/septic-config-generator/issues/311)) ([b06d563](https://github.com/equinor/septic-config-generator/commit/b06d5635989bcee4b3531fdb0a57264434dcf152))
+* update Rust edition from 2021 to 2024 ([#318](https://github.com/equinor/septic-config-generator/issues/318)) ([eaf9a0a](https://github.com/equinor/septic-config-generator/commit/eaf9a0ab721549f205807b6bb66e697a82051c01))
+
+
+### 👷 CI/CD
+
+* add workflow_dispatch for release-please ([#314](https://github.com/equinor/septic-config-generator/issues/314)) ([8e09355](https://github.com/equinor/septic-config-generator/commit/8e093555f757bdab985efdf36e57f03e3b8747b0))
+* fix deprecated release-please source ([#315](https://github.com/equinor/septic-config-generator/issues/315)) ([65c0ba4](https://github.com/equinor/septic-config-generator/commit/65c0ba478533c0c5ef734db2d35523e28fa907e1))
+
 ## [2.12.0](https://github.com/equinor/septic-config-generator/compare/v2.11.2...v2.12.0) (2024-05-16)
 
 
