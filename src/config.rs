@@ -27,7 +27,7 @@ pub struct Config {
     #[serde(default = "_default_true")]
     pub verifycontent: bool,
     pub counters: Option<Vec<Counter>>,
-    pub sources: Vec<Source>,
+    pub sources: Option<Vec<Source>>,
     pub layout: Vec<Template>,
 }
 
@@ -37,8 +37,10 @@ impl Config {
         let content = fs::read_to_string(filename)?;
         let cfg: Self = serde_yaml::from_str(&content)?;
 
-        for source in &cfg.sources {
-            validate_source(source)?;
+        if let Some(sources) = &cfg.sources {
+            for source in sources {
+                validate_source(source)?;
+            }
         }
 
         validate_encoding(&cfg.encoding)?;

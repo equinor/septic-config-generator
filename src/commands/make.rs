@@ -228,17 +228,21 @@ fn ask_should_overwrite() -> Result<bool> {
     std::io::stdin().read_line(&mut response)?;
     Ok(response.trim().eq_ignore_ascii_case("y"))
 }
+
 fn load_all_source_data(
     cfg: &Config,
     relative_root: &Path,
 ) -> Result<HashMap<String, DataSourceRows>> {
-    cfg.sources
-        .iter()
-        .map(|source| {
-            let source_data = load_source_data(source, relative_root)?;
-            Ok((source.id.clone(), source_data))
-        })
-        .collect()
+    if let Some(sources) = &cfg.sources {
+        return sources
+            .iter()
+            .map(|source| {
+                let source_data = load_source_data(source, relative_root)?;
+                Ok((source.id.clone(), source_data))
+            })
+            .collect();
+    }
+    Ok(HashMap::new())
 }
 
 fn load_source_data(source: &Source, relative_root: &Path) -> Result<DataSourceRows> {
@@ -295,16 +299,18 @@ fn collect_file_list(
     }
 
     // All sources
-    for source in &config.sources {
-        match &source.filename {
-            Filename::Single(filename) => {
-                let source_path = relative_root.join(Path::new(filename));
-                files.insert(source_path);
-            }
-            Filename::Multiple(filenames) => {
-                for filename in filenames {
+    if let Some(sources) = &config.sources {
+        for source in sources {
+            match &source.filename {
+                Filename::Single(filename) => {
                     let source_path = relative_root.join(Path::new(filename));
                     files.insert(source_path);
+                }
+                Filename::Multiple(filenames) => {
+                    for filename in filenames {
+                        let source_path = relative_root.join(Path::new(filename));
+                        files.insert(source_path);
+                    }
                 }
             }
         }
@@ -566,7 +572,7 @@ mod tests {
 
     #[test]
     fn collect_file_list_works() -> Result<(), Box<dyn std::error::Error>> {
-        let sources = vec![
+        let sources = Some(vec![
             config::Source {
                 filename: Filename::Single("source1".to_string()),
                 ..Default::default()
@@ -575,7 +581,7 @@ mod tests {
                 filename: Filename::Single("source2".to_string()),
                 ..Default::default()
             },
-        ];
+        ]);
         let relative_root = Path::new("relative_root");
         let cfg_file = relative_root.join("config.yaml");
 
