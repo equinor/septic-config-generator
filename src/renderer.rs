@@ -3,7 +3,7 @@ use crate::config::Counter as CounterConfig;
 use crate::datasource::DataSourceRows;
 use anyhow::Context;
 use chrono::Local;
-use minijinja::value::{Kwargs, Rest, Value, ValueKind, from_args};
+use minijinja::value::{from_args, Kwargs, Rest, Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -225,33 +225,10 @@ pub struct MiniJinja<'a> {
 }
 
 impl<'a> MiniJinja<'a> {
-    pub fn new(
-        globals: &[String],
-        template_path: &Path,
-        encoding: &str,
-        counter_list: Option<Vec<CounterConfig>>,
-    ) -> anyhow::Result<MiniJinja<'a>> {
+    pub fn new(globals: &[String]) -> anyhow::Result<MiniJinja<'a>> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
-        let counters = Arc::new(Mutex::new(CounterMap::new()));
-        if let Some(cnts) = counter_list {
-            for counter in cnts {
-                counters
-                    .lock()
-                    .unwrap()
-                    .create(&counter.name.clone(), counter.value)?;
-                let increment_closure = {
-                    let counters = counters.clone();
-                    let name = counter.name.clone();
-                    move |value: Option<i32>| counters.lock().unwrap().increment(&name, value)
-                };
-                renderer
-                    .env
-                    .add_function(counter.name.clone(), increment_closure);
-            }
-        }
-
         renderer.add_globals(globals);
         renderer
             .env
@@ -269,13 +246,36 @@ impl<'a> MiniJinja<'a> {
         renderer.env.set_formatter(erroring_formatter);
         // renderer.env.set_debug(false);  // TODO: enable via cmdline flag?
 
-        let closure_template_path = template_path.to_path_buf();
-        let closure_encoding = encoding.to_string();
-
-        renderer
-            .env
-            .set_loader(move |name| load_template(&closure_template_path, &closure_encoding, name));
         Ok(renderer)
+    }
+
+    pub fn set_counters(&mut self, counter_list: Option<Vec<CounterConfig>>) -> anyhow::Result<()> {
+        let counters = Arc::new(Mutex::new(CounterMap::new()));
+        if let Some(cnts) = counter_list {
+            for counter in cnts {
+                counters
+                    .lock()
+                    .unwrap()
+                    .create(&counter.name.clone(), counter.value)?;
+                let increment_closure = {
+                    let counters = counters.clone();
+                    let name = counter.name.clone();
+                    move |value: Option<i32>| counters.lock().unwrap().increment(&name, value)
+                };
+                self.env
+                    .add_function(counter.name.clone(), increment_closure);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn set_loader(&mut self, template_path: &Path, encoding: &str) -> anyhow::Result<()> {
+        self.env.set_loader({
+            let template_path = template_path.to_path_buf();
+            let encoding = encoding.to_string();
+            move |name| load_template(&template_path, &encoding, name)
+        });
+        Ok(())
     }
 
     #[allow(clippy::missing_errors_doc)]
@@ -550,22 +550,18 @@ mod tests {
     fn customfunction_bitmask_errors_on_integer_oor() {
         let result = filt_bitmask(Value::from(-1), Some(31));
         assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("input value must be ")
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("input value must be "));
         let result = filt_bitmask(Value::from(0), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000000");
         let result = filt_bitmask(Value::from(32), Some(31));
         assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("value is larger than")
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("value is larger than"));
     }
 
     #[test]
@@ -582,21 +578,17 @@ mod tests {
     fn customfunction_bitmask_errors_on_sequence_oor() {
         let result = filt_bitmask(Value::from(vec![-1, 1, 3]), Some(31));
         assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("input value must be ")
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("input value must be "));
         let result = filt_bitmask(Value::from(vec![0, 1, 3]), Some(31)).unwrap();
         assert!(result == "0000000000000000000000000000101");
         let result = filt_bitmask(Value::from(vec![1, 3, 32]), Some(31));
         assert!(result.is_err());
-        assert!(
-            result
-                .unwrap_err()
-                .to_string()
-                .contains("value is larger than")
-        );
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("value is larger than"));
     }
 }
