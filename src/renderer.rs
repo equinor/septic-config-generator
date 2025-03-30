@@ -225,33 +225,10 @@ pub struct MiniJinja<'a> {
 }
 
 impl<'a> MiniJinja<'a> {
-    pub fn new(
-        globals: &[String],
-        template_path: &Path,
-        encoding: &str,
-        counter_list: Option<Vec<CounterConfig>>,
-    ) -> anyhow::Result<MiniJinja<'a>> {
+    pub fn new(globals: &[String]) -> anyhow::Result<MiniJinja<'a>> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
-        let counters = Arc::new(Mutex::new(CounterMap::new()));
-        if let Some(cnts) = counter_list {
-            for counter in cnts {
-                counters
-                    .lock()
-                    .unwrap()
-                    .create(&counter.name.clone(), counter.value)?;
-                let increment_closure = {
-                    let counters = counters.clone();
-                    let name = counter.name.clone();
-                    move |value: Option<i32>| counters.lock().unwrap().increment(&name, value)
-                };
-                renderer
-                    .env
-                    .add_function(counter.name.clone(), increment_closure);
-            }
-        }
-
         renderer.add_globals(globals);
         renderer
             .env
@@ -269,13 +246,38 @@ impl<'a> MiniJinja<'a> {
         renderer.env.set_formatter(erroring_formatter);
         // renderer.env.set_debug(false);  // TODO: enable via cmdline flag?
 
-        let closure_template_path = template_path.to_path_buf();
-        let closure_encoding = encoding.to_string();
-
-        renderer
-            .env
-            .set_loader(move |name| load_template(&closure_template_path, &closure_encoding, name));
         Ok(renderer)
+    }
+
+    pub fn set_counters(
+        &mut self,
+        counter_list: &Option<Vec<CounterConfig>>,
+    ) -> anyhow::Result<()> {
+        let counters = Arc::new(Mutex::new(CounterMap::new()));
+        if let Some(cnts) = counter_list {
+            for counter in cnts {
+                counters
+                    .lock()
+                    .unwrap()
+                    .create(&counter.name.clone(), counter.value)?;
+                let increment_closure = {
+                    let counters = counters.clone();
+                    let name = counter.name.clone();
+                    move |value: Option<i32>| counters.lock().unwrap().increment(&name, value)
+                };
+                self.env
+                    .add_function(counter.name.clone(), increment_closure);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn set_loader(&mut self, template_path: &Path, encoding: &str) -> anyhow::Result<()> {
+        let template_path = template_path.to_path_buf();
+        let encoding = encoding.to_string();
+        let loader = move |name: &str| load_template(&template_path, &encoding, name);
+        self.env.set_loader(loader);
+        Ok(())
     }
 
     #[allow(clippy::missing_errors_doc)]

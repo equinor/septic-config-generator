@@ -6,3 +6,5 @@
 
 tests/testdata/test.cnfg
 tests/testdata/test.cnfg.bak
+tests/testdata/test.png
+tests/testdata/test_components.csv
