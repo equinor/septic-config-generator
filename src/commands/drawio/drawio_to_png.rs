@@ -155,66 +155,25 @@ fn extract_page_dimensions(input_filename: &str) -> Result<(u32, u32), String> {
     Ok((1024, 768)) // Default dimensions
 }
 
+use imagesize::size;
 /// Helper function to check PNG dimensions
 fn check_png_dimensions(
     png_path: &Path,
     expected_width: u32,
     expected_height: u32,
 ) -> Result<bool, String> {
-    // Open the file
-    let mut file = File::open(png_path).map_err(|e| format!("Failed to open PNG file: {}", e))?;
-
-    // Read the PNG signature and header
-    let mut signature = [0; 8];
-    file.read_exact(&mut signature)
-        .map_err(|e| format!("Failed to read PNG signature: {}", e))?;
-
-    // Verify PNG signature
-    let png_signature: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
-    if signature != png_signature {
-        return Err("File is not a valid PNG image".to_string());
-    }
-
-    // Skip to the IHDR chunk (next 4 bytes after signature is chunk length, next 4 is chunk type)
-    let mut chunk_length = [0; 4];
-    let mut chunk_type = [0; 4];
-
-    file.read_exact(&mut chunk_length)
-        .map_err(|e| format!("Failed to read chunk length: {}", e))?;
-    file.read_exact(&mut chunk_type)
-        .map_err(|e| format!("Failed to read chunk type: {}", e))?;
-
-    // Verify it's the IHDR chunk
-    if chunk_type != *b"IHDR" {
-        return Err("PNG file doesn't have IHDR chunk where expected".to_string());
-    }
-
-    // Read width (4 bytes)
-    let mut width_bytes = [0; 4];
-    file.read_exact(&mut width_bytes)
-        .map_err(|e| format!("Failed to read width: {}", e))?;
-
-    // Read height (4 bytes)
-    let mut height_bytes = [0; 4];
-    file.read_exact(&mut height_bytes)
-        .map_err(|e| format!("Failed to read height: {}", e))?;
-
-    // Convert the bytes to u32 (PNG uses big-endian)
-    let actual_width = ((width_bytes[0] as u32) << 24)
-        | ((width_bytes[1] as u32) << 16)
-        | ((width_bytes[2] as u32) << 8)
-        | (width_bytes[3] as u32);
-
-    let actual_height = ((height_bytes[0] as u32) << 24)
-        | ((height_bytes[1] as u32) << 16)
-        | ((height_bytes[2] as u32) << 8)
-        | (height_bytes[3] as u32);
+    // Read only the header bytes to get dimensions
+    let info = size(png_path).map_err(|e| format!("Failed to read image size: {}", e))?;
 
     println!("\nPNG dimensions check:");
     println!("Requested: {}x{}", expected_width, expected_height);
-    println!("Actual   : {}x{}", actual_width, actual_height);
+    println!("Actual   : {}x{}", info.width, info.height);
 
-    Ok(actual_width == expected_width && actual_height == expected_height)
+        // cast expected to usize for the comparison
+        Ok(
+            info.width == expected_width as usize
+                && info.height == expected_height as usize,
+        )
 }
 
 /// Helper function to get the correct draw.io command

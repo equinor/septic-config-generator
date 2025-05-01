@@ -37,6 +37,7 @@ encoding_rs = "0.8.32"
 encoding_rs_io = "0.1.7"
 flate2 = "1.1.1"
 glob = "0.3.1"
+imagesize = "0.14.0"
 indexmap = { version = "2.2.3", features = ["serde"] }
 minijinja = { version = "2.0.1", features = ["loader", "preserve_order"] }
 regex = "1.7.1"
