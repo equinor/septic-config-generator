@@ -179,7 +179,6 @@ fn write_rectangles_to_csv(output_file: &str, rectangles: &[Rectangle]) -> Resul
     Ok(())
 }
 
-
 #[cfg(test)]
 mod tests {
     use std::fs;

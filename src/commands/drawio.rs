@@ -1,8 +1,8 @@
 use clap::Args;
 use std::process;
 
-mod get_coords;
 mod drawio_to_png;
+mod get_coords;
 
 #[derive(Args, Debug)]
 pub struct Drawio {
@@ -57,7 +57,6 @@ impl Drawio {
                 process::exit(1);
             }
         }
-
     }
 
     fn get_coords(&self, args: &GetcoordsArgs) {

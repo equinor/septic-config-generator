@@ -1,7 +1,5 @@
 use roxmltree::Document;
 use std::fs;
-use std::fs::File;
-use std::io::Read;
 use std::{path::Path, process::Command};
 
 /// Converts a draw.io file to PNG format, using the page dimensions from the file
@@ -169,11 +167,8 @@ fn check_png_dimensions(
     println!("Requested: {}x{}", expected_width, expected_height);
     println!("Actual   : {}x{}", info.width, info.height);
 
-        // cast expected to usize for the comparison
-        Ok(
-            info.width == expected_width as usize
-                && info.height == expected_height as usize,
-        )
+    // cast expected to usize for the comparison
+    Ok(info.width == expected_width as usize && info.height == expected_height as usize)
 }
 
 /// Helper function to get the correct draw.io command
