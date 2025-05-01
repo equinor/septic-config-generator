@@ -2,6 +2,7 @@ use clap::Args;
 use std::process;
 
 mod get_coords;
+mod drawio_to_png;
 
 #[derive(Args, Debug)]
 pub struct Drawio {
@@ -49,13 +50,14 @@ impl Drawio {
     }
 
     fn convert_png(&self, args: &ConvertpngArgs) {
-        // Placeholder for PNG conversion - this will be implemented later
-        println!("PNG conversion not yet implemented");
-        println!(
-            "Would convert {} to {}",
-            &args.input,
-            args.output.as_deref().unwrap_or("output.png")
-        );
+        match drawio_to_png::drawio_to_png(&args.input, args.output.as_deref()) {
+            Ok(output) => println!("Converted to PNG: {}", output),
+            Err(e) => {
+                eprintln!("Failed to convert to PNG: {}", e);
+                process::exit(1);
+            }
+        }
+
     }
 
     fn get_coords(&self, args: &GetcoordsArgs) {
