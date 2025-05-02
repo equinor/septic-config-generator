@@ -1,8 +1,8 @@
 use clap::Args;
 use std::process;
 
-mod drawio_to_png;
-mod get_coords;
+pub mod drawio_to_png;
+pub mod get_coords;
 
 #[derive(Args, Debug)]
 pub struct Drawio {
@@ -60,7 +60,7 @@ impl Drawio {
     }
 
     fn get_coords(&self, args: &GetcoordsArgs) {
-        match get_coords::extract_nested_objects(&args.input, args.output.as_deref()) {
+        match get_coords::extract_coords(&args.input, args.output.as_deref()) {
             Ok((count, output)) => println!("Extracted {} objects to {}", count, output),
             Err(e) => {
                 eprintln!("Failed to extract coordinates: {}", e);

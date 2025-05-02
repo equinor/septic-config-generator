@@ -13,6 +13,9 @@ use std::fs;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
+use crate::commands::drawio::drawio_to_png::drawio_to_png;
+use crate::commands::drawio::get_coords::extract_coords;
+
 #[derive(Debug)]
 enum MakeError {
     NoFilesChanged,
@@ -131,6 +134,38 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         }
     }
 
+    if let Some(drawio) = &cfg.drawio {
+        for item in drawio {
+            let input = relative_root.join(&item.input);
+            let input_str = input.to_str().unwrap_or_default();
+
+            let pngoutput = relative_root.join(if let Some(png_path) = &item.pngoutput {
+                png_path.clone()
+            } else if input_str.ends_with(".drawio") {
+                input_str.replace(".drawio", ".png")
+            } else {
+                format!("{}.png", input_str)
+            });
+
+            let csvoutput = relative_root.join(if let Some(csv_path) = &item.csvoutput {
+                csv_path.clone()
+            } else if input_str.ends_with(".drawio") {
+                input_str.replace(".drawio", ".csv")
+            } else {
+                format!("{}.csv", input_str)
+            });
+
+            if let Err(err) = drawio_to_png(input_str, pngoutput.to_str()) {
+                eprintln!("Error processing drawio file '{}': {:#}", input_str, err);
+            }
+
+            if let Err(err) = extract_coords(input_str, csvoutput.to_str()) {
+                eprintln!("Error processing drawio file '{}': {:#}", input_str, err);
+            }
+        }
+    }
+
+    // drawio needs to be done before the templates are rendered, so that the .csv files are available
     let all_source_data: HashMap<String, DataSourceRows> =
         load_all_source_data(&cfg, &relative_root).map_err(MakeError::LoadSourceError)?;
 

@@ -214,23 +214,3 @@ fn get_drawio_command() -> Result<String, String> {
         )
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tempfile::tempdir;
-
-    #[test]
-    fn test_get_drawio_command() {
-        let result = get_drawio_command();
-        println!("Draw.io command result: {:?}", result);
-        // We don't assert success since it depends on the environment
-    }
-
-    #[test]
-    #[ignore] // Ignored by default as it requires draw.io and a sample file
-    fn test_drawio_to_png() {
-        // This is where you would implement a test for the conversion function
-        // It should create a sample draw.io file, call drawio_to_png(), and verify the result
-    }
-}

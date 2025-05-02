@@ -7,6 +7,11 @@ adjustspacing: true
 
 verifycontent: true
 
+drawio:
+  - input: test.drawio
+  - pngoutput: test.png
+  - csvoutput: test.csv
+
 sources:
   # - filename: test.xlsx
   #   id: main

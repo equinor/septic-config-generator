@@ -36,7 +36,7 @@ fn decompress_diagram(data: &str) -> Result<String, String> {
 }
 
 /// Extract rectangle coordinates from a .drawio or .xml file
-pub fn extract_nested_objects(
+pub fn extract_coords(
     input_filename: &str,
     output_filename: Option<&str>,
 ) -> Result<(usize, String), String> {
