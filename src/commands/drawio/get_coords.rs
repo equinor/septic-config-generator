@@ -7,10 +7,22 @@ use std::io::Read;
 use std::io::Write;
 use std::path::Path;
 
-// Type alias for rectangle data: (name, type, x, y, width, height)
-type Rectangle = (String, String, i32, i32, i32, i32);
+/// A structure to represent a rectangle with optional properties
+#[derive(Debug, Clone)]
+struct RectData {
+    name: String,
+    rect_type: String,
+    x: i32,
+    y: i32,
+    width: i32,
+    height: i32,
+    // Optional properties for ImageStatusLabel
+    texts: Option<String>,
+    colors: Option<String>,
+}
+
 // Type alias for the result of rectangle extraction
-type RectangleResult = Result<Vec<Rectangle>, String>;
+type RectangleResult = Result<Vec<RectData>, String>;
 
 /// Helper function to strip HTML tags completely
 fn strip_html_tags(input: &str) -> String {
@@ -20,6 +32,13 @@ fn strip_html_tags(input: &str) -> String {
         result = re.replace_all(&result, "").to_string();
     }
     result.trim().to_string()
+}
+
+/// Helper function to clean attribute values but preserve individual quotes
+fn clean_attribute_value(value: &str) -> String {
+    // This preserves the individual quotes around each value
+    // but removes any extraneous quotes that might be present
+    value.trim().to_string()
 }
 
 /// Helper function to decompress base64+zlib encoded diagram data
@@ -94,15 +113,41 @@ fn process_drawio_file(input_filename: &str, file_content: &str) -> Result<Strin
 /// Parse XML content and extract rectangle data
 fn parse_xml_and_extract_rectangles(xml_content: &str) -> RectangleResult {
     let doc = Document::parse(xml_content).map_err(|e| format!("Error parsing XML: {}", e))?;
-    let types = ["ImageXvrPlot", "ImageXvr"];
+    let types = ["ImageXvrPlot", "ImageXvr", "ImageStatusLabel"];
     let mut rectangles = Vec::new();
+    
     for node in doc.descendants().filter(|n| n.has_tag_name("object")) {
         let label = node.attribute("label").unwrap_or("");
         let clean_label = strip_html_tags(label);
+        
         if let Some(matched_type) = types.iter().find(|&&t| clean_label.contains(t)) {
             let name = extract_name(&clean_label, matched_type);
+            
+            // Extract additional properties for ImageStatusLabel and ImageXvr
+            let texts = if *matched_type == "ImageStatusLabel" && node.has_attribute("Texts") {
+                node.attribute("Texts").map(clean_attribute_value)
+            } else {
+                None
+            };
+            
+            // Check for Colors attribute for both types, but don't assume it's always present
+            let colors = if (*matched_type == "ImageStatusLabel" || *matched_type == "ImageXvr") && node.has_attribute("Colors") {
+                node.attribute("Colors").map(clean_attribute_value)
+            } else {
+                None
+            };
+            
             if let Some((x, y, width, height)) = extract_coordinates(&node) {
-                rectangles.push((name, matched_type.to_string(), x, y, width, height));
+                rectangles.push(RectData {
+                    name,
+                    rect_type: matched_type.to_string(),
+                    x,
+                    y,
+                    width,
+                    height,
+                    texts,
+                    colors,
+                });
             }
         }
     }
@@ -158,24 +203,31 @@ fn extract_coordinates(node: &roxmltree::Node) -> Option<(i32, i32, i32, i32)> {
 }
 
 /// Write rectangle data to a CSV file
-fn write_rectangles_to_csv(output_file: &str, rectangles: &[Rectangle]) -> Result<(), String> {
+fn write_rectangles_to_csv(output_file: &str, rectangles: &[RectData]) -> Result<(), String> {
     let mut file =
         File::create(output_file).map_err(|e| format!("Error creating output file: {}", e))?;
-    writeln!(file, "name,type,y1,x1,y2,x2")
+
+    // Write header with all possible columns
+    writeln!(file, "name,type,y1,x1,y2,x2,texts,colors")
         .map_err(|e| format!("Error writing to output file: {}", e))?;
-    for (name, rect_type, x, y, width, height) in rectangles {
+    
+    // Write data rows with all columns
+    for rect in rectangles {
         writeln!(
             file,
-            "{},{},{},{},{},{}",
-            name,
-            rect_type,
-            y,
-            x,
-            y + height,
-            x + width
+            "{},{},{},{},{},{},{},{}",
+            rect.name,
+            rect.rect_type,
+            rect.y,
+            rect.x,
+            rect.y + rect.height,
+            rect.x + rect.width,
+            rect.texts.as_ref().unwrap_or(&String::new()),
+            rect.colors.as_ref().unwrap_or(&String::new())
         )
         .map_err(|e| format!("Error writing to output file: {}", e))?;
     }
+    
     Ok(())
 }
 

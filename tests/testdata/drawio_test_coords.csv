@@ -1,3 +1,4 @@
-name,type,y1,x1,y2,x2
-imagexvrplot,ImageXvrPlot,160,883,401,1169
-imagexvr,ImageXvr,512,671,529,710
+name,type,y1,x1,y2,x2,texts,colors
+imagexvrplot,ImageXvrPlot,160,883,401,1169,,
+imagexvr,ImageXvr,512,671,529,710,,"Blue"
+imagexvr,ImageStatusLabel,371,669,388,725,"Text1 with space" "Text2!" "Text3" "Text4","red" "blue" "#548235" "orange"
