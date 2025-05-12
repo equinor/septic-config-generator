@@ -34,6 +34,10 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look [h
   - [The source file](#the-source-file)
   - [The config file](#the-config-file)
   - [Generate a config](#generate-a-config)
+- [scg drawio](#scg-drawio)
+  - [Convert draw.io to PNG](#convert-drawio-to-png)
+  - [Extract Coordinates from draw.io](#extract-coordinates-from-drawio)
+  - [Configuration Example](#configuration-example)
 
 ## About
 
@@ -98,6 +102,11 @@ templatepath: templates
 adjustspacing: true
 verifycontent: true
 
+drawio:
+  - input: example.drawio
+    pngoutput: example.png
+    csvoutput: example.csv
+
 counters:
   - name: mycounter
     value: 0
@@ -109,6 +118,9 @@ sources:
   - filename: example.csv
     id: flowlines
     delimiter: ";"
+  - filename: example_drawio_coords.csv
+    id: drawio_example
+    delimiter: ","
 
 layout:
   - name: 010_System.cnfg
@@ -120,6 +132,8 @@ layout:
       - D02
   - name: 040_SopcProc_flowline.cnfg
     source: flowlines
+  - name: 060_DspGroup_Overview.cnfg
+    source: drawio_example
 ```
 
 - `outputfile` (optional string): The file that will be generated. Writes to stdout if not provided.
@@ -132,11 +146,31 @@ layout:
   [MiniJinja's behaviour](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#trailing-newlines).
 - `verifycontent` (boolean, default: true): Whether to report differences from an already existing rendered file. Will
   ask before replacing with the new content. Set to `false` to overwrite existing file without checking for changes.
+- `drawio` (optional list of `drawio` structs) Contains a list of .drawio files to extract coordinates from and convert to png.
 - `counters` (optional list of `counter` structs): Contains a list of global auto-incrementing counter functions.
 - `sources` (list of `source` structs): Contains a list of source file configurations.
 - `layout` (list of `template` structs): Contains a list of templates in the order they should be rendered.
 
 All file names and paths are relative to the location of the configuration file.
+
+#### Drawio
+
+_(Added in v2.13)_
+
+OBS: for prerequisites and .drawio info, See [scg drawio](#scg-drawio) section
+
+The `drawio` struct allows you to automate processing of `.drawio` diagram files as part of your configuration workflow. For each entry, SCG can perform two main functions:
+
+- **Convert the `.drawio` file to a PNG image**: This is useful for generating graphical backgrounds for displaygroups.
+- **Extract coordinates and element information from the `.drawio` file to a CSV file**: This enables you to use the positions and properties of diagram elements in your configuration or templates, for example to place GUI elements accurately.
+
+This makes it easy to keep your graphics and coordinate data in sync with your diagrams, and to integrate diagram information directly into your config generation process.
+
+The structure has the following fields:
+
+- `input` (string, required): The path to the input `.drawio` file.
+- `pngoutput` (string, optional): The path to the output `.png` file. If not provided, the output file will have the same name as the input file but with a `.png` extension.
+- `csvoutput` (string, optional): The path to the output `.csv` file. If not provided, the output file will have the same name as the input file but with a `_coords.csv` suffix.
 
 #### Counters
 
@@ -562,7 +596,7 @@ It may be easier to understand how to use the tool by example. In the docs-direc
 directory called `basic example`. This directory contains the following directories and files:
 
 - templates: A directory containing the templates that make up a Septic config file.
-- example.yaml: Defines how the template files should be combined to create example_final.conf
+- example.yaml: Defines how the template files should be combined to create example_final.cnfg
 - example.xlsx: An Excel file that contains data to insert into the templates.
 - example.cnfg: The resulting Septic config file.
 
@@ -714,3 +748,76 @@ Try to make a change to one of the template files and regenerate the config. Sin
 ask whether you want to replace the existing `example.cnfg`. Changes are shown as unified diff between the two files.
 
 Type `scg.exe make --help` for more options to the `make` command.
+
+## scg drawio
+
+The `scg drawio` command provides utilities for processing draw.io diagram files, including converting diagrams to PNG images and extracting coordinates and metadata for use in configuration files.
+
+### Prerequisite
+
+To use these features, you must have the draw.io desktop application installed.
+
+Windows: Open PowerShell as Administrator and run:
+
+```
+winget install JGraph.Draw
+```
+
+MacOS:
+
+```
+brew install --cask drawio  (Note: requires Homebrew)
+```
+
+Ensure the `draw.io` executable is available in your system's PATH.
+
+### draw.io Diagram Requirements
+
+When preparing diagrams for use with SCG, follow these guidelines:
+
+- **Element Types:**
+
+  - See `docs/basic example/example.drawio`
+  - Only rectangles (shape type: rectangle) are supported for extracting coordinates.
+  - Each rectangle must be an object (not a group or connector). For a new/"raw" rectangle, label/data may need to be added for it to be recognized as an object.
+
+- **Text Format:**
+
+  - The base objects (rectangles) must have text. Double-click the rectangle to input text.
+  - The text must be in the format:
+    ```
+    type=name
+    ```
+    For example:
+    ```
+    ImageXvrPlot=MyRectangle
+    ```
+  - This identifies the type and name of the object for extraction.
+
+- **Supported Types and Properties:**
+  - The following types are supported and must be specified in the rectangle's label as `type=name`:
+    - `ImageStatusLabel`
+    - `ImageXvr`
+    - `ImageXvrPlot`
+  - Some types support additional properties, which can be added by right-clicking the rectangle, selecting "Edit Data", and entering property names and values:
+    - **ImageStatusLabel:** supports properties `colors`, `texts`
+    - **ImageXvr:** supports property `colors`
+  - Other types and properties may be added in the future.
+- **Special Labels:**
+
+  - Use specific labels or metadata for elements you want to extract, such as:
+    - `ImageStatusLabel`
+    - `ImageXvr`
+    - `ImageXvrPlot`
+  - These can be set in the object's label (as described above) or in the "Edit Data" dialog for properties.
+
+- **Background and setting "paper size":**
+  - In draw.io, go to **File → Page Setup** to set the desired resolution or paper size for your diagram.
+  - When converting `.drawio` files to `.png`, draw.io will automatically crop the image to remove empty space. This may result in a different resolution or aspect ratio than you expect.
+  - **To ensure a fixed output size and avoid unwanted cropping:**
+    - Create a dedicated background layer in your diagram.
+    - Insert a rectangle on this layer that matches your desired output dimensions (e.g., 1920x1080).
+      - Note, for some reason, at 1920x1080 one needs to add 2pixels to the width to obtain the correct size.
+    - Optionally, set the rectangle's fill color to define a background color for your image.
+    - Lock the background layer to prevent accidental edits.
+  - This approach ensures that the exported PNG will always have the correct size and background, regardless of the content on other layers.

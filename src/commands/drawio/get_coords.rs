@@ -115,28 +115,30 @@ fn parse_xml_and_extract_rectangles(xml_content: &str) -> RectangleResult {
     let doc = Document::parse(xml_content).map_err(|e| format!("Error parsing XML: {}", e))?;
     let types = ["ImageXvrPlot", "ImageXvr", "ImageStatusLabel"];
     let mut rectangles = Vec::new();
-    
+
     for node in doc.descendants().filter(|n| n.has_tag_name("object")) {
         let label = node.attribute("label").unwrap_or("");
         let clean_label = strip_html_tags(label);
-        
+
         if let Some(matched_type) = types.iter().find(|&&t| clean_label.contains(t)) {
             let name = extract_name(&clean_label, matched_type);
-            
+
             // Extract additional properties for ImageStatusLabel and ImageXvr
             let texts = if *matched_type == "ImageStatusLabel" && node.has_attribute("Texts") {
                 node.attribute("Texts").map(clean_attribute_value)
             } else {
                 None
             };
-            
+
             // Check for Colors attribute for both types, but don't assume it's always present
-            let colors = if (*matched_type == "ImageStatusLabel" || *matched_type == "ImageXvr") && node.has_attribute("Colors") {
+            let colors = if (*matched_type == "ImageStatusLabel" || *matched_type == "ImageXvr")
+                && node.has_attribute("Colors")
+            {
                 node.attribute("Colors").map(clean_attribute_value)
             } else {
                 None
             };
-            
+
             if let Some((x, y, width, height)) = extract_coordinates(&node) {
                 rectangles.push(RectData {
                     name,
@@ -210,7 +212,7 @@ fn write_rectangles_to_csv(output_file: &str, rectangles: &[RectData]) -> Result
     // Write header with all possible columns
     writeln!(file, "name,type,y1,x1,y2,x2,texts,colors")
         .map_err(|e| format!("Error writing to output file: {}", e))?;
-    
+
     // Write data rows with all columns
     for rect in rectangles {
         writeln!(
@@ -227,7 +229,7 @@ fn write_rectangles_to_csv(output_file: &str, rectangles: &[RectData]) -> Result
         )
         .map_err(|e| format!("Error writing to output file: {}", e))?;
     }
-    
+
     Ok(())
 }
 

@@ -10,6 +10,10 @@ sources:
   - filename: example.xlsx
     id: main
     sheet: Sheet1
+  - filename: example_drawio_coords.csv
+    id: drawio
+    delimiter: ","
+    
 
 layout:
   - name: 01_System.cnfg
@@ -26,3 +30,7 @@ layout:
     include:
       - D01
       - D02
+  - name: 09_DspGroupOverview.cnfg
+  - name: 091_DspGroupOverviewElements.cnfg
+    source: drawio
+

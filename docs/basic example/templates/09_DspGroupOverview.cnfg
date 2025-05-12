@@ -1,0 +1,19 @@
+  DisplayGroup:  Overview
+       GroupNo=  2
+        Locked=  OFF
+          Rows=  -1
+          Cols=  3
+         xGrid=  OFF
+         yGrid=  OFF
+         xAxis=  OFF
+         yAxis=  ON
+     Autoscale=  OFF
+     Spanscale=  ON
+      HistSize=  180
+
+  Image:         ImageName
+           Row=  -1
+           Col=  -1
+       RowSize=  1
+       ColSize=  1
+      FileName=  "example.png"
