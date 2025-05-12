@@ -5,7 +5,7 @@ use roxmltree::Document;
 use std::fs::{self, File};
 use std::io::Read;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// A structure to represent a rectangle with optional properties
 #[derive(Debug, Clone)]
@@ -55,54 +55,43 @@ fn decompress_diagram(data: &str) -> Result<String, String> {
 }
 
 /// Extract rectangle coordinates from a .drawio or .xml file
-pub fn extract_coords(
-    input_filename: &str,
-    output_filename: Option<&str>,
-) -> Result<(usize, String), String> {
-    let output_file = determine_output_filename(input_filename, output_filename);
-    let file_content = read_file_content(input_filename)?;
-    let xml_content = process_drawio_file(input_filename, &file_content)?;
-    let rectangles = parse_xml_and_extract_rectangles(&xml_content)?;
-    write_rectangles_to_csv(&output_file, &rectangles)?;
-    Ok((rectangles.len(), output_file))
-}
+pub fn extract_coords(input: &Path, output: Option<&Path>) -> Result<(usize, PathBuf), String> {
+    let output = match &output {
+        Some(output_path) => std::path::PathBuf::from(output_path),
+        None => {
+            let out = format!("{}_coords", input.with_extension("").to_string_lossy());
+            PathBuf::from(out).with_extension("csv")
+        }
+    };
 
-/// Determine the output filename
-fn determine_output_filename(input_filename: &str, output_filename: Option<&str>) -> String {
-    output_filename.map_or_else(
-        || {
-            format!(
-                "{}_coords.csv",
-                Path::new(input_filename)
-                    .file_stem()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-            )
-        },
-        |name| name.to_string(),
-    )
+    // println!("Input file:         {}", input.display());
+    // println!("Output csv file:    {}", output.display());
+
+    let xml_content = process_drawio_file(input)?;
+    let rectangles = parse_xml_and_extract_rectangles(&xml_content)?;
+    write_rectangles_to_csv(&output, &rectangles)?;
+    Ok((rectangles.len(), output.to_owned()))
 }
 
 /// Read the content of the input file
-fn read_file_content(input_filename: &str) -> Result<String, String> {
-    fs::read_to_string(input_filename).map_err(|e| format!("Error reading file: {}", e))
+fn read_file_content(input: &Path) -> Result<String, String> {
+    fs::read_to_string(input).map_err(|e| format!("Error reading file: {}", e))
 }
 
 /// Process .drawio files to extract and decompress diagram content
-fn process_drawio_file(input_filename: &str, file_content: &str) -> Result<String, String> {
-    if input_filename.to_lowercase().ends_with(".drawio") {
-        if let Ok(doc) = Document::parse(file_content) {
-            for node in doc
-                .descendants()
-                .filter(|n| n.has_tag_name("diagram") && n.text().is_some())
-            {
-                let diagram_text = node.text().unwrap();
-                if let Ok(decompressed) = decompress_diagram(diagram_text) {
-                    return Ok(decompressed);
-                } else if let Ok(decoded) = general_purpose::STANDARD.decode(diagram_text) {
-                    if let Ok(decoded_str) = String::from_utf8(decoded) {
-                        return Ok(decoded_str);
-                    }
+fn process_drawio_file(input: &Path) -> Result<String, String> {
+    let file_content = read_file_content(input)?;
+    if let Ok(doc) = Document::parse(&file_content) {
+        for node in doc
+            .descendants()
+            .filter(|n| n.has_tag_name("diagram") && n.text().is_some())
+        {
+            let diagram_text = node.text().unwrap();
+            if let Ok(decompressed) = decompress_diagram(diagram_text) {
+                return Ok(decompressed);
+            } else if let Ok(decoded) = general_purpose::STANDARD.decode(diagram_text) {
+                if let Ok(decoded_str) = String::from_utf8(decoded) {
+                    return Ok(decoded_str);
                 }
             }
         }
@@ -205,9 +194,9 @@ fn extract_coordinates(node: &roxmltree::Node) -> Option<(i32, i32, i32, i32)> {
 }
 
 /// Write rectangle data to a CSV file
-fn write_rectangles_to_csv(output_file: &str, rectangles: &[RectData]) -> Result<(), String> {
+fn write_rectangles_to_csv(output: &Path, rectangles: &[RectData]) -> Result<(), String> {
     let mut file =
-        File::create(output_file).map_err(|e| format!("Error creating output file: {}", e))?;
+        File::create(output).map_err(|e| format!("Error creating output file: {}", e))?;
 
     // Write header with all possible columns
     writeln!(file, "name,type,y1,x1,y2,x2,texts,colors")
@@ -220,10 +209,10 @@ fn write_rectangles_to_csv(output_file: &str, rectangles: &[RectData]) -> Result
             "{},{},{},{},{},{},{},{}",
             rect.name,
             rect.rect_type,
-            rect.y,
             rect.x,
-            rect.y + rect.height,
+            rect.y,
             rect.x + rect.width,
+            rect.y + rect.height,
             rect.texts.as_ref().unwrap_or(&String::new()),
             rect.colors.as_ref().unwrap_or(&String::new())
         )
@@ -248,28 +237,12 @@ mod tests {
         let output_file = test_dir.join("output_test_coords.csv");
 
         // Ensure test directory and input files exist
-        assert!(
-            test_dir.exists(),
-            "Test directory not found: {:?}",
-            test_dir
-        );
-        assert!(
-            input_file.exists(),
-            "Test input file not found: {:?}",
-            input_file
-        );
-        assert!(
-            expected_file.exists(),
-            "Expected output file not found: {:?}",
-            expected_file
-        );
+        for file in [test_dir, &input_file, &expected_file] {
+            assert!(file.exists(), "Required resource not found: {:?}", file);
+        }
 
         // Remove the output file if it exists from a previous test run
         let _ = fs::remove_file(&output_file);
-
-        // Convert paths to strings for command arguments
-        let input_path = input_file.to_str().unwrap();
-        let output_path = output_file.to_str().unwrap();
 
         // Build command that runs the full CLI
         // cargo run -- drawio getcoords --input <input_file> --output <output_file>
@@ -280,22 +253,12 @@ mod tests {
                 "drawio",
                 "getcoords",
                 "--input",
-                input_path,
+                input_file.to_str().unwrap(),
                 "--output",
-                output_path,
+                output_file.to_str().unwrap(),
             ])
             .output()
             .expect("Failed to execute process");
-
-        // Print command output for debugging
-        println!(
-            "Command stdout: {}",
-            String::from_utf8_lossy(&output.stdout)
-        );
-        println!(
-            "Command stderr: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
 
         // Check if command executed successfully
         assert!(
@@ -317,13 +280,10 @@ mod tests {
         let expected_content =
             fs::read_to_string(&expected_file).expect("Failed to read the expected file");
 
-        // Normalize line endings (convert CRLF to LF)
-        let normalized_output = output_content.replace("\r\n", "\n");
-        let normalized_expected = expected_content.replace("\r\n", "\n");
-
-        // Compare the content
+        // Compare content after normalizing EOL
         assert_eq!(
-            normalized_output, normalized_expected,
+            output_content.replace("\r\n", "\n"),
+            expected_content.replace("\r\n", "\n"),
             "Output doesn't match expected content"
         );
 

@@ -9,8 +9,7 @@ verifycontent: true
 
 drawio:
   - input: test.drawio
-  - pngoutput: test.png
-  - csvoutput: test.csv
+    pngoutput: test.png
 
 sources:
   # - filename: test.xlsx

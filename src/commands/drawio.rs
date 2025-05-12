@@ -1,4 +1,5 @@
 use clap::Args;
+use std::path::{Path, PathBuf};
 use std::process;
 
 pub mod drawio_to_png;
@@ -23,35 +24,44 @@ pub enum DrawioCommands {
 pub struct ConvertpngArgs {
     /// Input .drawio or .xml file path
     #[arg(short, long, required = true)]
-    pub input: String,
+    pub input: PathBuf,
 
     /// Output PNG file path (default: <input_basename>.png)
     #[arg(short, long)]
-    pub output: Option<String>,
+    pub output: Option<PathBuf>,
 }
 
 #[derive(Args, Debug)]
 pub struct GetcoordsArgs {
     /// Input .drawio or .xml file path
     #[arg(short, long, required = true)]
-    pub input: String,
+    pub input: PathBuf,
 
     /// Output CSV file path (default: <input_basename>_coords.csv)
     #[arg(short, long)]
-    pub output: Option<String>,
+    pub output: Option<PathBuf>,
 }
 
 impl Drawio {
     pub fn execute(&self) {
         match &self.command {
-            DrawioCommands::Convertpng(args) => self.convert_png(args),
-            DrawioCommands::Getcoords(args) => self.get_coords(args),
+            DrawioCommands::Convertpng(args) => {
+                self.cmd_convert_png(&args.input, args.output.as_deref())
+            }
+            DrawioCommands::Getcoords(args) => {
+                self.cmd_get_coords(&args.input, args.output.as_deref())
+            }
         }
     }
 
-    fn convert_png(&self, args: &ConvertpngArgs) {
-        match drawio_to_png::drawio_to_png(&args.input, args.output.as_deref()) {
-            Ok(output) => println!("Converted to PNG: {}", output),
+    fn cmd_convert_png(&self, input: &Path, output: Option<&Path>) {
+        match drawio_to_png::drawio_to_png(input, output) {
+            Ok((width, height, output)) => println!(
+                "Converted to '{}' with dimensions {}x{}",
+                output.display(),
+                width,
+                height
+            ),
             Err(e) => {
                 eprintln!("Failed to convert to PNG: {}", e);
                 process::exit(1);
@@ -59,9 +69,11 @@ impl Drawio {
         }
     }
 
-    fn get_coords(&self, args: &GetcoordsArgs) {
-        match get_coords::extract_coords(&args.input, args.output.as_deref()) {
-            Ok((count, output)) => println!("Extracted {} objects to {}", count, output),
+    fn cmd_get_coords(&self, input: &Path, output: Option<&Path>) {
+        match get_coords::extract_coords(input, output) {
+            Ok((count, output)) => {
+                println!("Extracted {} objects to '{}'", count, output.display())
+            }
             Err(e) => {
                 eprintln!("Failed to extract coordinates: {}", e);
                 process::exit(1);

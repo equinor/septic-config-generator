@@ -1,4 +1,6 @@
-use crate::config::{Config, Filename, Source};
+use crate::commands::drawio::drawio_to_png::drawio_to_png;
+use crate::commands::drawio::get_coords::extract_coords;
+use crate::config::{Config, Drawio, Filename, Source};
 use crate::datasource::{
     CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
 };
@@ -12,9 +14,6 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
-
-use crate::commands::drawio::drawio_to_png::drawio_to_png;
-use crate::commands::drawio::get_coords::extract_coords;
 
 #[derive(Debug)]
 enum MakeError {
@@ -135,34 +134,8 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     }
 
     if let Some(drawio) = &cfg.drawio {
-        for item in drawio {
-            let input = relative_root.join(&item.input);
-            let input_str = input.to_str().unwrap_or_default();
-
-            let pngoutput = relative_root.join(if let Some(png_path) = &item.pngoutput {
-                png_path.clone()
-            } else if input_str.ends_with(".drawio") {
-                input_str.replace(".drawio", ".png")
-            } else {
-                format!("{}.png", input_str)
-            });
-
-            let csvoutput = relative_root.join(if let Some(csv_path) = &item.csvoutput {
-                csv_path.clone()
-            } else if input_str.ends_with(".drawio") {
-                input_str.replace(".drawio", ".csv")
-            } else {
-                format!("{}.csv", input_str)
-            });
-
-            if let Err(err) = drawio_to_png(input_str, pngoutput.to_str()) {
-                eprintln!("Error processing drawio file '{}': {:#}", input_str, err);
-            }
-
-            if let Err(err) = extract_coords(input_str, csvoutput.to_str()) {
-                eprintln!("Error processing drawio file '{}': {:#}", input_str, err);
-            }
-        }
+        drawios_to_coords(&relative_root, drawio);
+        drawios_to_pngs(&relative_root, drawio);
     }
 
     // drawio needs to be done before the templates are rendered, so that the .csv files are available
@@ -215,6 +188,39 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         println!("{rendered}");
     }
     Ok(())
+}
+
+fn drawios_to_pngs(relative_root: &Path, drawio: &Vec<Drawio>) {
+    for item in drawio {
+        let input = relative_root.join(&item.input);
+
+        let output = match &item.pngoutput {
+            Some(output_path) => relative_root.join(output_path),
+            None => input.with_extension("png"),
+        };
+
+        if let Err(err) = drawio_to_png(&input, Some(&output)) {
+            eprintln!("Error processing drawio file '{:?}': {:#}", input, err);
+        }
+    }
+}
+
+fn drawios_to_coords(relative_root: &Path, drawio: &Vec<Drawio>) {
+    for item in drawio {
+        let input = relative_root.join(&item.input);
+
+        let output = match &item.csvoutput {
+            Some(output_path) => PathBuf::from(output_path),
+            None => {
+                let out = format!("{}_coords", input.with_extension("").to_string_lossy());
+                PathBuf::from(out).with_extension("csv")
+            }
+        };
+
+        if let Err(err) = extract_coords(&input, Some(&output)) {
+            eprintln!("Error processing drawio file '{:?}': {:#}", input, err);
+        }
+    }
 }
 
 fn check_if_overwrite_outfile(
