@@ -1,6 +1,5 @@
 use clap::Args;
 use std::path::{Path, PathBuf};
-use std::process;
 
 pub mod drawio_to_png;
 pub mod get_coords;
@@ -55,16 +54,17 @@ impl Drawio {
     }
 
     fn cmd_convert_png(&self, input: &Path, output: Option<&Path>) {
-        match drawio_to_png::drawio_to_png(input, output) {
+        let result = drawio_to_png::drawio_to_png(input, output);
+        match result {
             Ok((width, height, output)) => println!(
                 "Converted to '{}' with dimensions {}x{}",
                 output.display(),
                 width,
                 height
             ),
-            Err(e) => {
-                eprintln!("Failed to convert to PNG: {}", e);
-                process::exit(1);
+            Err(err) => {
+                eprintln!("Failed to convert: {}", err);
+                std::process::exit(1);
             }
         }
     }
@@ -76,7 +76,7 @@ impl Drawio {
             }
             Err(e) => {
                 eprintln!("Failed to extract coordinates: {}", e);
-                process::exit(1);
+                std::process::exit(1);
             }
         }
     }

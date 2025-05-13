@@ -25,6 +25,7 @@ enum MakeError {
     CollectFileList(anyhow::Error),
     CreateOutputFile(anyhow::Error),
     LoadSourceError(anyhow::Error),
+    Drawio(anyhow::Error),
     Other(anyhow::Error),
 }
 
@@ -49,6 +50,7 @@ impl std::fmt::Display for MakeError {
             MakeError::CollectFileList(e) => write!(f, "Problem identifying changed files: {e:#}"),
             MakeError::CreateOutputFile(e) => write!(f, "Problem creating output file: {e:#}"),
             MakeError::LoadSourceError(e) => write!(f, "{e:#}"),
+            MakeError::Drawio(e) => write!(f, "Drawio error: {e:#}"),
             MakeError::Other(e) => write!(f, "{e:#}"),
         }
     }
@@ -134,8 +136,8 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     }
 
     if let Some(drawio) = &cfg.drawio {
-        drawios_to_coords(&relative_root, drawio);
-        drawios_to_pngs(&relative_root, drawio);
+        drawios_to_coords(&relative_root, drawio)?;
+        drawios_to_pngs(&relative_root, drawio)?;
     }
 
     // drawio needs to be done before the templates are rendered, so that the .csv files are available
@@ -190,7 +192,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     Ok(())
 }
 
-fn drawios_to_pngs(relative_root: &Path, drawio: &Vec<Drawio>) {
+fn drawios_to_pngs(relative_root: &Path, drawio: &Vec<Drawio>) -> Result<(), MakeError> {
     for item in drawio {
         let input = relative_root.join(&item.input);
 
@@ -199,13 +201,14 @@ fn drawios_to_pngs(relative_root: &Path, drawio: &Vec<Drawio>) {
             None => input.with_extension("png"),
         };
 
-        if let Err(err) = drawio_to_png(&input, Some(&output)) {
-            eprintln!("Error processing drawio file '{:?}': {:#}", input, err);
-        }
+        drawio_to_png(&input, Some(&output))
+            .context("Drawio to PNG")
+            .map_err(MakeError::Drawio)?;
     }
+    Ok(())
 }
 
-fn drawios_to_coords(relative_root: &Path, drawio: &Vec<Drawio>) {
+fn drawios_to_coords(relative_root: &Path, drawio: &Vec<Drawio>) -> Result<(), MakeError> {
     for item in drawio {
         let input = relative_root.join(&item.input);
 
@@ -217,10 +220,9 @@ fn drawios_to_coords(relative_root: &Path, drawio: &Vec<Drawio>) {
             }
         };
 
-        if let Err(err) = extract_coords(&input, Some(&output)) {
-            eprintln!("Error processing drawio file '{:?}': {:#}", input, err);
-        }
+        extract_coords(&input, Some(&output)).map_err(MakeError::Drawio)?;
     }
+    Ok(())
 }
 
 fn check_if_overwrite_outfile(
@@ -255,7 +257,7 @@ fn check_if_overwrite_outfile(
             .to_string();
         println!("{formatted_diff}");
         Ok(ask_should_overwrite()
-            .with_context(|| "Unable to read user input")
+            .context("Unable to read user input")
             .map_err(MakeError::Other)?)
     } else {
         Ok(true)

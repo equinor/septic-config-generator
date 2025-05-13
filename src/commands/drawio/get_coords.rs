@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use base64::{Engine as _, engine::general_purpose};
 use flate2::read::ZlibDecoder;
 use regex::Regex;
@@ -20,9 +21,6 @@ struct RectData {
     texts: Option<String>,
     colors: Option<String>,
 }
-
-// Type alias for the result of rectangle extraction
-type RectangleResult = Result<Vec<RectData>, String>;
 
 /// Helper function to strip HTML tags completely
 fn strip_html_tags(input: &str) -> String {
@@ -55,7 +53,7 @@ fn decompress_diagram(data: &str) -> Result<String, String> {
 }
 
 /// Extract rectangle coordinates from a .drawio or .xml file
-pub fn extract_coords(input: &Path, output: Option<&Path>) -> Result<(usize, PathBuf), String> {
+pub fn extract_coords(input: &Path, output: Option<&Path>) -> Result<(usize, PathBuf)> {
     let output = match &output {
         Some(output_path) => std::path::PathBuf::from(output_path),
         None => {
@@ -74,12 +72,12 @@ pub fn extract_coords(input: &Path, output: Option<&Path>) -> Result<(usize, Pat
 }
 
 /// Read the content of the input file
-fn read_file_content(input: &Path) -> Result<String, String> {
-    fs::read_to_string(input).map_err(|e| format!("Error reading file: {}", e))
+fn read_file_content(input: &Path) -> Result<String> {
+    fs::read_to_string(input).with_context(|| format!("Failed to read file: {}", input.display()))
 }
 
 /// Process .drawio files to extract and decompress diagram content
-fn process_drawio_file(input: &Path) -> Result<String, String> {
+fn process_drawio_file(input: &Path) -> Result<String> {
     let file_content = read_file_content(input)?;
     if let Ok(doc) = Document::parse(&file_content) {
         for node in doc
@@ -100,8 +98,9 @@ fn process_drawio_file(input: &Path) -> Result<String, String> {
 }
 
 /// Parse XML content and extract rectangle data
-fn parse_xml_and_extract_rectangles(xml_content: &str) -> RectangleResult {
-    let doc = Document::parse(xml_content).map_err(|e| format!("Error parsing XML: {}", e))?;
+fn parse_xml_and_extract_rectangles(xml_content: &str) -> Result<Vec<RectData>> {
+    let doc = Document::parse(xml_content).context("Error parsing XML")?;
+
     let types = ["ImageXvrPlot", "ImageXvr", "ImageStatusLabel"];
     let mut rectangles = Vec::new();
 
@@ -194,13 +193,13 @@ fn extract_coordinates(node: &roxmltree::Node) -> Option<(i32, i32, i32, i32)> {
 }
 
 /// Write rectangle data to a CSV file
-fn write_rectangles_to_csv(output: &Path, rectangles: &[RectData]) -> Result<(), String> {
-    let mut file =
-        File::create(output).map_err(|e| format!("Error creating output file: {}", e))?;
+fn write_rectangles_to_csv(output: &Path, rectangles: &[RectData]) -> Result<()> {
+    let mut file = File::create(output)
+        .with_context(|| format!("Error creating output file {}", output.display()))?;
 
     // Write header with all possible columns
     writeln!(file, "name,type,y1,x1,y2,x2,texts,colors")
-        .map_err(|e| format!("Error writing to output file: {}", e))?;
+        .with_context(|| format!("Error writing to output file {}", output.display()))?;
 
     // Write data rows with all columns
     for rect in rectangles {
@@ -216,7 +215,7 @@ fn write_rectangles_to_csv(output: &Path, rectangles: &[RectData]) -> Result<(),
             rect.texts.as_ref().unwrap_or(&String::new()),
             rect.colors.as_ref().unwrap_or(&String::new())
         )
-        .map_err(|e| format!("Error writing to output file: {}", e))?;
+        .with_context(|| format!("Error writing to output file {}", output.display()))?;
     }
 
     Ok(())
