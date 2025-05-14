@@ -1,4 +1,5 @@
-name,type,y1,x1,y2,x2,texts,colors
-imagexvrplot,ImageXvrPlot,883,160,1169,401,,
-imagestatuslabel,ImageStatusLabel,669,371,725,388,"Text1 with space" "Text2!" "Text3" "Text4","red" "blue" "#548235" "orange"
-imagexvr,ImageXvr,671,512,710,529,,"Blue"
+type,name,x1,y1,x2,y2,backgroundcolor,backgroundcolors,colors,plotmax,plotmin,texts,xvrs
+ImageXvrPlot,myxvrplot,883,160,1169,401,,,,,,,
+ImageStatusLabel,mystatuslabel,669,371,725,388,,"red" "blue" "#548235" "orange",,,,"Text1 with space" "Text2!",
+ImageXvr,myxvr,3,6,45,24,"red",,,,,,
+ImageMultiXvrPlot,mymultixvrplot,300,160,586,401,,,"red" "blue" "dark green",200,4,,"L2"  "T2"  "Heat2"

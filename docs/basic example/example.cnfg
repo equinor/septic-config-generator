@@ -8,7 +8,7 @@
          Nmodl=  10
      ChngLogOn=  ON
           Grps=  3
-                 "Group1"  "Group2"  "Group3"
+                 "Tables"  "Overview"  "Group3"
        GrpLock=  0000
       MaxLogon=  ROOT
        RootPwd=  ""
@@ -524,3 +524,46 @@ UseFactorWeight=  0
           Text=  "MV"
           Mvrs=  1
                  "D02Zpc"
+
+  DisplayGroup:  Overview
+       GroupNo=  2
+        Locked=  OFF
+          Rows=  -1
+          Cols=  3
+         xGrid=  OFF
+         yGrid=  OFF
+         xAxis=  OFF
+         yAxis=  ON
+     Autoscale=  OFF
+     Spanscale=  ON
+      HistSize=  180
+
+  Image:         ImageName
+           Row=  -1
+           Col=  -1
+       RowSize=  1
+       ColSize=  1
+      FileName=  "example.png"
+
+  ImageStatusLabel:  ImageStatusLabelName
+            X1=  -1
+            Y1=  -1
+            X2=  -1
+            Y2=  -1
+         Texts=  1
+                 ""
+BackgroundColors=  1
+                 ""
+   TargetGroup=  0
+
+ImageXvrPlot:  imagexvrplot
+            X1=  883
+            Y1=  160
+            X2=  1169
+            Y2=  401
+
+ImageStatusLabel:  imagexvr
+            X1=  669
+            Y1=  371
+            X2=  725
+            Y2=  388

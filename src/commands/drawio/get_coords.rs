@@ -1,42 +1,29 @@
 use anyhow::{Context, Result};
 use base64::{Engine as _, engine::general_purpose};
+use csv::{QuoteStyle, WriterBuilder};
 use flate2::read::ZlibDecoder;
-use regex::Regex;
+use html_escape::decode_html_entities;
 use roxmltree::Document;
-use std::fs::{self, File};
+use std::collections::{HashMap, HashSet};
+use std::fs::{self};
 use std::io::Read;
-use std::io::Write;
 use std::path::{Path, PathBuf};
 
-/// A structure to represent a rectangle with optional properties
+/// A structure to represent a rectangle with septic properties
 #[derive(Debug, Clone)]
 struct RectData {
-    name: String,
-    rect_type: String,
+    // Store all septic_ properties in a HashMap
+    properties: HashMap<String, String>,
+    // Geometry properties
     x: i32,
     y: i32,
     width: i32,
     height: i32,
-    // Optional properties for ImageStatusLabel
-    texts: Option<String>,
-    colors: Option<String>,
 }
 
-/// Helper function to strip HTML tags completely
-fn strip_html_tags(input: &str) -> String {
-    let mut result = input.to_string();
-    let re = Regex::new(r"<[^>]*>").unwrap();
-    while re.is_match(&result) {
-        result = re.replace_all(&result, "").to_string();
-    }
-    result.trim().to_string()
-}
-
-/// Helper function to clean attribute values but preserve individual quotes
+/// Helper function to clean attribute values by decoding HTML entities and trimming
 fn clean_attribute_value(value: &str) -> String {
-    // This preserves the individual quotes around each value
-    // but removes any extraneous quotes that might be present
-    value.trim().to_string()
+    decode_html_entities(value.trim()).to_string()
 }
 
 /// Helper function to decompress base64+zlib encoded diagram data
@@ -55,15 +42,12 @@ fn decompress_diagram(data: &str) -> Result<String, String> {
 /// Extract rectangle coordinates from a .drawio or .xml file
 pub fn extract_coords(input: &Path, output: Option<&Path>) -> Result<(usize, PathBuf)> {
     let output = match &output {
-        Some(output_path) => std::path::PathBuf::from(output_path),
+        Some(output_path) => PathBuf::from(output_path),
         None => {
             let out = format!("{}_coords", input.with_extension("").to_string_lossy());
             PathBuf::from(out).with_extension("csv")
         }
     };
-
-    // println!("Input file:         {}", input.display());
-    // println!("Output csv file:    {}", output.display());
 
     let xml_content = process_drawio_file(input)?;
     let rectangles = parse_xml_and_extract_rectangles(&xml_content)?;
@@ -100,62 +84,57 @@ fn process_drawio_file(input: &Path) -> Result<String> {
 /// Parse XML content and extract rectangle data
 fn parse_xml_and_extract_rectangles(xml_content: &str) -> Result<Vec<RectData>> {
     let doc = Document::parse(xml_content).context("Error parsing XML")?;
-
-    let types = ["ImageXvrPlot", "ImageXvr", "ImageStatusLabel"];
     let mut rectangles = Vec::new();
 
+    // Find all septic_ property names across all objects to get a complete list of columns
+    let mut all_septic_props = Vec::new();
+
+    // First pass: collect all unique septic property names
     for node in doc.descendants().filter(|n| n.has_tag_name("object")) {
-        let label = node.attribute("label").unwrap_or("");
-        let clean_label = strip_html_tags(label);
+        for attr in node.attributes() {
+            let attr_name = attr.name().to_lowercase();
+            if attr_name.starts_with("septic_") && !all_septic_props.contains(&attr_name) {
+                all_septic_props.push(attr_name);
+            }
+        }
+    }
 
-        if let Some(matched_type) = types.iter().find(|&&t| clean_label.contains(t)) {
-            let name = extract_name(&clean_label, matched_type);
+    // Sort property names for consistent column order
+    all_septic_props.sort();
 
-            // Extract additional properties for ImageStatusLabel and ImageXvr
-            let texts = if *matched_type == "ImageStatusLabel" && node.has_attribute("Texts") {
-                node.attribute("Texts").map(clean_attribute_value)
-            } else {
-                None
-            };
+    // Second pass: extract rectangle data
+    for node in doc.descendants().filter(|n| n.has_tag_name("object")) {
+        // Check if this object has any septic_ property
+        let has_septic_props = node
+            .attributes()
+            .any(|attr| attr.name().to_lowercase().starts_with("septic_"));
 
-            // Check for Colors attribute for both types, but don't assume it's always present
-            let colors = if (*matched_type == "ImageStatusLabel" || *matched_type == "ImageXvr")
-                && node.has_attribute("Colors")
-            {
-                node.attribute("Colors").map(clean_attribute_value)
-            } else {
-                None
-            };
+        if has_septic_props {
+            // Extract all septic_ properties
+            let mut properties = HashMap::new();
+            for attr in node.attributes() {
+                let attr_name = attr.name().to_lowercase();
+                if attr_name.starts_with("septic_") {
+                    let property_name = attr_name.trim_start_matches("septic_").to_string();
+                    let property_value = clean_attribute_value(attr.value());
+                    properties.insert(property_name, property_value);
+                }
+            }
 
+            // Extract coordinates
             if let Some((x, y, width, height)) = extract_coordinates(&node) {
                 rectangles.push(RectData {
-                    name,
-                    rect_type: matched_type.to_string(),
+                    properties,
                     x,
                     y,
                     width,
                     height,
-                    texts,
-                    colors,
                 });
             }
         }
     }
-    Ok(rectangles)
-}
 
-/// Extract the name of the rectangle
-fn extract_name(clean_label: &str, matched_type: &str) -> String {
-    let name = clean_label
-        .replace(matched_type, "")
-        .replace("=", "")
-        .trim()
-        .to_string();
-    if name.is_empty() {
-        "Unnamed".to_string()
-    } else {
-        name
-    }
+    Ok(rectangles)
 }
 
 /// Extract coordinates from an object node
@@ -192,32 +171,66 @@ fn extract_coordinates(node: &roxmltree::Node) -> Option<(i32, i32, i32, i32)> {
     None
 }
 
-/// Write rectangle data to a CSV file
+/// Write rectangle data to a CSV file using the `csv` crate
 fn write_rectangles_to_csv(output: &Path, rectangles: &[RectData]) -> Result<()> {
-    let mut file = File::create(output)
-        .with_context(|| format!("Error creating output file {}", output.display()))?;
-
-    // Write header with all possible columns
-    writeln!(file, "name,type,y1,x1,y2,x2,texts,colors")
-        .with_context(|| format!("Error writing to output file {}", output.display()))?;
-
-    // Write data rows with all columns
+    // 1) Collect all property-names across all rectangles
+    let mut all_props: HashSet<String> = HashSet::new();
     for rect in rectangles {
-        writeln!(
-            file,
-            "{},{},{},{},{},{},{},{}",
-            rect.name,
-            rect.rect_type,
-            rect.x,
-            rect.y,
-            rect.x + rect.width,
-            rect.y + rect.height,
-            rect.texts.as_ref().unwrap_or(&String::new()),
-            rect.colors.as_ref().unwrap_or(&String::new())
-        )
-        .with_context(|| format!("Error writing to output file {}", output.display()))?;
+        for key in rect.properties.keys() {
+            all_props.insert(key.clone());
+        }
     }
 
+    // 2) Define the order you want:
+    //    first these props (if present), interleaved with coords,
+    //    then any remaining props alphabetically.
+    let property_priority = ["type", "name"];
+    let coords = ["x1", "y1", "x2", "y2"];
+
+    // Build the header row
+    let mut header: Vec<String> = Vec::new();
+
+    // 2a) Add any priority props (type, name)
+    for &p in &property_priority {
+        if all_props.contains(p) {
+            header.push(p.to_string());
+        }
+    }
+    // 2b) Then the coords
+    header.extend(coords.iter().map(|&c| c.to_string()));
+
+    // 2c) Finally, any other props sorted alphabetically
+    let mut remaining: Vec<_> = all_props
+        .into_iter()
+        .filter(|p| !property_priority.contains(&p.as_str()))
+        .collect();
+    remaining.sort();
+    header.extend(remaining);
+
+    // 3) Create the CSV writer with no quoting and write the header
+    let mut wtr = WriterBuilder::new()
+        .quote_style(QuoteStyle::Never)
+        .from_path(output)
+        .with_context(|| format!("Error creating CSV writer for {}", output.display()))?;
+    wtr.write_record(&header)?;
+
+    // 4) Write each rectangle’s row by matching each header column
+    for rect in rectangles {
+        let record: Vec<String> = header
+            .iter()
+            .map(|col| match col.as_str() {
+                "x1" => rect.x.to_string(),
+                "y1" => rect.y.to_string(),
+                "x2" => (rect.x + rect.width).to_string(),
+                "y2" => (rect.y + rect.height).to_string(),
+                other => rect.properties.get(other).cloned().unwrap_or_default(),
+            })
+            .collect();
+        wtr.write_record(&record)?;
+    }
+
+    // 5) Flush to disk
+    wtr.flush()?;
     Ok(())
 }
 
@@ -244,7 +257,6 @@ mod tests {
         let _ = fs::remove_file(&output_file);
 
         // Build command that runs the full CLI
-        // cargo run -- drawio getcoords --input <input_file> --output <output_file>
         let output = Command::new("cargo")
             .args([
                 "run",
