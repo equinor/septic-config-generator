@@ -7,7 +7,7 @@ use roxmltree::Document;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::File;
-use std::io::{BufWriter, Read};
+use std::io::{Read, BufWriter};
 use std::path::{Path, PathBuf};
 
 /// A structure to represent a rectangle with septic properties
@@ -60,10 +60,7 @@ fn read_file_content(input: &Path) -> Result<String> {
 fn process_drawio_file(input: &Path) -> Result<String> {
     let content = read_file_content(input)?;
     if let Ok(doc) = Document::parse(&content) {
-        for node in doc
-            .descendants()
-            .filter(|n| n.has_tag_name("diagram") && n.text().is_some())
-        {
+        for node in doc.descendants().filter(|n| n.has_tag_name("diagram") && n.text().is_some()) {
             if let Some(text) = node.text() {
                 if let Ok(decompressed) = decompress_diagram(text) {
                     return Ok(decompressed);
@@ -79,122 +76,120 @@ fn process_drawio_file(input: &Path) -> Result<String> {
     Ok(content)
 }
 
-/// Single-pass XML parse to extract rectangles
+/// Parse XML and extract rectangle data accounting for group offsets
 fn parse_xml_and_extract_rectangles(xml: &str) -> Result<Vec<RectData>> {
     const PREFIX: &str = "septic_";
     let doc = Document::parse(xml).context("Error parsing XML")?;
-    let mut rects = Vec::new();
-    for obj in doc.descendants().filter(|n| n.has_tag_name("object")) {
-        if !obj
-            .attributes()
-            .any(|a| a.name().to_ascii_lowercase().starts_with(PREFIX))
-        {
-            continue;
-        }
-        let mut props = HashMap::with_capacity(8);
-        for attr in obj.attributes() {
-            let name = attr.name();
-            if name.to_ascii_lowercase().starts_with(PREFIX) {
-                let key = name[PREFIX.len()..].to_ascii_lowercase();
-                props.insert(key, clean_attribute_value(attr.value()));
+    // Build id->geometry offset and id->parent maps for all mxCell nodes
+    let mut id_to_geom: HashMap<String, (i32, i32)> = HashMap::new();
+    let mut id_to_parent: HashMap<String, String> = HashMap::new();
+    for cell in doc.descendants().filter(|n| n.has_tag_name("mxCell")) {
+        if let Some(id) = cell.attribute("id") {
+            if let Some(geom) = cell.children().find(|n| n.has_tag_name("mxGeometry")) {
+                let x = geom.attribute("x").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
+                let y = geom.attribute("y").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
+                id_to_geom.insert(id.to_string(), (x, y));
+                if let Some(parent_id) = cell.attribute("parent") {
+                    id_to_parent.insert(id.to_string(), parent_id.to_string());
+                }
             }
         }
-        if let Some((x, y, w, h)) = extract_coordinates(&obj) {
-            rects.push(RectData {
-                properties: props,
-                x,
-                y,
-                width: w,
-                height: h,
-            });
+    }
+    let mut rects = Vec::new();
+    // Extract each object with septic_ props
+    for obj in doc.descendants().filter(|n| n.has_tag_name("object")) {
+        // Check for any septic_ attributes
+        let mut props = HashMap::new();
+        for attr in obj.attributes() {
+            // Use strip_prefix to remove the PREFIX
+            if let Some(stripped) = attr.name().to_ascii_lowercase().strip_prefix(PREFIX) {
+                props.insert(stripped.to_string(), clean_attribute_value(attr.value()));
+            }
+        }
+        if props.is_empty() {
+            continue;
+        }
+        if let Some((x, y, w, h)) = extract_coordinates(&obj, &id_to_geom, &id_to_parent) {
+            rects.push(RectData { properties: props, x, y, width: w, height: h });
         }
     }
     Ok(rects)
 }
 
-/// Fast coordinate extraction
-#[inline]
-fn extract_coordinates(node: &roxmltree::Node) -> Option<(i32, i32, i32, i32)> {
-    node.children()
-        .find(|n| n.has_tag_name("mxCell"))
-        .and_then(|cell| {
-            cell.children()
-                .find(|n| n.has_tag_name("mxGeometry"))
-                .map(|geom| {
-                    let parse_i = |k| geom.attribute(k).unwrap_or("0").parse::<i32>().unwrap_or(0);
-                    (
-                        parse_i("x"),
-                        parse_i("y"),
-                        parse_i("width"),
-                        parse_i("height"),
-                    )
-                })
-        })
+/// Extract coordinates, accumulating group offsets via id maps
+fn extract_coordinates(
+    obj: &roxmltree::Node,
+    id_to_geom: &HashMap<String, (i32, i32)>,
+    id_to_parent: &HashMap<String, String>,
+) -> Option<(i32, i32, i32, i32)> {
+    let cell = obj.children().find(|n| n.has_tag_name("mxCell"))?;
+    let geom = cell.children().find(|n| n.has_tag_name("mxGeometry"))?;
+    let local_x = geom.attribute("x").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
+    let local_y = geom.attribute("y").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
+    let width  = geom.attribute("width").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
+    let height = geom.attribute("height").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
+    let mut abs_x = local_x;
+    let mut abs_y = local_y;
+    let mut current = cell.attribute("parent");
+    while let Some(pid) = current {
+        if let Some(&(px, py)) = id_to_geom.get(pid) {
+            abs_x += px;
+            abs_y += py;
+            current = id_to_parent.get(pid).map(|s| s.as_str());
+        } else {
+            break;
+        }
+    }
+    Some((abs_x, abs_y, width, height))
 }
 
-/// Write rectangles to CSV with buffered I/O and reused buffers
+/// Write rectangles to CSV (optimized with multi-value counts)
 fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
     const PRIORITY: [&str; 2] = ["type", "name"];
     const COORDS: [&str; 4] = ["x1", "y1", "x2", "y2"];
 
-    let file = File::create(output)
-        .with_context(|| format!("Error creating file {}", output.display()))?;
-    let buf = BufWriter::with_capacity(1 << 20, file);
-    let mut wtr = WriterBuilder::new()
-        .quote_style(QuoteStyle::Never)
-        .from_writer(buf);
-
-    // Build header
-    let mut all = HashSet::new();
+    let mut all_keys = HashSet::new();
+    let mut multi_keys = HashSet::new();
     for r in rects {
-        all.extend(r.properties.keys().cloned());
-    }
-    let mut header: Vec<String> = Vec::with_capacity(all.len() + COORDS.len());
-    for &p in &PRIORITY {
-        if all.contains(p) {
-            header.push(p.to_string());
+        for (k, v) in &r.properties {
+            all_keys.insert(k.clone());
+            let segs = v.matches('"').count() / 2;
+            if segs > 1 { multi_keys.insert(k.clone()); }
         }
     }
+
+    let mut header: Vec<String> = Vec::with_capacity(all_keys.len() + COORDS.len() + multi_keys.len());
+    for &p in &PRIORITY { if all_keys.contains(p) { header.push(p.to_string()); } }
     header.extend(COORDS.iter().map(|&c| c.to_string()));
-    let mut rem: Vec<_> = all
-        .into_iter()
-        .filter(|p| !PRIORITY.contains(&p.as_str()))
-        .collect();
+    let mut rem: Vec<_> = all_keys.iter().filter(|k| !PRIORITY.contains(&k.as_str())).cloned().collect();
     rem.sort_unstable();
-    header.extend(rem);
+    header.extend(rem.clone());
+    let mut multi: Vec<_> = multi_keys.into_iter().collect();
+    multi.sort_unstable();
+    for k in &multi { header.push(format!("{}_num", k)); }
+
+    let file = File::create(output).with_context(|| format!("Error creating file {}", output.display()))?;
+    let buf = BufWriter::with_capacity(1 << 20, file);
+    let mut wtr = WriterBuilder::new().quote_style(QuoteStyle::Never).from_writer(buf);
     wtr.write_record(&header)?;
 
-    // Cache indices
-    let idx_map: HashMap<_, _> = header
-        .iter()
-        .enumerate()
-        .map(|(i, v)| (v.as_str(), i))
-        .collect();
-    // Pre-alloc record buffer
+    let idx: HashMap<_, _> = header.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
     let mut record = vec![String::new(); header.len()];
 
     for r in rects {
-        // clear previous
-        for cell in &mut record {
-            cell.clear();
-        }
-        // coords
-        if let Some(&i) = idx_map.get("x1") {
-            record[i].push_str(&r.x.to_string());
-        }
-        if let Some(&i) = idx_map.get("y1") {
-            record[i].push_str(&r.y.to_string());
-        }
-        if let Some(&i) = idx_map.get("x2") {
-            record[i].push_str(&(r.x + r.width).to_string());
-        }
-        if let Some(&i) = idx_map.get("y2") {
-            record[i].push_str(&(r.y + r.height).to_string());
-        }
-        // props
+        for cell in &mut record { cell.clear(); }
+        if let Some(i) = idx.get("x1") { record[*i] = r.x.to_string(); }
+        if let Some(i) = idx.get("y1") { record[*i] = r.y.to_string(); }
+        if let Some(i) = idx.get("x2") { record[*i] = (r.x + r.width).to_string(); }
+        if let Some(i) = idx.get("y2") { record[*i] = (r.y + r.height).to_string(); }
         for (k, v) in &r.properties {
-            if let Some(&i) = idx_map.get(k.as_str()) {
-                record[i].push_str(v);
+            if let Some(i) = idx.get(k.as_str()) { record[*i].push_str(v); }
+        }
+        for k in &multi {
+            let col = format!("{}_num", k);
+            if let Some(i) = idx.get(col.as_str()) {
+                let cnt = r.properties.get(k.as_str()).map(|v| v.matches('"').count()/2).unwrap_or(0);
+                record[*i] = cnt.to_string();
             }
         }
         wtr.write_record(&record)?;
