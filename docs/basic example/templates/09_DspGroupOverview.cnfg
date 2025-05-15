@@ -18,7 +18,20 @@
        ColSize=  1
       FileName=  "example.png"
 
-  ImageStatusLabel:  ImageStatusLabelName
+        ImageXvrPlot:  ImageXvrPlotName
+            X1=  -1
+            Y1=  -1
+            X2=  -1
+            Y2=  -1
+
+              ImageXvr:      ImageXvrName
+BackgroundColor=  "white"
+            X1=  -1
+            Y1=  -1
+            X2=  -1
+            Y2=  -1
+
+              ImageStatusLabel:  ImageStatusLabelName
             X1=  -1
             Y1=  -1
             X2=  -1
@@ -28,3 +41,15 @@
 BackgroundColors=  1
                  ""
    TargetGroup=  0
+
+     ImageMultiXvrPlot:  ImageMultiXvrPlotName
+            X1=  -1
+            Y1=  -1
+            X2=  -1
+            Y2=  -1
+       PlotMax=  100
+       PlotMin=  0
+          Xvrs=  1
+                 ""
+        Colors=  1
+                 ""

@@ -6,11 +6,16 @@ verifycontent: true
 
 adjustspacing: true
 
+drawio:
+  - input: example.drawio
+    pngoutput: example.png
+    csvoutput: example_drawio1.csv
+
 sources:
   - filename: example.xlsx
     id: main
     sheet: Sheet1
-  - filename: example_drawio_coords.csv
+  - filename: example_drawio1.csv
     id: drawio
     delimiter: ","
     

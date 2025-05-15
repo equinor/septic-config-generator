@@ -209,8 +209,8 @@ mod tests {
         // Define paths
         let test_dir = Path::new("tests/testdata");
         let input_file = test_dir.join("test.drawio");
-        let expected_file = test_dir.join("drawio_test_coords.csv");
-        let output_file = test_dir.join("output_test_coords.csv");
+        let expected_file = test_dir.join("test_drawio.csv");
+        let output_file = test_dir.join("output_test_drawio.csv");
 
         // Ensure test directory and input files exist
         for file in [test_dir, &input_file, &expected_file] {

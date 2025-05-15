@@ -153,6 +153,7 @@ impl DataSourceReader for CsvSourceReader {
             .flexible(false)
             .comment(Some(b'#'))
             .trim(Trim::All)
+            // .double_quote(false)
             .from_path(&self.file_path)?;
 
         let headers = reader.headers()?.clone();
@@ -179,7 +180,11 @@ impl DataSourceReader for CsvSourceReader {
                             CtxDataType::Float(v.replace(',', ".").parse().unwrap())
                         }
                         v if v.parse::<bool>().is_ok() => CtxDataType::Bool(v.parse().unwrap()),
-                        _ => CtxDataType::String(value.to_string()),
+                        _ => {
+                            let temp = CtxDataType::String(value.to_string());
+                            println!("Result: {temp:?}");
+                            temp
+                        }
                     };
                     data.insert(header_field.to_string(), converted_value);
                 }
