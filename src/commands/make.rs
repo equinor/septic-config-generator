@@ -135,7 +135,12 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         load_all_source_data(&cfg, &relative_root).map_err(MakeError::LoadSourceError)?;
 
     let template_path = relative_root.join(&cfg.templatepath);
-    let mut renderer = MiniJinja::new(globals, &template_path, &cfg.encoding, cfg.counters)
+    let mut renderer = MiniJinja::new(globals).map_err(MakeError::MiniJinjaError)?;
+    renderer
+        .set_counters(cfg.counters)
+        .map_err(MakeError::MiniJinjaError)?;
+    renderer
+        .set_loader(&template_path, &cfg.encoding)
         .map_err(MakeError::MiniJinjaError)?;
 
     for (key, source_data) in all_source_data.iter() {
@@ -385,13 +390,10 @@ mod tests {
 
     #[test]
     fn render_with_normal_values() -> Result<()> {
-        let renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&[]).unwrap();
+        renderer
+            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
+            .unwrap();
         let template = config::Template {
             name: "01_normals.tmpl".to_string(),
             source: Some("main".to_string()),
@@ -412,13 +414,10 @@ mod tests {
 
     #[test]
     fn render_with_special_values() -> Result<()> {
-        let renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&[]).unwrap();
+        renderer
+            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
+            .unwrap();
         let template = config::Template {
             name: "02_specials.tmpl".to_string(),
             source: Some("errors".to_string()),
@@ -440,13 +439,10 @@ mod tests {
     #[test]
     fn render_with_global_variables() -> Result<()> {
         let globals = ["glob".to_string(), "globvalue".to_string()];
-        let renderer = MiniJinja::new(
-            &globals,
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&globals).unwrap();
+        renderer
+            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
+            .unwrap();
         let template = config::Template {
             name: "03_globals.tmpl".to_string(),
             ..Default::default()
@@ -463,13 +459,10 @@ mod tests {
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
     fn render_with_global_source_no_iteration() -> Result<()> {
-        let mut renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&[]).unwrap();
+        renderer
+            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
+            .unwrap();
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             ..Default::default()
@@ -495,13 +488,10 @@ mod tests {
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
     fn render_with_global_source_and_iteration() -> Result<()> {
-        let mut renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&[]).unwrap();
+        renderer
+            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
+            .unwrap();
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             source: Some("main".to_string()),
@@ -528,13 +518,10 @@ mod tests {
 
     #[test]
     fn render_uses_latin1_encoding() {
-        let renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&[]).unwrap();
+        renderer
+            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
+            .unwrap();
         let template = config::Template {
             name: "06_encoding.tmpl".to_string(),
             ..Default::default()
@@ -548,13 +535,10 @@ mod tests {
 
     #[test]
     fn render_adjusts_spacing() {
-        let renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&[]).unwrap();
+        renderer
+            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
+            .unwrap();
         let template = config::Template {
             name: "00_plaintext.tmpl".to_string(),
             ..Default::default()
