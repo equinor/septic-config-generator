@@ -34,10 +34,18 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look [h
   - [The source file](#the-source-file)
   - [The config file](#the-config-file)
   - [Generate a config](#generate-a-config)
-- [scg drawio](#scg-drawio)
-  - [Convert draw.io to PNG](#convert-drawio-to-png)
-  - [Extract Coordinates from draw.io](#extract-coordinates-from-drawio)
-  - [Configuration Example](#configuration-example)
+- [draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg)
+  - [Prerequisites](#prerequisites)
+  - [Using draw.io with SCG](#using-drawio-with-scg)
+  - [Coordinate and Property Extraction](#coordinate-and-property-extraction)
+  - [Creating Diagrams for SCG](#creating-diagrams-for-scg)
+    - [Element Types](#element-types)
+    - [Properties](#properties)
+    - [Adding or Editing Properties](#adding-or-editing-properties)
+  - [Setting Diagram Size and Background](#setting-diagram-size-and-background)
+    - [Setting Paper Size](#setting-paper-size)
+    - [Creating a Fixed Size Background](#creating-a-fixed-size-background)
+  - [Command Line Usage](#command-line-usage)
 
 ## About
 
@@ -157,7 +165,7 @@ All file names and paths are relative to the location of the configuration file.
 
 _(Added in v2.13)_
 
-OBS: for prerequisites and .drawio info, See [scg drawio](#scg-drawio) section
+OBS: for prerequisites and .drawio info, See [draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg) section
 
 The `drawio` struct allows you to automate processing of `.drawio` diagram files as part of your configuration workflow. For each entry, SCG can perform two main functions:
 
@@ -749,75 +757,125 @@ ask whether you want to replace the existing `example.cnfg`. Changes are shown a
 
 Type `scg.exe make --help` for more options to the `make` command.
 
-## scg drawio
+## draw.io Diagram Integration for SCG
 
 The `scg drawio` command provides utilities for processing draw.io diagram files, including converting diagrams to PNG images and extracting coordinates and metadata for use in configuration files.
 
-### Prerequisite
+### Prerequisites
 
-To use these features, you must have the draw.io desktop application installed.
+To use these features, you must have the following installed:
 
-Windows: Open PowerShell as Administrator and run:
+1. **draw.io Desktop Application**
 
+   - Windows: Open PowerShell as Administrator and run:
+
+     ```sh
+     winget install JGraph.Draw
+     ```
+
+   - MacOS:
+
+     ```sh
+     brew install --cask drawio  # Note: requires Homebrew
+     ```
+
+   Ensure the `draw.io` executable is available in your system's PATH.
+
+2. **VSCode Extensions**
+
+   Two extensions are required for the best experience:
+
+   - **draw.io Integration**: Provides draw.io diagram editing capabilities directly in VSCode
+   - **Septic Extension**: Adds specialized diagram components for SCG
+
+   These can be installed from the VSCode marketplace.
+
+### Using draw.io with SCG
+
+The Septic Extension enhances draw.io Integration by adding a specialized septic library with pre-configured components designed for SCG:
+
+- **ImageStatusLabel**: For status indicators
+- **ImageXvr**: For standard XVR displays
+- **ImageXvrPlot**: For plotting XVR data
+- **ImageMultiXvrPlot**: For multi-series plots
+
+Each component comes with default properties already configured for use with SCG.
+
+## Coordinate and Property Extraction
+
+When using the SCG tools to extract information from your diagrams:
+
+- All components with `septic_` properties are detected and their coordinates are saved to a CSV file
+- The CSV includes position data (x1, y1, x2, y2) for each component
+- All properties with the `septic_` prefix are included in the CSV with the prefix removed
+  - Example: `septic_name` becomes `name` in the CSV output
+- For multi-value fields (e.g., color lists like `"red" "blue" "green"`), a `num_values` column is included with the count of items
+
+### Creating Diagrams for SCG
+
+When creating diagrams for use with SCG, follow these guidelines:
+
+#### Element Types
+
+- See `docs/basic example/example.drawio` for examples
+- Use the components from the Septic library in the draw.io sidebar for the easiest workflow
+- Other components can be used as long as they have properties with the `septic_` prefix
+
+#### Properties
+
+- The Septic library components already include these recommended standard properties:
+  - `septic_type`: Defines the component type (e.g., "ImageXvr")
+  - `septic_name`: Defines the component name (e.g., "18PT0056")
+- Common special properties for component types: `colors`, `texts`, `backgroundcolors` etc
+
+#### Adding or Editing Properties
+
+To modify properties:
+
+1. Right-click on the component
+2. Select "Edit Data"
+3. Add or modify properties with the `septic_` prefix
+4. Values will be preserved in the extracted CSV
+
+### Setting Diagram Size and Background
+
+Controlling the diagram size is important for consistent output when exporting to images:
+
+#### Setting Paper Size
+
+1. Go to **File → Page Setup** to set the desired resolution or paper size for your diagram
+2. Set appropriate dimensions (e.g., 1920×1080 for HD display)
+
+#### Creating a Fixed Size Background
+
+By default, draw.io will automatically crop images when exporting to PNG, which may result in unexpected dimensions. To ensure consistent sizing:
+
+1. **Create a dedicated background layer**:
+
+   - Open the layers panel (usually in the bottom-right)
+   - Add a new layer and name it "Background"
+   - Move it to the bottom of the layer stack
+
+2. **Add a fixed-size background rectangle**:
+
+   - Insert a rectangle on the background layer
+   - Set its dimensions to match your desired output size (e.g., 1920×1082)
+     - **Note**: For 1920×1080 resolution, add 2 pixels to the width (use 1922) to compensate for draw.io's sizing behavior
+   - Set the fill color as desired for your background
+
+3. **Lock the background layer**:
+   - Click the lock icon next to the background layer
+   - This prevents accidental edits to your background
+
+This approach ensures that exported images will maintain consistent dimensions regardless of the content layout.
+
+### Command Line Usage
+
+The SCG tool provides the following commands for working with draw.io files:
+
+```sh
+scg drawio getcoords --input <file.drawio> [--output <coords.csv>]
+scg drawio convertpng --ipnut <file.drawio> [--output <file.png>]
 ```
-winget install JGraph.Draw
-```
 
-MacOS:
-
-```
-brew install --cask drawio  (Note: requires Homebrew)
-```
-
-Ensure the `draw.io` executable is available in your system's PATH.
-
-### draw.io Diagram Requirements
-
-When preparing diagrams for use with SCG, follow these guidelines:
-
-- **Element Types:**
-
-  - See `docs/basic example/example.drawio`
-  - Only rectangles (shape type: rectangle) are supported for extracting coordinates.
-  - Each rectangle must be an object (not a group or connector). For a new/"raw" rectangle, label/data may need to be added for it to be recognized as an object.
-
-- **Text Format:**
-
-  - The base objects (rectangles) must have text. Double-click the rectangle to input text.
-  - The text must be in the format:
-    ```
-    type=name
-    ```
-    For example:
-    ```
-    ImageXvrPlot=MyRectangle
-    ```
-  - This identifies the type and name of the object for extraction.
-
-- **Supported Types and Properties:**
-  - The following types are supported and must be specified in the rectangle's label as `type=name`:
-    - `ImageStatusLabel`
-    - `ImageXvr`
-    - `ImageXvrPlot`
-  - Some types support additional properties, which can be added by right-clicking the rectangle, selecting "Edit Data", and entering property names and values:
-    - **ImageStatusLabel:** supports properties `colors`, `texts`
-    - **ImageXvr:** supports property `colors`
-  - Other types and properties may be added in the future.
-- **Special Labels:**
-
-  - Use specific labels or metadata for elements you want to extract, such as:
-    - `ImageStatusLabel`
-    - `ImageXvr`
-    - `ImageXvrPlot`
-  - These can be set in the object's label (as described above) or in the "Edit Data" dialog for properties.
-
-- **Background and setting "paper size":**
-  - In draw.io, go to **File → Page Setup** to set the desired resolution or paper size for your diagram.
-  - When converting `.drawio` files to `.png`, draw.io will automatically crop the image to remove empty space. This may result in a different resolution or aspect ratio than you expect.
-  - **To ensure a fixed output size and avoid unwanted cropping:**
-    - Create a dedicated background layer in your diagram.
-    - Insert a rectangle on this layer that matches your desired output dimensions (e.g., 1920x1080).
-      - Note, for some reason, at 1920x1080 one needs to add 2pixels to the width to obtain the correct size.
-    - Optionally, set the rectangle's fill color to define a background color for your image.
-    - Lock the background layer to prevent accidental edits.
-  - This approach ensures that the exported PNG will always have the correct size and background, regardless of the content on other layers.
+This command extracts component coordinates and properties from a draw.io file and saves them to a CSV file. If no output file is specified, it will create one with the same base name as the input file.
