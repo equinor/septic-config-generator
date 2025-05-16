@@ -43,7 +43,7 @@ fn decompress_diagram(data: &str) -> Result<String, String> {
 pub fn extract_components(input: &Path, output: Option<&Path>) -> Result<(usize, PathBuf)> {
     let output_path = output.map(PathBuf::from).unwrap_or_else(|| {
         let base = input.with_extension("").to_string_lossy().into_owned();
-        PathBuf::from(format!("{}_coords.csv", base))
+        PathBuf::from(format!("{}_components.csv", base))
     });
     let xml_content = process_drawio_file(input)?;
     let rectangles = parse_xml_and_extract_rectangles(&xml_content)?;

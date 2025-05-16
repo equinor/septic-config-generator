@@ -36,7 +36,7 @@ pub struct ComponentsArgs {
     #[arg(short, long, required = true)]
     pub input: PathBuf,
 
-    /// Output CSV file path (default: <input_basename>_coords.csv)
+    /// Output CSV file path (default: <input_basename>_components.csv)
     #[arg(short, long)]
     pub output: Option<PathBuf>,
 }

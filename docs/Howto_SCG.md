@@ -126,7 +126,7 @@ sources:
   - filename: example.csv
     id: flowlines
     delimiter: ";"
-  - filename: example_drawio_coords.csv
+  - filename: example_drawio_components.csv
     id: drawio_example
     delimiter: ","
 
@@ -178,7 +178,7 @@ The structure has the following fields:
 
 - `input` (string, required): The path to the input `.drawio` file.
 - `pngoutput` (string, optional): The path to the output `.png` file. If not provided, the output file will have the same name as the input file but with a `.png` extension.
-- `csvoutput` (string, optional): The path to the output `.csv` file. If not provided, the output file will have the same name as the input file but with a `_coords.csv` suffix.
+- `csvoutput` (string, optional): The path to the output `.csv` file. If not provided, the output file will have the same name as the input file but with a `_components.csv` suffix.
 
 #### Counters
 

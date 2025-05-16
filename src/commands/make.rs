@@ -136,7 +136,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     }
 
     if let Some(drawio) = &cfg.drawio {
-        drawios_to_coords(&relative_root, drawio)?;
+        drawios_to_components(&relative_root, drawio)?;
         drawios_to_pngs(&relative_root, drawio)?;
     }
 
@@ -208,14 +208,14 @@ fn drawios_to_pngs(relative_root: &Path, drawio: &Vec<Drawio>) -> Result<(), Mak
     Ok(())
 }
 
-fn drawios_to_coords(relative_root: &Path, drawio: &Vec<Drawio>) -> Result<(), MakeError> {
+fn drawios_to_components(relative_root: &Path, drawio: &Vec<Drawio>) -> Result<(), MakeError> {
     for item in drawio {
         let input = relative_root.join(&item.input);
 
         let output = match &item.csvoutput {
             Some(output_path) => PathBuf::from(output_path),
             None => {
-                let out = format!("{}_coords", input.with_extension("").to_string_lossy());
+                let out = format!("{}_components", input.with_extension("").to_string_lossy());
                 PathBuf::from(out).with_extension("csv")
             }
         };
