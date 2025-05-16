@@ -185,21 +185,8 @@ fn extract_coordinates(
 /// Count quoted values in a string like "red" "blue" "green"
 #[inline]
 fn count_quoted_values(s: &str) -> usize {
-    let mut count = 0;
-    let mut in_quote = false;
-
-    for c in s.chars() {
-        if c == '"' {
-            in_quote = !in_quote;
-            if !in_quote {
-                // We've completed a quote
-                count += 1;
-            }
-        }
-    }
-
-    // Return the number of quoted values (each with opening and closing quotes)
-    count / 2
+    let comma_count = s.chars().filter(|&c| c == '"').count();
+    if comma_count > 2 { comma_count / 2 } else { 1 }
 }
 
 /// Write rectangles to CSV (optimized with multi-value counts and proper quoting)
@@ -225,12 +212,11 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
         for (k, v) in &r.properties {
             all_keys.insert(k.clone());
             // Detect if this component has any multi-values
-            if v.contains('"') && count_quoted_values(v) > 1 {
+            if v.contains('\"') && count_quoted_values(v) > 1 {
                 has_multi_values = true;
             }
         }
     }
-
     // Build header in desired order
     let mut header: Vec<String> = Vec::with_capacity(all_keys.len() + COORDS.len() + 1);
     for &p in &PRIORITY {

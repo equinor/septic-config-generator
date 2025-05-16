@@ -545,79 +545,37 @@ UseFactorWeight=  0
        ColSize=  1
       FileName=  "example.png"
 
-        ImageXvrPlot:  ImageXvrPlotName
-            X1=  -1
-            Y1=  -1
-            X2=  -1
-            Y2=  -1
-
-              ImageXvr:      ImageXvrName
-BackgroundColor=  "white"
-            X1=  -1
-            Y1=  -1
-            X2=  -1
-            Y2=  -1
-
-              ImageStatusLabel:  ImageStatusLabelName
-            X1=  -1
-            Y1=  -1
-            X2=  -1
-            Y2=  -1
-         Texts=  1
-                 ""
-BackgroundColors=  1
-                 ""
-   TargetGroup=  0
-
-     ImageMultiXvrPlot:  ImageMultiXvrPlotName
-            X1=  -1
-            Y1=  -1
-            X2=  -1
-            Y2=  -1
-       PlotMax=  100
-       PlotMin=  0
-          Xvrs=  1
-                 ""
-        Colors=  1
-                 ""
-
-ImageXvrPlot:  myxvrplot
+  ImageXvrPlot:  myxvrplot
             X1=  883
             Y1=  160
             X2=  1169
             Y2=  401
 
-ImageStatusLabel:  mystatuslabel
+  ImageStatusLabel:  mystatuslabel
             X1=  669
             Y1=  371
             X2=  725
             Y2=  388
+         Texts=  4
+                 "Text1 with space"  "Text2!"  "Text3"  "Text4"
+BackgroundColors=  4
+                 "red"  "blue"  "#548235"  "orange"
 
-
-    Texts=  2
-            "Text1 with space" "Text2!" "Text3" "Text4"
-    BackgroundColors=  2
-            "red" "blue" "#548235" "orange"
-
-ImageMultiXvrPlot:  mymultixvrplot
+  ImageMultiXvrPlot:  mymultixvrplot
             X1=  300
             Y1=  160
             X2=  586
             Y2=  401
+       PlotMax=  200
+       PlotMin=  4
+          Xvrs=  3
+                 "L2"  "T2"  "Heat2"
+        Colors=  3
+                 "red"  "blue"  "dark green"
 
-
-    PlotMax=  200
-    PlotMin=  4
-    Xvrs=  1
-            "L2"  "T2"  "Heat2"
-    Colors=  1
-            "red" "blue" "dark green"
-
-ImageXvr:  myxvr
+  ImageXvr:      myxvr
             X1=  670
             Y1=  512
             X2=  712
             Y2=  530
-
-
-    BackgroundColor=  "red"
+BackgroundColor=  "red"
