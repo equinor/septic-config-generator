@@ -1,13 +1,13 @@
 use anyhow::{Context, Result};
 use base64::{Engine as _, engine::general_purpose};
-use csv::{QuoteStyle, WriterBuilder};
+use csv::WriterBuilder;
 use flate2::read::ZlibDecoder;
 use html_escape::decode_html_entities;
 use roxmltree::Document;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::fs::File;
-use std::io::{Read, BufWriter};
+use std::io::{BufWriter, Read};
 use std::path::{Path, PathBuf};
 
 /// A structure to represent a rectangle with septic properties
@@ -60,7 +60,10 @@ fn read_file_content(input: &Path) -> Result<String> {
 fn process_drawio_file(input: &Path) -> Result<String> {
     let content = read_file_content(input)?;
     if let Ok(doc) = Document::parse(&content) {
-        for node in doc.descendants().filter(|n| n.has_tag_name("diagram") && n.text().is_some()) {
+        for node in doc
+            .descendants()
+            .filter(|n| n.has_tag_name("diagram") && n.text().is_some())
+        {
             if let Some(text) = node.text() {
                 if let Ok(decompressed) = decompress_diagram(text) {
                     return Ok(decompressed);
@@ -86,8 +89,18 @@ fn parse_xml_and_extract_rectangles(xml: &str) -> Result<Vec<RectData>> {
     for cell in doc.descendants().filter(|n| n.has_tag_name("mxCell")) {
         if let Some(id) = cell.attribute("id") {
             if let Some(geom) = cell.children().find(|n| n.has_tag_name("mxGeometry")) {
-                let x = geom.attribute("x").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
-                let y = geom.attribute("y").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
+                let x = geom
+                    .attribute("x")
+                    .unwrap_or("0")
+                    .parse::<f32>()
+                    .unwrap_or(0.0)
+                    .round() as i32;
+                let y = geom
+                    .attribute("y")
+                    .unwrap_or("0")
+                    .parse::<f32>()
+                    .unwrap_or(0.0)
+                    .round() as i32;
                 id_to_geom.insert(id.to_string(), (x, y));
                 if let Some(parent_id) = cell.attribute("parent") {
                     id_to_parent.insert(id.to_string(), parent_id.to_string());
@@ -110,7 +123,13 @@ fn parse_xml_and_extract_rectangles(xml: &str) -> Result<Vec<RectData>> {
             continue;
         }
         if let Some((x, y, w, h)) = extract_coordinates(&obj, &id_to_geom, &id_to_parent) {
-            rects.push(RectData { properties: props, x, y, width: w, height: h });
+            rects.push(RectData {
+                properties: props,
+                x,
+                y,
+                width: w,
+                height: h,
+            });
         }
     }
     Ok(rects)
@@ -124,10 +143,30 @@ fn extract_coordinates(
 ) -> Option<(i32, i32, i32, i32)> {
     let cell = obj.children().find(|n| n.has_tag_name("mxCell"))?;
     let geom = cell.children().find(|n| n.has_tag_name("mxGeometry"))?;
-    let local_x = geom.attribute("x").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
-    let local_y = geom.attribute("y").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
-    let width  = geom.attribute("width").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
-    let height = geom.attribute("height").unwrap_or("0").parse::<f32>().unwrap_or(0.0).round() as i32;
+    let local_x = geom
+        .attribute("x")
+        .unwrap_or("0")
+        .parse::<f32>()
+        .unwrap_or(0.0)
+        .round() as i32;
+    let local_y = geom
+        .attribute("y")
+        .unwrap_or("0")
+        .parse::<f32>()
+        .unwrap_or(0.0)
+        .round() as i32;
+    let width = geom
+        .attribute("width")
+        .unwrap_or("0")
+        .parse::<f32>()
+        .unwrap_or(0.0)
+        .round() as i32;
+    let height = geom
+        .attribute("height")
+        .unwrap_or("0")
+        .parse::<f32>()
+        .unwrap_or(0.0)
+        .round() as i32;
     let mut abs_x = local_x;
     let mut abs_y = local_y;
     let mut current = cell.attribute("parent");
@@ -148,7 +187,7 @@ fn extract_coordinates(
 fn count_quoted_values(s: &str) -> usize {
     let mut count = 0;
     let mut in_quote = false;
-    
+
     for c in s.chars() {
         if c == '"' {
             in_quote = !in_quote;
@@ -158,7 +197,7 @@ fn count_quoted_values(s: &str) -> usize {
             }
         }
     }
-    
+
     // Return the number of quoted values (each with opening and closing quotes)
     count / 2
 }
@@ -170,10 +209,11 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
 
     // Handle empty case
     if rects.is_empty() {
-        let file = File::create(output).with_context(|| format!("Error creating file {}", output.display()))?;
+        let file = File::create(output)
+            .with_context(|| format!("Error creating file {}", output.display()))?;
         let mut wtr = WriterBuilder::new().from_writer(file);
-        wtr.write_record(&PRIORITY)?;
-        wtr.write_record(&COORDS)?;
+        wtr.write_record(PRIORITY)?;
+        wtr.write_record(COORDS)?;
         wtr.flush()?;
         return Ok(());
     }
@@ -193,55 +233,80 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
 
     // Build header in desired order
     let mut header: Vec<String> = Vec::with_capacity(all_keys.len() + COORDS.len() + 1);
-    for &p in &PRIORITY { if all_keys.contains(p) { header.push(p.to_string()); } }
+    for &p in &PRIORITY {
+        if all_keys.contains(p) {
+            header.push(p.to_string());
+        }
+    }
     header.extend(COORDS.iter().map(|&c| c.to_string()));
-    let mut rem: Vec<_> = all_keys.iter().filter(|k| !PRIORITY.contains(&k.as_str())).cloned().collect();
+    let mut rem: Vec<_> = all_keys
+        .iter()
+        .filter(|k| !PRIORITY.contains(&k.as_str()))
+        .cloned()
+        .collect();
     rem.sort_unstable();
     header.extend(rem);
-    
+
     // Add a single _num column if we have any multi-values
     if has_multi_values {
         header.push("_numvalues".to_string());
     }
 
     // Create CSV writer with proper quoting settings
-    let file = File::create(output).with_context(|| format!("Error creating file {}", output.display()))?;
+    let file = File::create(output)
+        .with_context(|| format!("Error creating file {}", output.display()))?;
     let buf = BufWriter::with_capacity(1 << 20, file);
-    
+
     // Keep the original quote style to maintain compatibility with existing code
     let mut wtr = WriterBuilder::new()
         // .quote_style(QuoteStyle::Never)  // Use the same quote style as your original code
         .from_writer(buf);
-    
+
     wtr.write_record(&header)?;
 
     // Build the index map and pre-allocate record buffer
-    let idx: HashMap<_, _> = header.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
+    let idx: HashMap<_, _> = header
+        .iter()
+        .enumerate()
+        .map(|(i, v)| (v.as_str(), i))
+        .collect();
     let mut record = vec![String::new(); header.len()];
 
     // Write each rectangle's data
     for r in rects {
         // Clear previous values but maintain allocation
-        for cell in &mut record { cell.clear(); }
-        
+        for cell in &mut record {
+            cell.clear();
+        }
+
         // Add coordinates
-        if let Some(i) = idx.get("x1") { record[*i] = r.x.to_string(); }
-        if let Some(i) = idx.get("y1") { record[*i] = r.y.to_string(); }
-        if let Some(i) = idx.get("x2") { record[*i] = (r.x + r.width).to_string(); }
-        if let Some(i) = idx.get("y2") { record[*i] = (r.y + r.height).to_string(); }
-        
+        if let Some(i) = idx.get("x1") {
+            record[*i] = r.x.to_string();
+        }
+        if let Some(i) = idx.get("y1") {
+            record[*i] = r.y.to_string();
+        }
+        if let Some(i) = idx.get("x2") {
+            record[*i] = (r.x + r.width).to_string();
+        }
+        if let Some(i) = idx.get("y2") {
+            record[*i] = (r.y + r.height).to_string();
+        }
+
         // Add property values - CSV library will handle quoting
         for (k, v) in &r.properties {
-            if let Some(i) = idx.get(k.as_str()) { 
-                record[*i] = v.clone(); 
+            if let Some(i) = idx.get(k.as_str()) {
+                record[*i] = v.clone();
             }
         }
-        
+
         // Add count of multi-values to the single _num column if needed
         if has_multi_values {
             if let Some(i) = idx.get("_numvalues") {
                 // Count the maximum number of values in any of the multi-value properties
-                let max_count = r.properties.values()
+                let max_count = r
+                    .properties
+                    .values()
                     .filter(|v| v.contains('"'))
                     .map(|v| count_quoted_values(v))
                     .max()
@@ -249,10 +314,10 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
                 record[*i] = max_count.to_string();
             }
         }
-        
+
         wtr.write_record(&record)?;
     }
-    
+
     wtr.flush()?;
     Ok(())
 }
