@@ -143,57 +143,116 @@ fn extract_coordinates(
     Some((abs_x, abs_y, width, height))
 }
 
-/// Write rectangles to CSV (optimized with multi-value counts)
+/// Count quoted values in a string like "red" "blue" "green"
+#[inline]
+fn count_quoted_values(s: &str) -> usize {
+    let mut count = 0;
+    let mut in_quote = false;
+    
+    for c in s.chars() {
+        if c == '"' {
+            in_quote = !in_quote;
+            if !in_quote {
+                // We've completed a quote
+                count += 1;
+            }
+        }
+    }
+    
+    // Return the number of quoted values (each with opening and closing quotes)
+    count / 2
+}
+
+/// Write rectangles to CSV (optimized with multi-value counts and proper quoting)
 fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
     const PRIORITY: [&str; 2] = ["type", "name"];
     const COORDS: [&str; 4] = ["x1", "y1", "x2", "y2"];
 
+    // Handle empty case
+    if rects.is_empty() {
+        let file = File::create(output).with_context(|| format!("Error creating file {}", output.display()))?;
+        let mut wtr = WriterBuilder::new().from_writer(file);
+        wtr.write_record(&PRIORITY)?;
+        wtr.write_record(&COORDS)?;
+        wtr.flush()?;
+        return Ok(());
+    }
+
+    // Collect all keys and identify multi-value fields
     let mut all_keys = HashSet::new();
-    let mut multi_keys = HashSet::new();
+    let mut has_multi_values = false;
     for r in rects {
         for (k, v) in &r.properties {
             all_keys.insert(k.clone());
-            let segs = v.matches('"').count() / 2;
-            if segs > 1 { multi_keys.insert(k.clone()); }
+            // Detect if this object has any multi-values
+            if v.contains('"') && count_quoted_values(v) > 1 {
+                has_multi_values = true;
+            }
         }
     }
 
-    let mut header: Vec<String> = Vec::with_capacity(all_keys.len() + COORDS.len() + multi_keys.len());
+    // Build header in desired order
+    let mut header: Vec<String> = Vec::with_capacity(all_keys.len() + COORDS.len() + 1);
     for &p in &PRIORITY { if all_keys.contains(p) { header.push(p.to_string()); } }
     header.extend(COORDS.iter().map(|&c| c.to_string()));
     let mut rem: Vec<_> = all_keys.iter().filter(|k| !PRIORITY.contains(&k.as_str())).cloned().collect();
     rem.sort_unstable();
-    header.extend(rem.clone());
-    let mut multi: Vec<_> = multi_keys.into_iter().collect();
-    multi.sort_unstable();
-    for k in &multi { header.push(format!("{}_num", k)); }
+    header.extend(rem);
+    
+    // Add a single _num column if we have any multi-values
+    if has_multi_values {
+        header.push("_numvalues".to_string());
+    }
 
+    // Create CSV writer with proper quoting settings
     let file = File::create(output).with_context(|| format!("Error creating file {}", output.display()))?;
     let buf = BufWriter::with_capacity(1 << 20, file);
-    let mut wtr = WriterBuilder::new().quote_style(QuoteStyle::Never).from_writer(buf);
+    
+    // Keep the original quote style to maintain compatibility with existing code
+    let mut wtr = WriterBuilder::new()
+        // .quote_style(QuoteStyle::Never)  // Use the same quote style as your original code
+        .from_writer(buf);
+    
     wtr.write_record(&header)?;
 
+    // Build the index map and pre-allocate record buffer
     let idx: HashMap<_, _> = header.iter().enumerate().map(|(i, v)| (v.as_str(), i)).collect();
     let mut record = vec![String::new(); header.len()];
 
+    // Write each rectangle's data
     for r in rects {
+        // Clear previous values but maintain allocation
         for cell in &mut record { cell.clear(); }
+        
+        // Add coordinates
         if let Some(i) = idx.get("x1") { record[*i] = r.x.to_string(); }
         if let Some(i) = idx.get("y1") { record[*i] = r.y.to_string(); }
         if let Some(i) = idx.get("x2") { record[*i] = (r.x + r.width).to_string(); }
         if let Some(i) = idx.get("y2") { record[*i] = (r.y + r.height).to_string(); }
+        
+        // Add property values - CSV library will handle quoting
         for (k, v) in &r.properties {
-            if let Some(i) = idx.get(k.as_str()) { record[*i].push_str(v); }
-        }
-        for k in &multi {
-            let col = format!("{}_num", k);
-            if let Some(i) = idx.get(col.as_str()) {
-                let cnt = r.properties.get(k.as_str()).map(|v| v.matches('"').count()/2).unwrap_or(0);
-                record[*i] = cnt.to_string();
+            if let Some(i) = idx.get(k.as_str()) { 
+                record[*i] = v.clone(); 
             }
         }
+        
+        // Add count of multi-values to the single _num column if needed
+        if has_multi_values {
+            if let Some(i) = idx.get("_numvalues") {
+                // Count the maximum number of values in any of the multi-value properties
+                let max_count = r.properties.values()
+                    .filter(|v| v.contains('"'))
+                    .map(|v| count_quoted_values(v))
+                    .max()
+                    .unwrap_or(0);
+                record[*i] = max_count.to_string();
+            }
+        }
+        
         wtr.write_record(&record)?;
     }
+    
     wtr.flush()?;
     Ok(())
 }

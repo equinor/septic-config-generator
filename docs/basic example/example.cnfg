@@ -594,10 +594,10 @@ ImageStatusLabel:  mystatuslabel
             Y2=  388
 
 
-    Texts=  4
-            Text1 with space "Text2!" "Text3" "Text4"
-    BackgroundColors=  4
-            "red" "blue" "green"
+    Texts=  2
+            "Text1 with space" "Text2!" "Text3" "Text4"
+    BackgroundColors=  2
+            "red" "blue" "#548235" "orange"
 
 ImageMultiXvrPlot:  mymultixvrplot
             X1=  300
@@ -608,10 +608,10 @@ ImageMultiXvrPlot:  mymultixvrplot
 
     PlotMax=  200
     PlotMin=  4
-    Xvrs=  3
-            L2  "T2"  "Heat2"
-    Colors=  3
-            red "blue" "dark green"
+    Xvrs=  1
+            "L2"  "T2"  "Heat2"
+    Colors=  1
+            "red" "blue" "dark green"
 
 ImageXvr:  myxvr
             X1=  670
@@ -620,4 +620,4 @@ ImageXvr:  myxvr
             Y2=  530
 
 
-    BackgroundColor=  red
+    BackgroundColor=  "red"

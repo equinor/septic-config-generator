@@ -8,9 +8,9 @@
     {# No output for ImageXvrPlot #}
 
 {% elif type == "ImageStatusLabel" %}
-    Texts=  {{ texts_num }}
+    Texts=  {{ _numvalues }}
             {{ texts }}
-    BackgroundColors=  {{ backgroundcolors_num }}
+    BackgroundColors=  {{ _numvalues }}
             {{ backgroundcolors }}
     {% if targetgroup %}
     TargetGroup=  {{ targetgroup }}
@@ -19,9 +19,9 @@
 {% elif type == "ImageMultiXvrPlot" %}
     PlotMax=  {{ plotmax }}
     PlotMin=  {{ plotmin }}
-    Xvrs=  {{ xvrs_num }}
+    Xvrs=  {{ _numvalues }}
             {{ xvrs }}
-    Colors=  {{ colors_num }}
+    Colors=  {{ _numvalues }}
             {{ colors }}
 
 {% elif type == "ImageXvr" %}
