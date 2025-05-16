@@ -874,8 +874,8 @@ This approach ensures that exported images will maintain consistent dimensions r
 The SCG tool provides the following commands for working with draw.io files:
 
 ```sh
-scg drawio getcoords --input <file.drawio> [--output <coords.csv>]
-scg drawio convertpng --ipnut <file.drawio> [--output <file.png>]
+scg drawio components  --input <file.drawio> [--output <coords.csv>]
+scg drawio 2png --ipnut <file.drawio> [--output <file.png>]
 ```
 
 This command extracts component coordinates and properties from a draw.io file and saves them to a CSV file. If no output file is specified, it will create one with the same base name as the input file.

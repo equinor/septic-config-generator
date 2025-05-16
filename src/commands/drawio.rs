@@ -1,8 +1,8 @@
 use clap::Args;
 use std::path::{Path, PathBuf};
 
-pub mod drawio_to_png;
-pub mod get_coords;
+pub mod components;
+pub mod to_png;
 
 #[derive(Args, Debug)]
 pub struct Drawio {
@@ -13,14 +13,14 @@ pub struct Drawio {
 #[derive(clap::Subcommand, Debug)]
 pub enum DrawioCommands {
     /// Convert draw.io files to PNG
-    Convertpng(ConvertpngArgs),
+    ToPng(ToPngArgs),
 
-    /// Extract coordinates from draw.io files
-    Getcoords(GetcoordsArgs),
+    /// Extract components from draw.io files
+    Components(ComponentsArgs),
 }
 
 #[derive(Args, Debug)]
-pub struct ConvertpngArgs {
+pub struct ToPngArgs {
     /// Input .drawio or .xml file path
     #[arg(short, long, required = true)]
     pub input: PathBuf,
@@ -31,7 +31,7 @@ pub struct ConvertpngArgs {
 }
 
 #[derive(Args, Debug)]
-pub struct GetcoordsArgs {
+pub struct ComponentsArgs {
     /// Input .drawio or .xml file path
     #[arg(short, long, required = true)]
     pub input: PathBuf,
@@ -44,17 +44,15 @@ pub struct GetcoordsArgs {
 impl Drawio {
     pub fn execute(&self) {
         match &self.command {
-            DrawioCommands::Convertpng(args) => {
-                self.cmd_convert_png(&args.input, args.output.as_deref())
-            }
-            DrawioCommands::Getcoords(args) => {
-                self.cmd_get_coords(&args.input, args.output.as_deref())
+            DrawioCommands::ToPng(args) => self.cmd_to_png(&args.input, args.output.as_deref()),
+            DrawioCommands::Components(args) => {
+                self.cmd_components(&args.input, args.output.as_deref())
             }
         }
     }
 
-    fn cmd_convert_png(&self, input: &Path, output: Option<&Path>) {
-        let result = drawio_to_png::drawio_to_png(input, output);
+    fn cmd_to_png(&self, input: &Path, output: Option<&Path>) {
+        let result = to_png::drawio_to_png(input, output);
         match result {
             Ok((width, height, output)) => println!(
                 "Converted to '{}' with dimensions {}x{}",
@@ -69,13 +67,13 @@ impl Drawio {
         }
     }
 
-    fn cmd_get_coords(&self, input: &Path, output: Option<&Path>) {
-        match get_coords::extract_coords(input, output) {
+    fn cmd_components(&self, input: &Path, output: Option<&Path>) {
+        match components::extract_components(input, output) {
             Ok((count, output)) => {
-                println!("Extracted {} objects to '{}'", count, output.display())
+                println!("Extracted {} components to '{}'", count, output.display())
             }
             Err(e) => {
-                eprintln!("Failed to extract coordinates: {}", e);
+                eprintln!("Failed to extract components: {}", e);
                 std::process::exit(1);
             }
         }

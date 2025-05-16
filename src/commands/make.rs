@@ -1,5 +1,5 @@
-use crate::commands::drawio::drawio_to_png::drawio_to_png;
-use crate::commands::drawio::get_coords::extract_coords;
+use crate::commands::drawio::components::extract_components;
+use crate::commands::drawio::to_png::drawio_to_png;
 use crate::config::{Config, Drawio, Filename, Source};
 use crate::datasource::{
     CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
@@ -220,7 +220,7 @@ fn drawios_to_coords(relative_root: &Path, drawio: &Vec<Drawio>) -> Result<(), M
             }
         };
 
-        extract_coords(&input, Some(&output)).map_err(MakeError::Drawio)?;
+        extract_components(&input, Some(&output)).map_err(MakeError::Drawio)?;
     }
     Ok(())
 }

@@ -39,8 +39,8 @@ fn decompress_diagram(data: &str) -> Result<String, String> {
     String::from_utf8(decompressed).map_err(|e| format!("UTF-8 conversion error: {}", e))
 }
 
-/// Public API to extract coords and write CSV
-pub fn extract_coords(input: &Path, output: Option<&Path>) -> Result<(usize, PathBuf)> {
+/// Public API to extract components and write CSV
+pub fn extract_components(input: &Path, output: Option<&Path>) -> Result<(usize, PathBuf)> {
     let output_path = output.map(PathBuf::from).unwrap_or_else(|| {
         let base = input.with_extension("").to_string_lossy().into_owned();
         PathBuf::from(format!("{}_coords.csv", base))
@@ -224,7 +224,7 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
     for r in rects {
         for (k, v) in &r.properties {
             all_keys.insert(k.clone());
-            // Detect if this object has any multi-values
+            // Detect if this component has any multi-values
             if v.contains('"') && count_quoted_values(v) > 1 {
                 has_multi_values = true;
             }
@@ -329,7 +329,7 @@ mod tests {
     use std::process::Command;
 
     #[test]
-    fn test_integration_getcoords() {
+    fn test_integration_components() {
         // Define paths
         let test_dir = Path::new("tests/testdata");
         let input_file = test_dir.join("test.drawio");
@@ -350,7 +350,7 @@ mod tests {
                 "run",
                 "--",
                 "drawio",
-                "getcoords",
+                "components",
                 "--input",
                 input_file.to_str().unwrap(),
                 "--output",
