@@ -1,5 +1,5 @@
-type,name,x1,y1,x2,y2,backgroundcolor,backgroundcolors,colors,plotmax,plotmin,texts,xvrs,_numvalues
-ImageXvrPlot,myxvrplot,883,160,1169,401,,,,,,,,0
-ImageStatusLabel,mystatuslabel,669,371,725,388,,"""red"" ""blue"" ""#548235"" ""orange""",,,,"""Text1 with space"" ""Text2!"" ""Text3"" ""Text4""",,4
-ImageMultiXvrPlot,mymultixvrplot,300,160,586,401,,,"""red"" ""blue"" ""dark green""",200,4,,"""L2""  ""T2""  ""Heat2""",3
-ImageXvr,myxvr,670,512,712,530,"""red""",,,,,,,1
+type,name,x1,y1,x2,y2,_label,backgroundcolor,backgroundcolors,colors,plotmax,plotmin,texts,xvrs,_numvalues
+ImageXvrPlot,myxvrplot,883,160,1169,401,%septic_name%%septic_type%,,,,,,,,0
+ImageStatusLabel,mystatuslabel,669,371,725,388,%septic_name%%septic_type%,,"""red"" ""blue"" ""#548235"" ""orange""",,,,"""Text1 with space"" ""Text2!"" ""Text3"" ""Text4""",,4
+ImageMultiXvrPlot,mymultixvrplot,300,160,586,401,%septic_name%%septic_type%,,,"""red"" ""blue"" ""dark green""",200,4,,"""L2""  ""T2""  ""Heat2""",3
+ImageXvr,myxvr,670,512,712,530,%septic_name%%septic_type%,"""red""",,,,,,,1

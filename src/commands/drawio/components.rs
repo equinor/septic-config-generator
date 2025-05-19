@@ -20,10 +20,27 @@ struct RectData {
     height: i32,
 }
 
-/// Decode HTML entities and trim whitespace
+/// Decode HTML entities, strip HTML tags, and trim whitespace
 #[inline]
 fn clean_attribute_value(value: &str) -> String {
-    decode_html_entities(value.trim()).to_string()
+    // First decode HTML entities
+    let decoded = decode_html_entities(value.trim()).to_string();
+
+    // Then strip HTML tags - using a simple state machine approach instead of regex
+    let mut result = String::with_capacity(decoded.len());
+    let mut in_tag = false;
+
+    for c in decoded.chars() {
+        match c {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => result.push(c),
+            _ => {}
+        }
+    }
+
+    // Trim and return
+    result.trim().to_string()
 }
 
 /// Decompress base64+zlib encoded diagram data
@@ -119,9 +136,16 @@ fn parse_xml_and_extract_rectangles(xml: &str) -> Result<Vec<RectData>> {
                 props.insert(stripped.to_string(), clean_attribute_value(attr.value()));
             }
         }
+
+        // Add label as a _label property if present
+        if let Some(label) = obj.attribute("label") {
+            props.insert("_label".to_string(), clean_attribute_value(label));
+        }
+
         if props.is_empty() {
             continue;
         }
+
         if let Some((x, y, w, h)) = extract_coordinates(&obj, &id_to_geom, &id_to_parent) {
             rects.push(RectData {
                 properties: props,
@@ -194,20 +218,10 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
     const PRIORITY: [&str; 2] = ["type", "name"];
     const COORDS: [&str; 4] = ["x1", "y1", "x2", "y2"];
 
-    // Handle empty case
-    if rects.is_empty() {
-        let file = File::create(output)
-            .with_context(|| format!("Error creating file {}", output.display()))?;
-        let mut wtr = WriterBuilder::new().from_writer(file);
-        wtr.write_record(PRIORITY)?;
-        wtr.write_record(COORDS)?;
-        wtr.flush()?;
-        return Ok(());
-    }
-
     // Collect all keys and identify multi-value fields
     let mut all_keys = HashSet::new();
     let mut has_multi_values = false;
+
     for r in rects {
         for (k, v) in &r.properties {
             all_keys.insert(k.clone());
@@ -217,14 +231,21 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
             }
         }
     }
+
     // Build header in desired order
     let mut header: Vec<String> = Vec::with_capacity(all_keys.len() + COORDS.len() + 1);
+
+    // Priority columns - only include if they exist in the data
     for &p in &PRIORITY {
         if all_keys.contains(p) {
             header.push(p.to_string());
         }
     }
+
+    // Add coordinate columns
     header.extend(COORDS.iter().map(|&c| c.to_string()));
+
+    // Add remaining property columns
     let mut rem: Vec<_> = all_keys
         .iter()
         .filter(|k| !PRIORITY.contains(&k.as_str()))
@@ -233,7 +254,7 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
     rem.sort_unstable();
     header.extend(rem);
 
-    // Add a single _num column if we have any multi-values
+    // Add a _numvalues column if we have any multi-values
     if has_multi_values {
         header.push("_numvalues".to_string());
     }
@@ -243,12 +264,17 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
         .with_context(|| format!("Error creating file {}", output.display()))?;
     let buf = BufWriter::with_capacity(1 << 20, file);
 
-    // Keep the original quote style to maintain compatibility with existing code
-    let mut wtr = WriterBuilder::new()
-        // .quote_style(QuoteStyle::Never)  // Use the same quote style as your original code
-        .from_writer(buf);
+    // Use appropriate quoting style
+    let mut wtr = WriterBuilder::new().from_writer(buf);
 
+    // Write the header row
     wtr.write_record(&header)?;
+
+    // Handle empty case - just write header and return
+    if rects.is_empty() {
+        wtr.flush()?;
+        return Ok(());
+    }
 
     // Build the index map and pre-allocate record buffer
     let idx: HashMap<_, _> = header
@@ -286,7 +312,7 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
             }
         }
 
-        // Add count of multi-values to the single _num column if needed
+        // Add count of multi-values to the _numvalues column if needed
         if has_multi_values {
             if let Some(i) = idx.get("_numvalues") {
                 // Count the maximum number of values in any of the multi-value properties

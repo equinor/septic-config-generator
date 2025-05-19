@@ -809,6 +809,7 @@ When using the SCG tools to extract information from your diagrams:
 - The CSV includes position data (x1, y1, x2, y2) for each component
 - All properties with the `septic_` prefix are included in the CSV with the prefix removed
   - Example: `septic_name` becomes `name` in the CSV output
+- If a component has a `label` attribute, it is also extracted and written to the CSV as a column named `_label`
 - For multi-value fields (e.g., color lists like `"red" "blue" "green"`), a `num_values` column is included with the count of items
 
 ### Creating Diagrams for SCG
