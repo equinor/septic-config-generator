@@ -6,10 +6,18 @@ verifycontent: true
 
 adjustspacing: true
 
+drawio:
+  - input: example.drawio
+    pngoutput: example.png
+    csvoutput: example_drawio1.csv
+
 sources:
   - filename: example.xlsx
     id: main
     sheet: Sheet1
+  - filename: example_drawio1.csv
+    id: drawio
+    delimiter: ","
 
 layout:
   - name: 01_System.cnfg
@@ -19,10 +27,13 @@ layout:
   - name: 04_SmpcAppl.cnfg
   - name: 05_SmpcAppl_well.cnfg
     source: main
-  - name: 06_ExprModl.cnfg    
+  - name: 06_ExprModl.cnfg
   - name: 07_DspGroupTables.cnfg
   - name: 08_DspGroupTables_well.cnfg
     source: main
     include:
       - D01
       - D02
+  - name: 09_DspGroupOverview.cnfg
+  - name: 091_DspGroupOverviewElements.cnfg
+    source: drawio

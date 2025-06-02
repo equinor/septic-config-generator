@@ -1,0 +1,25 @@
+  {{ type }}:  {{ name }}
+            X1=  {{ x1 }}
+            Y1=  {{ y1 }}
+            X2=  {{ x2 }}
+            Y2=  {{ y2 }}
+{%- if type == "ImageXvrPlot" %}
+    {# No output for ImageXvrPlot #}
+{%- elif type == "ImageStatusLabel" %}
+         Texts= {{ _numvalues }}
+                 {{ texts }}
+BackgroundColors= {{ _numvalues }}
+                 {{ backgroundcolors }}
+    {%- if targetgroup %}
+   TargetGroup=  {{ targetgroup }}
+    {%- endif %}
+{%- elif type == "ImageMultiXvrPlot" %}
+       PlotMax=  {{ plotmax }}
+       PlotMin=  {{ plotmin }}
+          Xvrs=  {{ _numvalues }}
+                 {{ xvrs }}
+        Colors=  {{ _numvalues }}
+                 {{ colors }}
+{%- elif type == "ImageXvr" %}
+BackgroundColor= {{ backgroundcolor }}
+{%- endif %}
