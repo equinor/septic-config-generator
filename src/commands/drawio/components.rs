@@ -233,7 +233,8 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
     }
 
     // Build header in desired order
-    let mut header: Vec<String> = Vec::with_capacity(all_keys.len() + COORDS.len() + 1);
+    let mut header: Vec<String> = Vec::with_capacity(all_keys.len() + COORDS.len() + 2);
+    header.push("id".to_string()); // Add id column as the first column
 
     // Priority columns - only include if they exist in the data
     for &p in &PRIORITY {
@@ -285,10 +286,15 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
     let mut record = vec![String::new(); header.len()];
 
     // Write each rectangle's data
-    for r in rects {
+    for (row_idx, r) in rects.iter().enumerate() {
         // Clear previous values but maintain allocation
         for cell in &mut record {
             cell.clear();
+        }
+
+        // Set id column (first column) as a string with "drawio" prefix
+        if let Some(i) = idx.get("id") {
+            record[*i] = format!("_{}", row_idx + 1);
         }
 
         // Add coordinates
