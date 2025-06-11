@@ -135,6 +135,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         }
     }
 
+    // drawios_*() contain checks on whether .drawio files are newer than output files
     if let Some(drawio) = &cfg.drawio {
         drawios_to_components(&relative_root, drawio)?;
         drawios_to_pngs(&relative_root, drawio)?;
@@ -200,10 +201,14 @@ fn drawios_to_pngs(relative_root: &Path, drawio: &Vec<Drawio>) -> Result<(), Mak
             Some(output_path) => relative_root.join(output_path),
             None => input.with_extension("png"),
         };
-
-        drawio_to_png(&input, Some(&output))
-            .context("Drawio to PNG")
-            .map_err(MakeError::Drawio)?;
+        let input_as_set = std::collections::HashSet::from([input.clone()]);
+        if !output.exists()
+            || timestamps_newer_than(&input_as_set, &output).map_err(MakeError::TimeStampError)?
+        {
+            drawio_to_png(&input, Some(&output))
+                .context("Drawio to PNG")
+                .map_err(MakeError::Drawio)?;
+        }
     }
     Ok(())
 }
@@ -219,8 +224,12 @@ fn drawios_to_components(relative_root: &Path, drawio: &Vec<Drawio>) -> Result<(
                 PathBuf::from(out).with_extension("csv")
             }
         };
-
-        extract_components(&input, Some(&output)).map_err(MakeError::Drawio)?;
+        let input_as_set = std::collections::HashSet::from([input.clone()]);
+        if !output.exists()
+            || timestamps_newer_than(&input_as_set, &output).map_err(MakeError::TimeStampError)?
+        {
+            extract_components(&input, Some(&output)).map_err(MakeError::Drawio)?;
+        }
     }
     Ok(())
 }
@@ -358,6 +367,15 @@ fn collect_file_list(
             }
         }
     }
+
+    // All drawio files
+    if let Some(drawio) = &config.drawio {
+        for item in drawio {
+            let input_path = relative_root.join(&item.input);
+            files.insert(input_path);
+        }
+    }
+
     Ok(files)
 }
 
