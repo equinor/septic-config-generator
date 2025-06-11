@@ -76,11 +76,9 @@ pub fn drawio_to_png(input: &Path, output: Option<&Path>) -> Result<(u32, u32, P
 
     match check_png_dimensions(&output, width as usize, height as usize) {
         Ok((size_ok, actual_width, actual_height)) => {
-            if size_ok {
-                println!("✓ Dimensions match exactly as requested");
-            } else {
+            if !size_ok {
                 println!(
-                    "⚠ Dimensions do not match requested size: {}x{} vs {}x{}",
+                    "Warning: Resulting dimensions ({}x{}) differ from requested size ({}x{})",
                     actual_width, actual_height, width, height
                 );
             }
