@@ -191,7 +191,7 @@ mod tests {
 
     #[test]
     fn test_get_newest_file_returns_file_when_multiple_files() {
-        let dir = tempdir().unwrap().into_path();
+        let dir = tempdir().unwrap().keep();
         let file_path1 = create_timestamped_file(&dir, "file1.txt", 100);
         let file_path2 = create_timestamped_file(&dir, "file2.txt", 200);
         let file_path3 = create_timestamped_file(&dir, "file3.txt", 300);
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_get_newest_file_returns_file_when_single_file() {
-        let dir = tempdir().unwrap().into_path();
+        let dir = tempdir().unwrap().keep();
         let file_path1 = create_timestamped_file(&dir, "file1.txt", 100);
 
         let files = vec![file_path1];
