@@ -8,7 +8,7 @@
          Nmodl=  10
      ChngLogOn=  ON
           Grps=  3
-                 "Group1"  "Group2"  "Group3"
+                 "Tables"  "Overview"  "Group3"
        GrpLock=  0000
       MaxLogon=  ROOT
        RootPwd=  ""

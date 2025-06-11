@@ -8,7 +8,7 @@
          Nmodl=  10
      ChngLogOn=  ON
           Grps=  3
-                 "Group1"  "Group2"  "Group3"
+                 "Tables"  "Overview"  "Group3"
        GrpLock=  0000
       MaxLogon=  ROOT
        RootPwd=  ""
@@ -524,3 +524,58 @@ UseFactorWeight=  0
           Text=  "MV"
           Mvrs=  1
                  "D02Zpc"
+
+  DisplayGroup:  Overview
+       GroupNo=  2
+        Locked=  OFF
+          Rows=  -1
+          Cols=  3
+         xGrid=  OFF
+         yGrid=  OFF
+         xAxis=  OFF
+         yAxis=  ON
+     Autoscale=  OFF
+     Spanscale=  ON
+      HistSize=  180
+
+  Image:         ImageName
+           Row=  -1
+           Col=  -1
+       RowSize=  1
+       ColSize=  1
+      FileName=  "example.png"
+
+  ImageXvrPlot:  myxvrplot
+            X1=  883
+            Y1=  160
+            X2=  1169
+            Y2=  401
+
+  ImageStatusLabel:  mystatuslabel
+            X1=  669
+            Y1=  371
+            X2=  725
+            Y2=  388
+         Texts=  4
+                 "Text1 with space"  "Text2!"  "Text3"  "Text4"
+BackgroundColors=  4
+                 "red"  "blue"  "#548235"  "orange"
+
+  ImageMultiXvrPlot:  mymultixvrplot
+            X1=  300
+            Y1=  160
+            X2=  586
+            Y2=  401
+       PlotMax=  200
+       PlotMin=  4
+          Xvrs=  3
+                 "L2"  "T2"  "Heat2"
+        Colors=  3
+                 "red"  "blue"  "dark green"
+
+  ImageXvr:      myxvr
+            X1=  670
+            Y1=  512
+            X2=  712
+            Y2=  530
+BackgroundColor=  "red"

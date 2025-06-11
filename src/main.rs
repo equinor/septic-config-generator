@@ -16,5 +16,6 @@ fn main() {
         Commands::Diff(diff) => diff.execute(),
         Commands::Checklogs(checklogs) => checklogs.execute(),
         Commands::Update(update) => update.execute(),
+        Commands::Drawio(drawio) => drawio.execute(),
     }
 }

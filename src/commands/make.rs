@@ -1,4 +1,6 @@
-use crate::config::{Config, Filename, Source};
+use crate::commands::drawio::components::extract_components;
+use crate::commands::drawio::to_png::drawio_to_png;
+use crate::config::{Config, Drawio, Filename, Source};
 use crate::datasource::{
     CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
 };
@@ -23,6 +25,7 @@ enum MakeError {
     CollectFileList(anyhow::Error),
     CreateOutputFile(anyhow::Error),
     LoadSourceError(anyhow::Error),
+    Drawio(anyhow::Error),
     Other(anyhow::Error),
 }
 
@@ -47,6 +50,7 @@ impl std::fmt::Display for MakeError {
             MakeError::CollectFileList(e) => write!(f, "Problem identifying changed files: {e:#}"),
             MakeError::CreateOutputFile(e) => write!(f, "Problem creating output file: {e:#}"),
             MakeError::LoadSourceError(e) => write!(f, "{e:#}"),
+            MakeError::Drawio(e) => write!(f, "Drawio error: {e:#}"),
             MakeError::Other(e) => write!(f, "{e:#}"),
         }
     }
@@ -131,6 +135,13 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         }
     }
 
+    // drawios_*() contain checks on whether .drawio files are newer than output files
+    if let Some(drawio) = &cfg.drawio {
+        drawios_to_components(&relative_root, drawio)?;
+        drawios_to_pngs(&relative_root, drawio)?;
+    }
+
+    // drawio needs to be done before the templates are rendered, so that the .csv files are available
     let all_source_data: HashMap<String, DataSourceRows> =
         load_all_source_data(&cfg, &relative_root).map_err(MakeError::LoadSourceError)?;
 
@@ -182,6 +193,47 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     Ok(())
 }
 
+fn drawios_to_pngs(relative_root: &Path, drawio: &Vec<Drawio>) -> Result<(), MakeError> {
+    for item in drawio {
+        let input = relative_root.join(&item.input);
+
+        let output = match &item.pngoutput {
+            Some(output_path) => relative_root.join(output_path),
+            None => input.with_extension("png"),
+        };
+        let input_as_set = std::collections::HashSet::from([input.clone()]);
+        if !output.exists()
+            || timestamps_newer_than(&input_as_set, &output).map_err(MakeError::TimeStampError)?
+        {
+            drawio_to_png(&input, Some(&output))
+                .context("Drawio to PNG")
+                .map_err(MakeError::Drawio)?;
+        }
+    }
+    Ok(())
+}
+
+fn drawios_to_components(relative_root: &Path, drawio: &Vec<Drawio>) -> Result<(), MakeError> {
+    for item in drawio {
+        let input = relative_root.join(&item.input);
+
+        let output = match &item.csvoutput {
+            Some(output_path) => PathBuf::from(output_path),
+            None => {
+                let out = format!("{}_components", input.with_extension("").to_string_lossy());
+                PathBuf::from(out).with_extension("csv")
+            }
+        };
+        let input_as_set = std::collections::HashSet::from([input.clone()]);
+        if !output.exists()
+            || timestamps_newer_than(&input_as_set, &output).map_err(MakeError::TimeStampError)?
+        {
+            extract_components(&input, Some(&output)).map_err(MakeError::Drawio)?;
+        }
+    }
+    Ok(())
+}
+
 fn check_if_overwrite_outfile(
     path: &PathBuf,
     encoding: &str,
@@ -214,7 +266,7 @@ fn check_if_overwrite_outfile(
             .to_string();
         println!("{formatted_diff}");
         Ok(ask_should_overwrite()
-            .with_context(|| "Unable to read user input")
+            .context("Unable to read user input")
             .map_err(MakeError::Other)?)
     } else {
         Ok(true)
@@ -315,6 +367,15 @@ fn collect_file_list(
             }
         }
     }
+
+    // All drawio files
+    if let Some(drawio) = &config.drawio {
+        for item in drawio {
+            let input_path = relative_root.join(&item.input);
+            files.insert(input_path);
+        }
+    }
+
     Ok(files)
 }
 

@@ -29,6 +29,7 @@ pub struct Config {
     pub counters: Option<Vec<Counter>>,
     pub sources: Option<Vec<Source>>,
     pub layout: Vec<Template>,
+    pub drawio: Option<Vec<Drawio>>,
 }
 
 impl Config {
@@ -157,6 +158,12 @@ pub enum Include {
     Conditional(IncludeConditional),
 }
 
+#[derive(Deserialize, Debug, Default)]
+pub struct Drawio {
+    pub input: String,
+    pub pngoutput: Option<String>,
+    pub csvoutput: Option<String>,
+}
 #[derive(Deserialize, Debug, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Template {

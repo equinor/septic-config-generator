@@ -26,6 +26,7 @@ lto = true      # 25 % reduction, result is 24% of original
 
 [dependencies]
 anyhow = "1.0.81"
+base64 = "0.22.1"
 calamine = "0.26.1"
 chrono = { version = "0.4.26", default-features = false, features = ["clock"] }
 clap = { version = "4.1.8", features = ["derive", "cargo"] }
@@ -34,10 +35,13 @@ csv = "1.2.2"
 diffy = "0.4.2"
 encoding_rs = "0.8.32"
 encoding_rs_io = "0.1.7"
+flate2 = "1.1.1"
 glob = "0.3.1"
+imagesize = "0.14.0"
 indexmap = { version = "2.2.3", features = ["serde"] }
 minijinja = { version = "2.0.1", features = ["loader", "preserve_order"] }
 regex = "1.7.1"
+roxmltree = "0.20.0"
 self_update = { version = "0.42.0", features = [
     "archive-zip",
     "archive-tar",
@@ -47,6 +51,8 @@ self_update = { version = "0.42.0", features = [
 ] }
 serde = { version = "1.0.156", features = ["derive"] }
 serde_yaml = "0.9.19"
+serde_json = "1.0"
+html-escape = "0.2.13"
 
 [dev-dependencies]
 filetime = "0.2.23"

@@ -34,6 +34,18 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look [h
   - [The source file](#the-source-file)
   - [The config file](#the-config-file)
   - [Generate a config](#generate-a-config)
+- [draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg)
+  - [Prerequisites](#prerequisites)
+  - [Using draw.io with SCG](#using-drawio-with-scg)
+  - [Coordinate and Property Extraction](#coordinate-and-property-extraction)
+  - [Creating Diagrams for SCG](#creating-diagrams-for-scg)
+    - [Element Types](#element-types)
+    - [Properties](#properties)
+    - [Adding or Editing Properties](#adding-or-editing-properties)
+  - [Setting Diagram Size and Background](#setting-diagram-size-and-background)
+    - [Setting Paper Size](#setting-paper-size)
+    - [Creating a Fixed Size Background](#creating-a-fixed-size-background)
+  - [Command Line Usage](#command-line-usage)
 
 ## About
 
@@ -98,6 +110,11 @@ templatepath: templates
 adjustspacing: true
 verifycontent: true
 
+drawio:
+  - input: example.drawio
+    pngoutput: example.png
+    csvoutput: example.csv
+
 counters:
   - name: mycounter
     value: 0
@@ -109,6 +126,9 @@ sources:
   - filename: example.csv
     id: flowlines
     delimiter: ";"
+  - filename: example_drawio_components.csv
+    id: drawio_example
+    delimiter: ","
 
 layout:
   - name: 010_System.cnfg
@@ -120,6 +140,8 @@ layout:
       - D02
   - name: 040_SopcProc_flowline.cnfg
     source: flowlines
+  - name: 060_DspGroup_Overview.cnfg
+    source: drawio_example
 ```
 
 - `outputfile` (optional string): The file that will be generated. Writes to stdout if not provided.
@@ -132,11 +154,31 @@ layout:
   [MiniJinja's behaviour](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#trailing-newlines).
 - `verifycontent` (boolean, default: true): Whether to report differences from an already existing rendered file. Will
   ask before replacing with the new content. Set to `false` to overwrite existing file without checking for changes.
+- `drawio` (optional list of `drawio` structs) Contains a list of .drawio files to extract coordinates from and convert to png.
 - `counters` (optional list of `counter` structs): Contains a list of global auto-incrementing counter functions.
 - `sources` (list of `source` structs): Contains a list of source file configurations.
 - `layout` (list of `template` structs): Contains a list of templates in the order they should be rendered.
 
 All file names and paths are relative to the location of the configuration file.
+
+#### Drawio
+
+_(Added in v2.13)_
+
+OBS: for prerequisites and .drawio info, See [draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg) section
+
+The `drawio` struct allows you to automate processing of `.drawio` diagram files as part of your configuration workflow. For each entry, SCG can perform two main functions:
+
+- **Convert the `.drawio` file to a PNG image**: This is useful for generating graphical backgrounds for displaygroups.
+- **Extract coordinates and element information from the `.drawio` file to a CSV file**: This enables you to use the positions and properties of diagram elements in your configuration or templates, for example to place GUI elements accurately.
+
+This makes it easy to keep your graphics and coordinate data in sync with your diagrams, and to integrate diagram information directly into your config generation process.
+
+The structure has the following fields:
+
+- `input` (string, required): The path to the input `.drawio` file.
+- `pngoutput` (string, optional): The path to the output `.png` file. If not provided, the output file will have the same name as the input file but with a `.png` extension.
+- `csvoutput` (string, optional): The path to the output `.csv` file. If not provided, the output file will have the same name as the input file but with a `_components.csv` suffix.
 
 #### Counters
 
@@ -562,7 +604,7 @@ It may be easier to understand how to use the tool by example. In the docs-direc
 directory called `basic example`. This directory contains the following directories and files:
 
 - templates: A directory containing the templates that make up a Septic config file.
-- example.yaml: Defines how the template files should be combined to create example_final.conf
+- example.yaml: Defines how the template files should be combined to create example_final.cnfg
 - example.xlsx: An Excel file that contains data to insert into the templates.
 - example.cnfg: The resulting Septic config file.
 
@@ -714,3 +756,127 @@ Try to make a change to one of the template files and regenerate the config. Sin
 ask whether you want to replace the existing `example.cnfg`. Changes are shown as unified diff between the two files.
 
 Type `scg.exe make --help` for more options to the `make` command.
+
+## draw.io Diagram Integration for SCG
+
+The `scg drawio` command provides utilities for processing draw.io diagram files, including converting diagrams to PNG images and extracting coordinates and metadata for use in configuration files.
+
+### Prerequisites
+
+To use these features, you must have the following installed:
+
+1. **draw.io Desktop Application**
+
+   - Windows: Open PowerShell as Administrator and run:
+
+     ```sh
+     winget install JGraph.Draw
+     ```
+
+   - MacOS:
+
+     ```sh
+     brew install --cask drawio  # Note: requires Homebrew
+     ```
+
+   Ensure the `draw.io` executable is available in your system's PATH.
+
+2. **VSCode Extensions**
+
+   Two extensions are required for the best experience:
+
+   - **draw.io Integration**: Provides draw.io diagram editing capabilities directly in VSCode
+   - **Septic Extension**: Adds specialized diagram components for SCG
+
+   These can be installed from the VSCode marketplace.
+
+### Using draw.io with SCG
+
+The Septic Extension enhances draw.io Integration by adding a specialized septic library with pre-configured components designed for SCG:
+
+- **ImageStatusLabel**: For status indicators
+- **ImageXvr**: For standard XVR displays
+- **ImageXvrPlot**: For plotting XVR data
+- **ImageMultiXvrPlot**: For multi-series plots
+
+Each component comes with default properties already configured for use with SCG.
+
+## Coordinate and Property Extraction
+
+When using the SCG tools to extract information from your diagrams:
+
+- All components with `septic_` properties are detected and their coordinates are saved to a CSV file
+- The CSV includes position data (x1, y1, x2, y2) for each component
+- All properties with the `septic_` prefix are included in the CSV with the prefix removed
+  - Example: `septic_name` becomes `name` in the CSV output
+- If a component has a `label` attribute, it is also extracted and written to the CSV as a column named `_label`
+- For multi-value fields (e.g., color lists like `"red" "blue" "green"`), a `num_values` column is included with the count of items
+
+### Creating Diagrams for SCG
+
+When creating diagrams for use with SCG, follow these guidelines:
+
+#### Element Types
+
+- See `docs/basic example/example.drawio` for examples
+- Use the components from the Septic library in the draw.io sidebar for the easiest workflow
+- Other components can be used as long as they have properties with the `septic_` prefix
+
+#### Properties
+
+- The Septic library components already include these recommended standard properties:
+  - `septic_type`: Defines the component type (e.g., "ImageXvr")
+  - `septic_name`: Defines the component name (e.g., "18PT0056")
+- Common special properties for component types: `colors`, `texts`, `backgroundcolors` etc
+
+#### Adding or Editing Properties
+
+To modify properties:
+
+1. Right-click on the component
+2. Select "Edit Data"
+3. Add or modify properties with the `septic_` prefix
+4. Values will be preserved in the extracted CSV
+
+### Setting Diagram Size and Background
+
+Controlling the diagram size is important for consistent output when exporting to images:
+
+#### Setting Paper Size
+
+1. Go to **File → Page Setup** to set the desired resolution or paper size for your diagram
+2. Set appropriate dimensions (e.g., 1920×1080 for HD display)
+
+#### Creating a Fixed Size Background
+
+By default, draw.io will automatically crop images when exporting to PNG, which may result in unexpected dimensions. To ensure consistent sizing:
+
+1. **Create a dedicated background layer**:
+
+   - Open the layers panel (usually in the bottom-right)
+   - Add a new layer and name it "Background"
+   - Move it to the bottom of the layer stack
+
+2. **Add a fixed-size background rectangle**:
+
+   - Insert a rectangle on the background layer
+   - Set its dimensions to match your desired output size (e.g., 1920×1082)
+     - **Note**: For 1920×1080 resolution, add 2 pixels to the width (use 1922) to compensate for draw.io's sizing behavior
+   - Set the fill color as desired for your background
+
+3. **Lock the background layer**:
+   - Click the lock icon next to the background layer
+   - This prevents accidental edits to your background
+
+This approach ensures that exported images will maintain consistent dimensions regardless of the content layout.
+
+### Command Line Usage
+
+The SCG tool provides the following commands for working with draw.io files:
+
+```sh
+scg drawio components  --input <file.drawio> [--output <coords.csv>]
+scg drawio 2png --ipnut <file.drawio> [--output <file.png>]
+```
+
+This command extracts component coordinates and properties from a draw.io file and saves them to a CSV file. If no output file is specified, it will create one with the same base name as the input file.
