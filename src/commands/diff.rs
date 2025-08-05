@@ -69,7 +69,7 @@ mod tests {
 
     fn create_temp_file_with_content(content: &str) -> Result<NamedTempFile> {
         let mut temp_file = NamedTempFile::new()?;
-        write!(temp_file, "{}", content)?;
+        write!(temp_file, "{content}")?;
         Ok(temp_file)
     }
 

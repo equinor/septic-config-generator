@@ -299,9 +299,9 @@ mod multisourcetests {
         key2;2.2;2
         key1;1.1;1"#;
         let mut tmp_file1 = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file1, "{}", csv_content1).unwrap();
+        write!(tmp_file1, "{csv_content1}").unwrap();
         let mut tmp_file2 = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file2, "{}", csv_content2).unwrap();
+        write!(tmp_file2, "{csv_content2}").unwrap();
 
         let reader = MultiSourceReader::new(
             vec![
@@ -343,9 +343,9 @@ mod multisourcetests {
         key1;1.1;1
         key3;3.3;3"#;
         let mut tmp_file1 = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file1, "{}", csv_content1).unwrap();
+        write!(tmp_file1, "{csv_content1}").unwrap();
         let mut tmp_file2 = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file2, "{}", csv_content2).unwrap();
+        write!(tmp_file2, "{csv_content2}").unwrap();
 
         let reader = MultiSourceReader::new(
             vec![
@@ -373,9 +373,9 @@ mod multisourcetests {
         key1;1.1;1
         key3;3.3;3"#;
         let mut tmp_file1 = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file1, "{}", csv_content1).unwrap();
+        write!(tmp_file1, "{csv_content1}").unwrap();
         let mut tmp_file2 = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file2, "{}", csv_content2).unwrap();
+        write!(tmp_file2, "{csv_content2}").unwrap();
 
         let reader = MultiSourceReader::new(
             vec![
@@ -410,7 +410,7 @@ key1;value1;1.1;1;1.0;0
 # Ignore this line
 key2;value2;2.2;2;2;00"#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file, "{}", csv_content).unwrap();
+        write!(tmp_file, "{csv_content}").unwrap();
 
         let reader = CsvSourceReader::new(
             tmp_file.path().to_str().unwrap(),
@@ -454,7 +454,7 @@ key2;value2;2.2;2;2;00"#;
         let csv_content = r#"keys ;  text   ;  float ; int  
 key1  ;   value1  ;    1.1 ; 1  "#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file, "{}", csv_content).unwrap();
+        write!(tmp_file, "{csv_content}").unwrap();
 
         let reader = CsvSourceReader::new(
             tmp_file.path().to_str().unwrap(),
@@ -487,7 +487,7 @@ key1  ;   value1  ;    1.1 ; 1  "#;
     key1;value1;"1.234";1.234"#;
 
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file, "{}", csv_content).unwrap();
+        write!(tmp_file, "{csv_content}").unwrap();
 
         let reader = CsvSourceReader::new(
             tmp_file.path().to_str().unwrap(),
@@ -517,7 +517,7 @@ key1  ;   value1  ;    1.1 ; 1  "#;
         let csv_content = r#"keys;header1;header2;header3
     key1;value1;;value3"#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file, "{}", csv_content).unwrap();
+        write!(tmp_file, "{csv_content}").unwrap();
 
         let reader = CsvSourceReader::new(
             tmp_file.path().to_str().unwrap(),
@@ -550,7 +550,7 @@ key1  ;   value1  ;    1.1 ; 1  "#;
 key1;value1a;value1b
 key2;value2a"#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file, "{}", csv_content).unwrap();
+        write!(tmp_file, "{csv_content}").unwrap();
 
         let reader = CsvSourceReader::new(
             tmp_file.path().to_str().unwrap(),
@@ -576,7 +576,7 @@ key2;value2a"#;
 key1;value1;1.1;1
 2;value2;2.2;2"#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file, "{}", csv_content).unwrap();
+        write!(tmp_file, "{csv_content}").unwrap();
 
         let reader = CsvSourceReader::new(
             tmp_file.path().to_str().unwrap(),
@@ -601,7 +601,7 @@ key1;value1;1.1;1
 key1;value1;1.1;1
   ;value2;2.2;2"#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
-        write!(tmp_file, "{}", csv_content).unwrap();
+        write!(tmp_file, "{csv_content}").unwrap();
 
         let reader = CsvSourceReader::new(
             tmp_file.path().to_str().unwrap(),

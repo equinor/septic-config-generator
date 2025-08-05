@@ -96,7 +96,7 @@ impl Make {
         match result {
             Ok(_) => (),
             Err(err) => {
-                eprintln!("{:#}", err);
+                eprintln!("{err:#}");
                 std::process::exit(err.into())
             }
         }

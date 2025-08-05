@@ -40,7 +40,7 @@ fn cmd_update(token: &Option<String>) -> Result<(), su_Error> {
     match status {
         self_update::Status::UpToDate(_) => println!("Already at latest version, nothing to do."),
         self_update::Status::Updated(version) => {
-            println!("Successfully updated to v{:#}!", version)
+            println!("Successfully updated to v{version:#}!")
         }
     }
     Ok(())

@@ -265,7 +265,7 @@ mod tests {
 
     fn create_temp_yaml(content: &str) -> NamedTempFile {
         let mut temp_file = NamedTempFile::new().unwrap();
-        writeln!(temp_file, "{}", content).unwrap();
+        writeln!(temp_file, "{content}").unwrap();
         temp_file
     }
 

@@ -47,20 +47,20 @@ fn clean_attribute_value(value: &str) -> String {
 fn decompress_diagram(data: &str) -> Result<String, String> {
     let decoded = general_purpose::STANDARD
         .decode(data)
-        .map_err(|e| format!("Base64 decoding error: {}", e))?;
+        .map_err(|e| format!("Base64 decoding error: {e}"))?;
     let mut decoder = ZlibDecoder::new(&decoded[..]);
     let mut decompressed = Vec::new();
     decoder
         .read_to_end(&mut decompressed)
-        .map_err(|e| format!("Zlib decompression error: {}", e))?;
-    String::from_utf8(decompressed).map_err(|e| format!("UTF-8 conversion error: {}", e))
+        .map_err(|e| format!("Zlib decompression error: {e}"))?;
+    String::from_utf8(decompressed).map_err(|e| format!("UTF-8 conversion error: {e}"))
 }
 
 /// Public API to extract components and write CSV
 pub fn extract_components(input: &Path, output: Option<&Path>) -> Result<(usize, PathBuf)> {
     let output_path = output.map(PathBuf::from).unwrap_or_else(|| {
         let base = input.with_extension("").to_string_lossy().into_owned();
-        PathBuf::from(format!("{}_components.csv", base))
+        PathBuf::from(format!("{base}_components.csv"))
     });
     let xml_content = process_drawio_file(input)?;
     let rectangles = parse_xml_and_extract_rectangles(&xml_content)?;
@@ -356,7 +356,7 @@ mod tests {
 
         // Ensure test directory and input files exist
         for file in [test_dir, &input_file, &expected_file] {
-            assert!(file.exists(), "Required resource not found: {:?}", file);
+            assert!(file.exists(), "Required resource not found: {file:?}");
         }
 
         // Remove the output file if it exists from a previous test run
@@ -387,8 +387,7 @@ mod tests {
         // Verify output file was created
         assert!(
             output_file.exists(),
-            "Output file was not created: {:?}",
-            output_file
+            "Output file was not created: {output_file:?}"
         );
 
         // Read the output file and expected output file
