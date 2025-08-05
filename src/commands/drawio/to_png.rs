@@ -78,8 +78,7 @@ pub fn drawio_to_png(input: &Path, output: Option<&Path>) -> Result<(u32, u32, P
         Ok((size_ok, actual_width, actual_height)) => {
             if !size_ok {
                 println!(
-                    "Warning: Resulting dimensions ({}x{}) differ from requested size ({}x{})",
-                    actual_width, actual_height, width, height
+                    "Warning: Resulting dimensions ({actual_width}x{actual_height}) differ from requested size ({width}x{height})"
                 );
             }
         }
@@ -101,10 +100,10 @@ fn extract_page_dimensions(input: &Path) -> Result<(u32, u32)> {
             {
                 let width = width_str
                     .parse::<u32>()
-                    .with_context(|| format!("Invalid pageWidth value: {}", width_str))?;
+                    .with_context(|| format!("Invalid pageWidth value: {width_str}"))?;
                 let height = height_str
                     .parse::<u32>()
-                    .with_context(|| format!("Invalid pageHeight value: {}", height_str))?;
+                    .with_context(|| format!("Invalid pageHeight value: {height_str}"))?;
                 return Ok((width, height));
             }
         }

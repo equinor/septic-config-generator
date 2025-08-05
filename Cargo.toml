@@ -53,6 +53,7 @@ serde = { version = "1.0.156", features = ["derive"] }
 serde_yaml = "0.9.19"
 serde_json = "1.0"
 html-escape = "0.2.13"
+schemars = { version = "1.0.4", features = ["preserve_order"] }
 
 [dev-dependencies]
 filetime = "0.2.23"

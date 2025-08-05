@@ -47,7 +47,7 @@ impl Checklogs {
             Ok(_) => (),
             Err(err) => match err.downcast_ref() {
                 Some(CheckLogsError::CheckError(_)) => {
-                    eprintln!("{:#}", err);
+                    eprintln!("{err:#}");
                     std::process::exit(2);
                 }
                 Some(CheckLogsError::WarningsFound) => {

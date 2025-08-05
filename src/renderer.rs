@@ -42,7 +42,7 @@ impl CounterMap {
         let counter = self.counters.get_mut(name).ok_or_else(|| {
             Error::new(
                 ErrorKind::InvalidOperation,
-                format!("Counter '{}' not found", name),
+                format!("Counter '{name}' not found"),
             )
         })?;
         let new_value = value.map_or_else(|| *counter + 1, |v| v);

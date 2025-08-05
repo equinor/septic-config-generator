@@ -61,7 +61,7 @@ impl Drawio {
                 height
             ),
             Err(err) => {
-                eprintln!("Failed to convert: {}", err);
+                eprintln!("Failed to convert: {err}");
                 std::process::exit(1);
             }
         }
@@ -73,7 +73,7 @@ impl Drawio {
                 println!("Extracted {} components to '{}'", count, output.display())
             }
             Err(e) => {
-                eprintln!("Failed to extract components: {}", e);
+                eprintln!("Failed to extract components: {e}");
                 std::process::exit(1);
             }
         }
