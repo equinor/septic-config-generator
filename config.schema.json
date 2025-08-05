@@ -1,5 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Config",
   "type": "object",
   "properties": {
@@ -15,7 +15,7 @@
         "null"
       ],
       "items": {
-        "$ref": "#/$defs/Counter"
+        "$ref": "#/definitions/Counter"
       }
     },
     "drawio": {
@@ -25,7 +25,7 @@
         "null"
       ],
       "items": {
-        "$ref": "#/$defs/Drawio"
+        "$ref": "#/definitions/Drawio"
       }
     },
     "encoding": {
@@ -37,7 +37,7 @@
       "description": "List of templates in the order they should be rendered",
       "type": "array",
       "items": {
-        "$ref": "#/$defs/Template"
+        "$ref": "#/definitions/Template"
       }
     },
     "outputfile": {
@@ -54,7 +54,7 @@
         "null"
       ],
       "items": {
-        "$ref": "#/$defs/Source"
+        "$ref": "#/definitions/Source"
       }
     },
     "templatepath": {
@@ -72,7 +72,7 @@
     "templatepath",
     "layout"
   ],
-  "$defs": {
+  "definitions": {
     "Counter": {
       "type": "object",
       "properties": {
@@ -135,7 +135,7 @@
           "type": "string"
         },
         {
-          "$ref": "#/$defs/IncludeConditional"
+          "$ref": "#/definitions/IncludeConditional"
         }
       ]
     },
@@ -178,7 +178,7 @@
           "minLength": 1
         },
         "filename": {
-          "$ref": "#/$defs/Filename"
+          "$ref": "#/definitions/Filename"
         },
         "id": {
           "type": "string"
@@ -205,7 +205,7 @@
             "null"
           ],
           "items": {
-            "$ref": "#/$defs/Include"
+            "$ref": "#/definitions/Include"
           }
         },
         "include": {
@@ -214,7 +214,7 @@
             "null"
           ],
           "items": {
-            "$ref": "#/$defs/Include"
+            "$ref": "#/definitions/Include"
           }
         },
         "name": {

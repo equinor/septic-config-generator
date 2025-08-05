@@ -1,7 +1,7 @@
 use crate::config;
 use anyhow::Result;
 use clap::Parser;
-use schemars::schema_for;
+use schemars::generate::SchemaSettings;
 
 #[derive(Parser, Debug)]
 pub struct Schema {}
@@ -16,7 +16,9 @@ impl Schema {
 }
 
 fn cmd_dump_schema() -> Result<()> {
-    let schema = schema_for!(config::Config);
+    let settings = SchemaSettings::draft07();
+    let generator = settings.into_generator();
+    let schema = generator.into_root_schema_for::<config::Config>();
     println!("{}", serde_json::to_string_pretty(&schema)?);
     Ok(())
 }
