@@ -9,7 +9,7 @@
       "default": true
     },
     "counters": {
-      "description": "List of global auto-incrementing counter functions",
+      "description": "List of global auto-incrementing counters",
       "type": [
         "array",
         "null"
@@ -77,9 +77,11 @@
       "type": "object",
       "properties": {
         "name": {
+          "description": "Counter name",
           "type": "string"
         },
         "value": {
+          "description": "Initial value for the counter, defaults to 0",
           "type": [
             "integer",
             "null"
@@ -97,15 +99,18 @@
       "type": "object",
       "properties": {
         "csvoutput": {
+          "description": "Optional output CSV file path for components. If not provided, the output will have the same name as input but with _components.csv extension",
           "type": [
             "string",
             "null"
           ]
         },
         "input": {
+          "description": "The draw.io file to process",
           "type": "string"
         },
         "pngoutput": {
+          "description": "Optional output PNG file path. If not provided, the output will have the same name as input but with .png extension",
           "type": [
             "string",
             "null"
@@ -119,9 +124,11 @@
     "Filename": {
       "anyOf": [
         {
+          "description": "Single filename as a string",
           "type": "string"
         },
         {
+          "description": "Multiple filenames as a list of strings",
           "type": "array",
           "items": {
             "type": "string"
@@ -132,10 +139,16 @@
     "Include": {
       "anyOf": [
         {
+          "description": "Include a single element by name",
           "type": "string"
         },
         {
-          "$ref": "#/definitions/IncludeConditional"
+          "description": "Include a conditional element with a condition and optional items",
+          "allOf": [
+            {
+              "$ref": "#/definitions/IncludeConditional"
+            }
+          ]
         }
       ]
     },
@@ -143,15 +156,18 @@
       "type": "object",
       "properties": {
         "continue": {
+          "description": "Whether to continue evaluating further conditions after this one",
           "type": [
             "boolean",
             "null"
           ]
         },
         "if": {
+          "description": "The condition to evaluate. Uses MiniJinja syntax.",
           "type": "string"
         },
         "then": {
+          "description": "List of items to include if the condition is true",
           "type": [
             "array",
             "null"
@@ -170,6 +186,7 @@
       "type": "object",
       "properties": {
         "delimiter": {
+          "description": "Optional delimiter for .csv files",
           "type": [
             "string",
             "null"
@@ -178,12 +195,19 @@
           "minLength": 1
         },
         "filename": {
-          "$ref": "#/definitions/Filename"
+          "description": "The filename(s) of the source data",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Filename"
+            }
+          ]
         },
         "id": {
+          "description": "The unique identifier for this source",
           "type": "string"
         },
         "sheet": {
+          "description": "Optional sheet name for .xlsx files",
           "type": [
             "string",
             "null"
@@ -200,6 +224,7 @@
       "type": "object",
       "properties": {
         "exclude": {
+          "description": "Optional list of fields from source to exclude in iteration",
           "type": [
             "array",
             "null"
@@ -209,6 +234,7 @@
           }
         },
         "include": {
+          "description": "Optional list of fields from source to include in iteration",
           "type": [
             "array",
             "null"
@@ -218,9 +244,11 @@
           }
         },
         "name": {
+          "description": "The name of the template file",
           "type": "string"
         },
         "source": {
+          "description": "Optional source id to iterate over for this template",
           "type": [
             "string",
             "null"

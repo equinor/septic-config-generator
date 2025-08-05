@@ -32,7 +32,7 @@ pub struct Config {
     #[serde(default = "_default_true")]
     /// Whether to warn about differences from an already existing rendered file
     pub verifycontent: bool,
-    /// List of global auto-incrementing counter functions
+    /// List of global auto-incrementing counters
     pub counters: Option<Vec<Counter>>,
     /// List of source file configurations
     pub sources: Option<Vec<Source>>,
@@ -110,15 +110,19 @@ fn validate_source(source: &Source) -> Result<()> {
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Counter {
+    /// Counter name
     pub name: String,
     #[serde(default)]
+    /// Initial value for the counter, defaults to 0
     pub value: Option<i32>,
 }
 
 #[derive(Deserialize, Debug, JsonSchema)]
 #[serde(untagged)] // Allows for multiple representations of the data
 pub enum Filename {
+    /// Single filename as a string
     Single(String),
+    /// Multiple filenames as a list of strings
     Multiple(Vec<String>),
 }
 
@@ -144,19 +148,26 @@ impl From<Vec<&str>> for Filename {
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Source {
+    /// The filename(s) of the source data
     pub filename: Filename,
+    /// The unique identifier for this source
     pub id: String,
+    /// Optional sheet name for .xlsx files
     pub sheet: Option<String>,
+    /// Optional delimiter for .csv files
     pub delimiter: Option<char>,
 }
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct IncludeConditional {
+    /// The condition to evaluate. Uses MiniJinja syntax.
     #[serde(rename = "if")]
     condition: String,
+    /// List of items to include if the condition is true
     #[serde(rename = "then")]
     items: Option<Vec<String>>,
+    /// Whether to continue evaluating further conditions after this one
     #[serde(rename = "continue")]
     continue_: Option<bool>,
 }
@@ -164,22 +175,31 @@ pub struct IncludeConditional {
 #[derive(Deserialize, Debug, JsonSchema)]
 #[serde(untagged)]
 pub enum Include {
+    /// Include a single element by name
     Element(String),
+    /// Include a conditional element with a condition and optional items
     Conditional(IncludeConditional),
 }
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 pub struct Drawio {
+    /// The draw.io file to process
     pub input: String,
+    /// Optional output PNG file path. If not provided, the output will have the same name as input but with .png extension
     pub pngoutput: Option<String>,
+    /// Optional output CSV file path for components. If not provided, the output will have the same name as input but with _components.csv extension
     pub csvoutput: Option<String>,
 }
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Template {
+    /// The name of the template file
     pub name: String,
+    /// Optional source id to iterate over for this template
     pub source: Option<String>,
+    /// Optional list of fields from source to include in iteration
     pub include: Option<Vec<Include>>,
+    /// Optional list of fields from source to exclude in iteration
     pub exclude: Option<Vec<Include>>,
 }
 
