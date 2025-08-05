@@ -12,7 +12,7 @@ pub enum Commands {
     Update(Update),
     /// Work with draw.io files
     Drawio(Drawio),
-    /// Export json schema for yaml config
+    /// Dump json schema for yaml config
     Schema(Schema),
 }
 
