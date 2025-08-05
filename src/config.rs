@@ -1,5 +1,6 @@
 use anyhow::{Result, bail};
 use minijinja::{Environment, context};
+use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::fs;
@@ -15,20 +16,29 @@ fn _default_encoding() -> String {
     "Windows-1252".to_string()
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    /// The file that will be generated. Writes to stdout if not specified.
     pub outputfile: Option<String>,
     #[serde(default = "_default_encoding")]
+    /// The encoding to use for template files and the outputfile. Use any label specified in https://encoding.spec.whatwg.org/#concept-encoding-get
     pub encoding: String,
+    /// The directory that contains all template files
     pub templatepath: String,
     #[serde(default = "_default_true")]
+    /// Whether to ensure exactly one newline between rendered template files
     pub adjustspacing: bool,
     #[serde(default = "_default_true")]
+    /// Whether to warn about differences from an already existing rendered file
     pub verifycontent: bool,
+    /// List of global auto-incrementing counter functions
     pub counters: Option<Vec<Counter>>,
+    /// List of source file configurations
     pub sources: Option<Vec<Source>>,
+    /// List of templates in the order they should be rendered
     pub layout: Vec<Template>,
+    /// List of .drawio files to process
     pub drawio: Option<Vec<Drawio>>,
 }
 
@@ -97,7 +107,7 @@ fn validate_source(source: &Source) -> Result<()> {
     Ok(())
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Counter {
     pub name: String,
@@ -105,7 +115,7 @@ pub struct Counter {
     pub value: Option<i32>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, JsonSchema)]
 #[serde(untagged)] // Allows for multiple representations of the data
 pub enum Filename {
     Single(String),
@@ -131,7 +141,7 @@ impl From<Vec<&str>> for Filename {
     }
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Source {
     pub filename: Filename,
@@ -140,7 +150,7 @@ pub struct Source {
     pub delimiter: Option<char>,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct IncludeConditional {
     #[serde(rename = "if")]
@@ -151,20 +161,20 @@ pub struct IncludeConditional {
     continue_: Option<bool>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, JsonSchema)]
 #[serde(untagged)]
 pub enum Include {
     Element(String),
     Conditional(IncludeConditional),
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, JsonSchema)]
 pub struct Drawio {
     pub input: String,
     pub pngoutput: Option<String>,
     pub csvoutput: Option<String>,
 }
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Template {
     pub name: String,

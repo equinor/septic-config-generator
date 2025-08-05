@@ -12,16 +12,20 @@ pub enum Commands {
     Update(Update),
     /// Work with draw.io files
     Drawio(Drawio),
+    /// Export json schema for yaml config
+    Schema(Schema),
 }
 
 mod checklogs;
 mod diff;
 mod drawio;
 mod make;
+mod schema;
 mod update;
 
 pub use checklogs::Checklogs;
 pub use diff::Diff;
 pub use drawio::Drawio;
 pub use make::Make;
+pub use schema::Schema;
 pub use update::Update;

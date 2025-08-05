@@ -17,5 +17,6 @@ fn main() {
         Commands::Checklogs(checklogs) => checklogs.execute(),
         Commands::Update(update) => update.execute(),
         Commands::Drawio(drawio) => drawio.execute(),
+        Commands::Schema(schema) => schema.execute(),
     }
 }
