@@ -18,6 +18,7 @@ fn _default_encoding() -> String {
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
+#[schemars(title = "Septic Config Generator Configuration")]
 pub struct Config {
     /// The file that will be generated. Writes to stdout if not specified.
     pub outputfile: Option<String>,
