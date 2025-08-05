@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Config",
+  "type": "object",
+  "properties": {
+    "adjustspacing": {
+      "description": "Whether to ensure exactly one newline between rendered template files",
+      "type": "boolean",
+      "default": true
+    },
+    "counters": {
+      "description": "List of global auto-incrementing counter functions",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/$defs/Counter"
+      }
+    },
+    "drawio": {
+      "description": "List of .drawio files to process",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/$defs/Drawio"
+      }
+    },
+    "encoding": {
+      "description": "The encoding to use for template files and the outputfile. Use any label specified in https://encoding.spec.whatwg.org/#concept-encoding-get",
+      "type": "string",
+      "default": "Windows-1252"
+    },
+    "layout": {
+      "description": "List of templates in the order they should be rendered",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Template"
+      }
+    },
+    "outputfile": {
+      "description": "The file that will be generated. Writes to stdout if not specified.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sources": {
+      "description": "List of source file configurations",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/$defs/Source"
+      }
+    },
+    "templatepath": {
+      "description": "The directory that contains all template files",
+      "type": "string"
+    },
+    "verifycontent": {
+      "description": "Whether to warn about differences from an already existing rendered file",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "templatepath",
+    "layout"
+  ],
+  "$defs": {
+    "Counter": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "int32",
+          "default": null
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ]
+    },
+    "Drawio": {
+      "type": "object",
+      "properties": {
+        "csvoutput": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "input": {
+          "type": "string"
+        },
+        "pngoutput": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "input"
+      ]
+    },
+    "Filename": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "Include": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "$ref": "#/$defs/IncludeConditional"
+        }
+      ]
+    },
+    "IncludeConditional": {
+      "type": "object",
+      "properties": {
+        "continue": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "if": {
+          "type": "string"
+        },
+        "then": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "if"
+      ]
+    },
+    "Source": {
+      "type": "object",
+      "properties": {
+        "delimiter": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 1,
+          "minLength": 1
+        },
+        "filename": {
+          "$ref": "#/$defs/Filename"
+        },
+        "id": {
+          "type": "string"
+        },
+        "sheet": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "filename",
+        "id"
+      ]
+    },
+    "Template": {
+      "type": "object",
+      "properties": {
+        "exclude": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Include"
+          }
+        },
+        "include": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/$defs/Include"
+          }
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
+      ]
+    }
+  }
+}
