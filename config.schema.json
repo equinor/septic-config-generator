@@ -3,8 +3,29 @@
   "title": "Config",
   "type": "object",
   "properties": {
+    "outputfile": {
+      "description": "The file that will be generated. Writes to stdout if not specified.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "encoding": {
+      "description": "The encoding to use for template files and the outputfile. Use any label specified in https://encoding.spec.whatwg.org/#concept-encoding-get",
+      "type": "string",
+      "default": "Windows-1252"
+    },
+    "templatepath": {
+      "description": "The directory that contains all template files",
+      "type": "string"
+    },
     "adjustspacing": {
       "description": "Whether to ensure exactly one newline between rendered template files",
+      "type": "boolean",
+      "default": true
+    },
+    "verifycontent": {
+      "description": "Whether to warn about differences from an already existing rendered file",
       "type": "boolean",
       "default": true
     },
@@ -18,35 +39,6 @@
         "$ref": "#/definitions/Counter"
       }
     },
-    "drawio": {
-      "description": "List of .drawio files to process",
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/Drawio"
-      }
-    },
-    "encoding": {
-      "description": "The encoding to use for template files and the outputfile. Use any label specified in https://encoding.spec.whatwg.org/#concept-encoding-get",
-      "type": "string",
-      "default": "Windows-1252"
-    },
-    "layout": {
-      "description": "List of templates in the order they should be rendered",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Template"
-      }
-    },
-    "outputfile": {
-      "description": "The file that will be generated. Writes to stdout if not specified.",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "sources": {
       "description": "List of source file configurations",
       "type": [
@@ -57,14 +49,22 @@
         "$ref": "#/definitions/Source"
       }
     },
-    "templatepath": {
-      "description": "The directory that contains all template files",
-      "type": "string"
+    "layout": {
+      "description": "List of templates in the order they should be rendered",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Template"
+      }
     },
-    "verifycontent": {
-      "description": "Whether to warn about differences from an already existing rendered file",
-      "type": "boolean",
-      "default": true
+    "drawio": {
+      "description": "List of .drawio files to process",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Drawio"
+      }
     }
   },
   "additionalProperties": false,
@@ -95,30 +95,42 @@
         "name"
       ]
     },
-    "Drawio": {
+    "Source": {
       "type": "object",
       "properties": {
-        "csvoutput": {
-          "description": "Optional output CSV file path for components. If not provided, the output will have the same name as input but with _components.csv extension",
-          "type": [
-            "string",
-            "null"
+        "filename": {
+          "description": "The filename(s) of the source data",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Filename"
+            }
           ]
         },
-        "input": {
-          "description": "The draw.io file to process",
+        "id": {
+          "description": "The unique identifier for this source",
           "type": "string"
         },
-        "pngoutput": {
-          "description": "Optional output PNG file path. If not provided, the output will have the same name as input but with .png extension",
+        "sheet": {
+          "description": "Optional sheet name for .xlsx files",
           "type": [
             "string",
             "null"
           ]
+        },
+        "delimiter": {
+          "description": "Optional delimiter for .csv files",
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 1
         }
       },
+      "additionalProperties": false,
       "required": [
-        "input"
+        "filename",
+        "id"
       ]
     },
     "Filename": {
@@ -134,6 +146,46 @@
             "type": "string"
           }
         }
+      ]
+    },
+    "Template": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the template file",
+          "type": "string"
+        },
+        "source": {
+          "description": "Optional source id to iterate over for this template",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "include": {
+          "description": "Optional list of fields from source to include in iteration",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Include"
+          }
+        },
+        "exclude": {
+          "description": "Optional list of fields from source to exclude in iteration",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Include"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
       ]
     },
     "Include": {
@@ -155,13 +207,6 @@
     "IncludeConditional": {
       "type": "object",
       "properties": {
-        "continue": {
-          "description": "Whether to continue evaluating further conditions after this one",
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
         "if": {
           "description": "The condition to evaluate. Uses MiniJinja syntax.",
           "type": "string"
@@ -175,6 +220,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "continue": {
+          "description": "Whether to continue evaluating further conditions after this one",
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       },
       "additionalProperties": false,
@@ -182,82 +234,30 @@
         "if"
       ]
     },
-    "Source": {
+    "Drawio": {
       "type": "object",
       "properties": {
-        "delimiter": {
-          "description": "Optional delimiter for .csv files",
+        "input": {
+          "description": "The draw.io file to process",
+          "type": "string"
+        },
+        "pngoutput": {
+          "description": "Optional output PNG file path. If not provided, the output will have the same name as input but with .png extension",
           "type": [
             "string",
             "null"
-          ],
-          "maxLength": 1,
-          "minLength": 1
-        },
-        "filename": {
-          "description": "The filename(s) of the source data",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Filename"
-            }
           ]
         },
-        "id": {
-          "description": "The unique identifier for this source",
-          "type": "string"
-        },
-        "sheet": {
-          "description": "Optional sheet name for .xlsx files",
+        "csvoutput": {
+          "description": "Optional output CSV file path for components. If not provided, the output will have the same name as input but with _components.csv extension",
           "type": [
             "string",
             "null"
           ]
         }
       },
-      "additionalProperties": false,
       "required": [
-        "filename",
-        "id"
-      ]
-    },
-    "Template": {
-      "type": "object",
-      "properties": {
-        "exclude": {
-          "description": "Optional list of fields from source to exclude in iteration",
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "$ref": "#/definitions/Include"
-          }
-        },
-        "include": {
-          "description": "Optional list of fields from source to include in iteration",
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "$ref": "#/definitions/Include"
-          }
-        },
-        "name": {
-          "description": "The name of the template file",
-          "type": "string"
-        },
-        "source": {
-          "description": "Optional source id to iterate over for this template",
-          "type": [
-            "string",
-            "null"
-          ]
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "name"
+        "input"
       ]
     }
   }
