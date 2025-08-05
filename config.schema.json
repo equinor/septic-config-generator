@@ -1,0 +1,202 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "SCG Configuration",
+    "type": "object",
+    "properties": {
+        "outputfile": {
+            "type": "string",
+            "description": "The file that will be generated. Writes to stdout if not provided."
+        },
+        "encoding": {
+            "type": "string",
+            "default": "windows-1252",
+            "description": "Specify the encoding for template files and the outputfile.",
+            "enum": [
+                "windows-1252",
+                "utf-8"
+            ]
+        },
+        "templatepath": {
+            "type": "string",
+            "description": "The directory that contains all template files."
+        },
+        "adjustspacing": {
+            "type": "boolean",
+            "default": true,
+            "description": "Specifies whether to ensure exactly one newline between rendered template files."
+        },
+        "verifycontent": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to report differences from an already existing rendered file."
+        },
+        "drawio": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "input"
+                ],
+                "properties": {
+                    "input": {
+                        "type": "string"
+                    },
+                    "pngoutput": {
+                        "type": "string"
+                    },
+                    "csvoutput": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false
+            },
+            "description": "List of .drawio files to process"
+        },
+        "counters": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "integer",
+                        "default": 0
+                    }
+                },
+                "additionalProperties": false
+            },
+            "description": "List of global auto-incrementing counter functions"
+        },
+        "sources": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "filename"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "filename": {
+                        "oneOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "minItems": 1
+                            }
+                        ]
+                    },
+                    "sheet": {
+                        "type": "string"
+                    },
+                    "delimiter": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1
+                    }
+                },
+                "additionalProperties": false
+            },
+            "description": "List of source file configurations"
+        },
+        "layout": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "name"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "source": {
+                        "type": "string"
+                    },
+                    "include": {
+                        "type": "array",
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "object",
+                                    "required": [
+                                        "if"
+                                    ],
+                                    "properties": {
+                                        "if": {
+                                            "type": "string"
+                                        },
+                                        "then": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "continue": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "additionalProperties": false
+                                }
+                            ]
+                        }
+                    },
+                    "exclude": {
+                        "type": "array",
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "object",
+                                    "required": [
+                                        "if"
+                                    ],
+                                    "properties": {
+                                        "if": {
+                                            "type": "string"
+                                        },
+                                        "then": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "continue": {
+                                            "type": "boolean"
+                                        }
+                                    },
+                                    "additionalProperties": false
+                                }
+                            ]
+                        }
+                    }
+                },
+                "additionalProperties": false
+            },
+            "description": "List of templates in the order they should be rendered"
+        }
+    },
+    "required": [
+        "templatepath",
+        "sources",
+        "layout"
+    ],
+    "additionalProperties": false
+}
