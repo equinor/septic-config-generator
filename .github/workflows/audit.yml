@@ -9,6 +9,11 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
 
+permissions:
+  contents: read  # actions/checkout
+  issues: write   # rustsec/audit-check to create issues for vulnerabilities  
+  checks: write   # rustsec/audit-check to create status checks
+
 jobs:
   security_audit:
     name: 👺 Security audit

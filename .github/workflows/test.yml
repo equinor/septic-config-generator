@@ -5,6 +5,11 @@ on:
   workflow_call:
   schedule: [cron: "40 1 * * *"]
 
+permissions:
+  contents: read        # actions/checkout
+  checks: write         # EnricoMi/publish-unit-test-result-action to create status checks
+  pull-requests: write  # EnricoMi/publish-unit-test-result-action to comment on PRs
+
 env:
   CARGO_TERM_COLOR: always
 
