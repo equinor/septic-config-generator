@@ -85,10 +85,10 @@ fn process_drawio_file(input: &Path) -> Result<String> {
                 if let Ok(decompressed) = decompress_diagram(text) {
                     return Ok(decompressed);
                 }
-                if let Ok(decoded) = general_purpose::STANDARD.decode(text) {
-                    if let Ok(s) = String::from_utf8(decoded) {
-                        return Ok(s);
-                    }
+                if let Ok(decoded) = general_purpose::STANDARD.decode(text)
+                    && let Ok(s) = String::from_utf8(decoded)
+                {
+                    return Ok(s);
                 }
             }
         }
@@ -104,24 +104,24 @@ fn parse_xml_and_extract_rectangles(xml: &str) -> Result<Vec<RectData>> {
     let mut id_to_geom: HashMap<String, (i32, i32)> = HashMap::new();
     let mut id_to_parent: HashMap<String, String> = HashMap::new();
     for cell in doc.descendants().filter(|n| n.has_tag_name("mxCell")) {
-        if let Some(id) = cell.attribute("id") {
-            if let Some(geom) = cell.children().find(|n| n.has_tag_name("mxGeometry")) {
-                let x = geom
-                    .attribute("x")
-                    .unwrap_or("0")
-                    .parse::<f32>()
-                    .unwrap_or(0.0)
-                    .round() as i32;
-                let y = geom
-                    .attribute("y")
-                    .unwrap_or("0")
-                    .parse::<f32>()
-                    .unwrap_or(0.0)
-                    .round() as i32;
-                id_to_geom.insert(id.to_string(), (x, y));
-                if let Some(parent_id) = cell.attribute("parent") {
-                    id_to_parent.insert(id.to_string(), parent_id.to_string());
-                }
+        if let Some(id) = cell.attribute("id")
+            && let Some(geom) = cell.children().find(|n| n.has_tag_name("mxGeometry"))
+        {
+            let x = geom
+                .attribute("x")
+                .unwrap_or("0")
+                .parse::<f32>()
+                .unwrap_or(0.0)
+                .round() as i32;
+            let y = geom
+                .attribute("y")
+                .unwrap_or("0")
+                .parse::<f32>()
+                .unwrap_or(0.0)
+                .round() as i32;
+            id_to_geom.insert(id.to_string(), (x, y));
+            if let Some(parent_id) = cell.attribute("parent") {
+                id_to_parent.insert(id.to_string(), parent_id.to_string());
             }
         }
     }
@@ -319,18 +319,16 @@ fn write_rectangles_to_csv(output: &Path, rects: &[RectData]) -> Result<()> {
         }
 
         // Add count of multi-values to the _numvalues column if needed
-        if has_multi_values {
-            if let Some(i) = idx.get("_numvalues") {
-                // Count the maximum number of values in any of the multi-value properties
-                let max_count = r
-                    .properties
-                    .values()
-                    .filter(|v| v.contains('"'))
-                    .map(|v| count_quoted_values(v))
-                    .max()
-                    .unwrap_or(0);
-                record[*i] = max_count.to_string();
-            }
+        if has_multi_values && let Some(i) = idx.get("_numvalues") {
+            // Count the maximum number of values in any of the multi-value properties
+            let max_count = r
+                .properties
+                .values()
+                .filter(|v| v.contains('"'))
+                .map(|v| count_quoted_values(v))
+                .max()
+                .unwrap_or(0);
+            record[*i] = max_count.to_string();
         }
 
         wtr.write_record(&record)?;

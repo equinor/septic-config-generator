@@ -13,11 +13,10 @@ impl Update {
     pub fn execute(&self) {
         cmd_update(&self.token).unwrap_or_else(|err| {
             eprintln!("{err}");
-            if let su_Error::Network(_) = err {
-                if err.to_string().contains("403") {
+            if let su_Error::Network(_) = err
+                && err.to_string().contains("403") {
                     eprintln!("Most likely you are rate limited. Wait a while before trying again or use another network.")
                 };
-            };
             std::process::exit(1);
         });
     }

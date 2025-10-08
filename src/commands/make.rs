@@ -38,10 +38,10 @@ impl std::fmt::Display for MakeError {
             }
             MakeError::MiniJinjaError(err) => {
                 let mut msg = format!("error: {err}");
-                if let Some(err) = err.downcast_ref::<minijinja::Error>() {
-                    if err.name().is_some() {
-                        msg = format!("{msg}{}", err.display_debug_info());
-                    }
+                if let Some(err) = err.downcast_ref::<minijinja::Error>()
+                    && err.name().is_some()
+                {
+                    msg = format!("{msg}{}", err.display_debug_info());
                 }
                 write!(f, "{msg:#}")
             }
