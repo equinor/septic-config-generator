@@ -1,5 +1,24 @@
 # Changelog
 
+## [2.14.0](https://github.com/equinor/septic-config-generator/compare/v2.13.0...v2.14.0) (2025-10-08)
+
+
+### ✨ Features
+
+* add self-documenting json schema for yaml config ([95ddc63](https://github.com/equinor/septic-config-generator/commit/95ddc63a310f3a89eae95bae570e456c6c57a0f1))
+
+
+### 👷 CI/CD
+
+* add explicit permissions to workflows ([#372](https://github.com/equinor/septic-config-generator/issues/372)) ([2c5f6fd](https://github.com/equinor/septic-config-generator/commit/2c5f6fd7284a810186457eb9aa4811df662d1fd2))
+* **deps:** bump actions/checkout from 4 to 5 ([#364](https://github.com/equinor/septic-config-generator/issues/364)) ([a2272f8](https://github.com/equinor/septic-config-generator/commit/a2272f8a295234bc2219673ecd20f176fff2f2f3))
+* **deps:** bump actions/download-artifact from 4 to 5 ([#362](https://github.com/equinor/septic-config-generator/issues/362)) ([168b545](https://github.com/equinor/septic-config-generator/commit/168b54578bac39c879386c910df782bbd0fef2dd))
+
+
+### 🔨 Refactor
+
+* make clippy for Rust 1.90.0 happy ([#373](https://github.com/equinor/septic-config-generator/issues/373)) ([2c9e067](https://github.com/equinor/septic-config-generator/commit/2c9e067aa43af4e94eee4f9fd77824573dc3982e))
+
 ## [2.13.0](https://github.com/equinor/septic-config-generator/compare/v2.12.0...v2.13.0) (2025-06-11)
 
 
