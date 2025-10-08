@@ -7,6 +7,10 @@ on:
       artifact_base_name:
         value: ${{ jobs.build.outputs.artifact_base_name }}
 
+permissions:
+  contents: read  # actions/checkout
+  actions: write  # actions/upload-artifact
+
 env:
   CARGO_TERM_COLOR: always
 

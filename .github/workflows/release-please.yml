@@ -10,6 +10,9 @@ jobs:
   release_please:
     name: 🔖 Release Please
     runs-on: ubuntu-latest
+    permissions:
+      contents: write       # googleapis/release-please-action
+      pull-requests: write  # googleapis/release-please-action
     steps:
       - name: Create Release
         id: release
