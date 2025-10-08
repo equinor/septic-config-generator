@@ -94,18 +94,17 @@ fn extract_page_dimensions(input: &Path) -> Result<(u32, u32)> {
 
     // Find the mxGraphModel element with pageWidth and pageHeight attributes
     for node in doc.descendants() {
-        if node.has_tag_name("mxGraphModel") {
-            if let (Some(width_str), Some(height_str)) =
+        if node.has_tag_name("mxGraphModel")
+            && let (Some(width_str), Some(height_str)) =
                 (node.attribute("pageWidth"), node.attribute("pageHeight"))
-            {
-                let width = width_str
-                    .parse::<u32>()
-                    .with_context(|| format!("Invalid pageWidth value: {width_str}"))?;
-                let height = height_str
-                    .parse::<u32>()
-                    .with_context(|| format!("Invalid pageHeight value: {height_str}"))?;
-                return Ok((width, height));
-            }
+        {
+            let width = width_str
+                .parse::<u32>()
+                .with_context(|| format!("Invalid pageWidth value: {width_str}"))?;
+            let height = height_str
+                .parse::<u32>()
+                .with_context(|| format!("Invalid pageHeight value: {height_str}"))?;
+            return Ok((width, height));
         }
     }
 
