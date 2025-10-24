@@ -16,6 +16,7 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look in
     - [Counters](#counters)
     - [Sources](#sources)
     - [Layout](#layout)
+    - [Including and excluding rows from sources](#including-and-excluding-rows-from-sources)
   - [Source files](#source-files)
     - [Excel source](#excel-source)
     - [CSV source](#csv-source)
@@ -230,6 +231,13 @@ The structure has the following fields:
 - `sheet` (string): The name of the sheet where the substitution values are found. Only valid for Excel files.
 - `delimiter` (optional character, default: ';'): The delimiter used in a CSV file. Only valid for `.csv` source files
   and multi-file source.
+- `include` (optional list of strings or `conditional items`): Only rows that match the include field will be included
+  from the source. _(Added in v2.14)_
+- `exclude` (optional list of strings or `conditional items`): Rows that match the exclude field will be excluded from
+  the source. _(Added in v2.14)_
+
+The `include` and `exclude` fields can be considered as global filters for the source. The structure of these fields is
+further described [below](#including-and-excluding-rows-from-sources).
 
 Since v2.8, each source can be accessed from within any template regardless of whether the layout item is set to iterate
 over a source or not. The source is represented as a list of the rows where each row is represented as a hashmap of the
@@ -254,11 +262,11 @@ following fields:
 Combining `include` and `exclude` will render the template for only those rows that are specified under `include` but
 not specified under `exclude`. The row order in the source always determines the rendering order.
 
-##### Including and excluding rows from sources <!-- omit in toc -->
+#### Including and excluding rows from sources
 
-The `include` and `exclude` sections require a bit more explanation. Both sections consist of a list that contains
-either strings that reference values in the first column in the source, or `conditional items`. The latter was added in
-v2.12 and follows this structure:
+The `include` and `exclude` sections that are available for `template` and, since v2.14, `source` structures require a
+bit more explanation. Both sections consist of a list that contains either strings that reference values in the first
+column in the source, or `conditional items`. The latter was added in v2.12 and follows this structure:
 
 - `if` (string): A [MiniJinja expression](https://docs.rs/minijinja/latest/minijinja/index.html#expression-usage). All
   variables, whether defined on the command line with the `--vars` argument, global sources and rows from the current
@@ -304,6 +312,9 @@ Tip: By default, all rows in the source file are used for iteration, but an `inc
 set and replaces it with the result of the `include` items. To have a default of including all items in case none of the
 `if`-expressions match, simply add `if: "true"` as the last `conditional item`. This will evaluate to `true` for every
 row and therefore re-add them.
+
+When `include` and `exclude` fields are applied to `source` structs, the filtering is global to all use of the source.
+The effect is equivalent to modifying the source file(s) directly.
 
 ### Source files
 
