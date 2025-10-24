@@ -253,6 +253,35 @@ pub fn include_exclude_set(
     Ok(result)
 }
 
+pub fn filter_rows(
+    source_rows: &DataSourceRows,
+    includes: &Option<Vec<Include>>,
+    excludes: &Option<Vec<Include>>,
+    env: &Environment,
+) -> anyhow::Result<DataSourceRows> {
+    let mut items_set: HashSet<String> = source_rows.keys().cloned().collect();
+
+    if let Some(include_list) = includes {
+        let include_set = include_exclude_set(include_list, env, source_rows)?;
+        items_set = items_set.intersection(&include_set).cloned().collect();
+    };
+
+    if let Some(exclude_list) = excludes {
+        let exclude_set = include_exclude_set(exclude_list, env, source_rows)?;
+        items_set = items_set.difference(&exclude_set).cloned().collect();
+    };
+
+    let mut filtered_rows: DataSourceRows = DataSourceRows::new();
+
+    for (key, row) in source_rows {
+        if items_set.contains(key) {
+            filtered_rows.insert(key.clone(), row.clone());
+        }
+    }
+
+    Ok(filtered_rows)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

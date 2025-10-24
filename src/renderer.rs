@@ -7,7 +7,6 @@ use minijinja::value::{Kwargs, Rest, Value, ValueKind, from_args};
 use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -295,53 +294,25 @@ impl<'a> MiniJinja<'a> {
         let mut rendered = String::new();
 
         if let Some(src_name) = &template.source {
-            let keys: Vec<String> = match source_data.get(src_name) {
-                Some(data) => data.iter().map(|(key, _row)| key.clone()).collect(),
-                None => anyhow::bail!(
+            let source_rows = source_data.get(src_name).with_context(|| {
+                format!(
                     "unknown source '{}' referenced in {}",
-                    src_name,
-                    template.name
-                ),
-            };
-
-            let mut items_set: HashSet<String> = keys.iter().cloned().collect();
-
-            if let Some(ref include_list) = template.include {
-                let include_set = config::include_exclude_set(
-                    include_list,
-                    &self.env,
-                    source_data.get(src_name).expect(
-                        "render_template: unable to fetch source. This should not be possible!",
-                    ),
+                    src_name, template.name
                 )
-                .with_context(|| format!("template {:?}", &template.name))?;
-                items_set = items_set.intersection(&include_set).cloned().collect();
-            }
+            })?;
 
-            if let Some(ref exclude_list) = template.exclude {
-                let exclude_set = config::include_exclude_set(
-                    exclude_list,
-                    &self.env,
-                    source_data.get(src_name).expect(
-                        "render_template: unable to fetch source. This should not be possible!",
-                    ),
-                )
-                .with_context(|| format!("template {:?}", &template.name))?;
-                items_set = items_set.difference(&exclude_set).cloned().collect();
-            }
+            let filtered_data =
+                config::filter_rows(source_rows, &template.include, &template.exclude, &self.env)
+                    .with_context(|| format!("template {:?}", &template.name))?;
 
-            if let Some(data) = source_data.get(src_name) {
-                for (key, row) in data {
-                    if items_set.contains(key) {
-                        let mut tmpl_rend = self.render(&template.name, Some(row))?;
+            for (_key, row) in filtered_data {
+                let mut tmpl_rend = self.render(&template.name, Some(row))?;
 
-                        if adjust_spacing {
-                            tmpl_rend = tmpl_rend.trim_end().to_string();
-                            tmpl_rend.push_str("\r\n\r\n");
-                        }
-                        rendered.push_str(&tmpl_rend);
-                    }
+                if adjust_spacing {
+                    tmpl_rend = tmpl_rend.trim_end().to_string();
+                    tmpl_rend.push_str("\r\n\r\n");
                 }
+                rendered.push_str(&tmpl_rend);
             }
         } else {
             rendered = self.render(&template.name, minijinja::context!())?;

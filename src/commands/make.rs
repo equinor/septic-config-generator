@@ -1,6 +1,6 @@
 use crate::commands::drawio::components::extract_components;
 use crate::commands::drawio::to_png::drawio_to_png;
-use crate::config::{Config, Drawio, Filename, Source, include_exclude_set};
+use crate::config::{Config, Drawio, Filename, Source, filter_rows};
 use crate::datasource::{
     CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
 };
@@ -290,34 +290,6 @@ fn ask_should_overwrite() -> Result<bool> {
     Ok(response.trim().eq_ignore_ascii_case("y"))
 }
 
-fn filter_rows(
-    source_rows: &DataSourceRows,
-    source_def: &Source,
-    env: &Environment,
-) -> anyhow::Result<DataSourceRows> {
-    let mut items_set: HashSet<String> = source_rows.keys().cloned().collect();
-
-    if let Some(ref include_list) = source_def.include {
-        let include_set = include_exclude_set(include_list, env, source_rows)?;
-        items_set = items_set.intersection(&include_set).cloned().collect();
-    };
-
-    if let Some(ref exclude_list) = source_def.exclude {
-        let exclude_set = include_exclude_set(exclude_list, env, source_rows)?;
-        items_set = items_set.difference(&exclude_set).cloned().collect();
-    };
-
-    let mut filtered_rows: DataSourceRows = DataSourceRows::new();
-
-    for (key, row) in source_rows {
-        if items_set.contains(key) {
-            filtered_rows.insert(key.clone(), row.clone());
-        }
-    }
-
-    Ok(filtered_rows)
-}
-
 fn load_all_source_data(
     sources: &[Source],
     relative_root: &Path,
@@ -327,7 +299,8 @@ fn load_all_source_data(
         .iter()
         .map(|source| {
             let source_data = load_source_data(source, relative_root)?;
-            let filtered_source_data = filter_rows(&source_data, source, env)?;
+            let filtered_source_data =
+                filter_rows(&source_data, &source.include, &source.exclude, env)?;
             Ok((source.id.clone(), filtered_source_data))
         })
         .collect()
@@ -503,7 +476,12 @@ mod tests {
 
         let source = create_csv_source_with_includes(include, None);
         let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
-        let source_data = filter_rows(&source_data, &source, &Environment::new())?;
+        let source_data = filter_rows(
+            &source_data,
+            &source.include,
+            &source.exclude,
+            &Environment::new(),
+        )?;
 
         assert_eq!(source_data.len(), 2);
         assert!(source_data.contains_key("one"));
@@ -518,7 +496,12 @@ mod tests {
 
         let source = create_csv_source_with_includes(None, exclude);
         let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
-        let source_data = filter_rows(&source_data, &source, &Environment::new())?;
+        let source_data = filter_rows(
+            &source_data,
+            &source.include,
+            &source.exclude,
+            &Environment::new(),
+        )?;
 
         assert_eq!(source_data.len(), 2);
         assert!(source_data.contains_key("one"));
@@ -538,7 +521,12 @@ mod tests {
 
         let source = create_csv_source_with_includes(Some(vec![include]), Some(vec![exclude]));
         let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
-        let source_data = filter_rows(&source_data, &source, &Environment::new())?;
+        let source_data = filter_rows(
+            &source_data,
+            &source.include,
+            &source.exclude,
+            &Environment::new(),
+        )?;
 
         assert_eq!(source_data.len(), 1);
         assert!(!source_data.contains_key("one"));
@@ -564,7 +552,7 @@ mod tests {
             None,
         );
         let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
-        let source_data = filter_rows(&source_data, &source, &env)?;
+        let source_data = filter_rows(&source_data, &source.include, &source.exclude, &env)?;
 
         assert_eq!(source_data.len(), 2);
         assert!(!source_data.contains_key("one"));
