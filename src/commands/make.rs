@@ -309,8 +309,8 @@ fn filter_rows(
 
     let mut filtered_rows: DataSourceRows = DataSourceRows::new();
 
-    for key in items_set {
-        if let Some(row) = source_rows.get(&key) {
+    for (key, row) in source_rows {
+        if items_set.contains(key) {
             filtered_rows.insert(key.clone(), row.clone());
         }
     }
