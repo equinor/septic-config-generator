@@ -1,7 +1,8 @@
 # Septic config generator <!-- omit in toc -->
 
 This is the documentation for Rust-based SCG 2.x. Documentation for the legacy Python-based 1.x version has been
-removed. If you are looking for what was changed from 1.0 to 2.x, take a look [here](docs/Changes_1.0_2.0.md).
+removed. If you are looking for what was changed from 1.0 to 2.x, take a look in the
+[changes docs](docs/Changes_1.0_2.0.md).
 
 ## Table of contents <!-- omit in toc -->
 
@@ -11,6 +12,7 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look [h
 - [Usage overview](#usage-overview)
 - [scg make](#scg-make)
   - [Configuration file](#configuration-file)
+    - [Drawio](#drawio)
     - [Counters](#counters)
     - [Sources](#sources)
     - [Layout](#layout)
@@ -37,7 +39,7 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look [h
 - [draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg)
   - [Prerequisites](#prerequisites)
   - [Using draw.io with SCG](#using-drawio-with-scg)
-  - [Coordinate and Property Extraction](#coordinate-and-property-extraction)
+- [Coordinate and Property Extraction](#coordinate-and-property-extraction)
   - [Creating Diagrams for SCG](#creating-diagrams-for-scg)
     - [Element Types](#element-types)
     - [Properties](#properties)
@@ -154,7 +156,8 @@ layout:
   [MiniJinja's behaviour](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#trailing-newlines).
 - `verifycontent` (boolean, default: true): Whether to report differences from an already existing rendered file. Will
   ask before replacing with the new content. Set to `false` to overwrite existing file without checking for changes.
-- `drawio` (optional list of `drawio` structs) Contains a list of .drawio files to extract coordinates from and convert to png.
+- `drawio` (optional list of `drawio` structs) Contains a list of .drawio files to extract coordinates from and convert
+  to png.
 - `counters` (optional list of `counter` structs): Contains a list of global auto-incrementing counter functions.
 - `sources` (list of `source` structs): Contains a list of source file configurations.
 - `layout` (list of `template` structs): Contains a list of templates in the order they should be rendered.
@@ -165,20 +168,27 @@ All file names and paths are relative to the location of the configuration file.
 
 _(Added in v2.13)_
 
-OBS: for prerequisites and .drawio info, See [draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg) section
+OBS: for prerequisites and .drawio info, See [draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg)
+section
 
-The `drawio` struct allows you to automate processing of `.drawio` diagram files as part of your configuration workflow. For each entry, SCG can perform two main functions:
+The `drawio` struct allows you to automate processing of `.drawio` diagram files as part of your configuration workflow.
+For each entry, SCG can perform two main functions:
 
 - **Convert the `.drawio` file to a PNG image**: This is useful for generating graphical backgrounds for displaygroups.
-- **Extract coordinates and element information from the `.drawio` file to a CSV file**: This enables you to use the positions and properties of diagram elements in your configuration or templates, for example to place GUI elements accurately.
+- **Extract coordinates and element information from the `.drawio` file to a CSV file**: This enables you to use the
+  positions and properties of diagram elements in your configuration or templates, for example to place GUI elements
+  accurately.
 
-This makes it easy to keep your graphics and coordinate data in sync with your diagrams, and to integrate diagram information directly into your config generation process.
+This makes it easy to keep your graphics and coordinate data in sync with your diagrams, and to integrate diagram
+information directly into your config generation process.
 
 The structure has the following fields:
 
 - `input` (string, required): The path to the input `.drawio` file.
-- `pngoutput` (string, optional): The path to the output `.png` file. If not provided, the output file will have the same name as the input file but with a `.png` extension.
-- `csvoutput` (string, optional): The path to the output `.csv` file. If not provided, the output file will have the same name as the input file but with a `_components.csv` suffix.
+- `pngoutput` (string, optional): The path to the output `.png` file. If not provided, the output file will have the
+  same name as the input file but with a `.png` extension.
+- `csvoutput` (string, optional): The path to the output `.csv` file. If not provided, the output file will have the
+  same name as the input file but with a `_components.csv` suffix.
 
 #### Counters
 
@@ -201,8 +211,9 @@ template, will be retained for subsequent rendered templates.
 In the example above, the function will be called `mycounter()`. It is called as other Jinja custom functions by placing
 it inside double braces: `{{ mycounter() }}`, `{{ mycounter(13) }}`.
 
-To avoid printout when setting the value, try `{% do mycounter(5) %}`
-([link](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-do-)) or `{% if "" == mycounter(5) %}{% endif %}`.
+To avoid printout when setting the value, try `{% do mycounter(5) %}` (see
+[minijinja docs](https://docs.rs/minijinja/latest/minijinja/syntax/index.html#-do-)) or
+`{% if "" == mycounter(5) %}{% endif %}`.
 
 #### Sources
 
@@ -759,7 +770,8 @@ Type `scg.exe make --help` for more options to the `make` command.
 
 ## draw.io Diagram Integration for SCG
 
-The `scg drawio` command provides utilities for processing draw.io diagram files, including converting diagrams to PNG images and extracting coordinates and metadata for use in configuration files.
+The `scg drawio` command provides utilities for processing draw.io diagram files, including converting diagrams to PNG
+images and extracting coordinates and metadata for use in configuration files.
 
 ### Prerequisites
 
@@ -792,7 +804,8 @@ To use these features, you must have the following installed:
 
 ### Using draw.io with SCG
 
-The Septic Extension enhances draw.io Integration by adding a specialized septic library with pre-configured components designed for SCG:
+The Septic Extension enhances draw.io Integration by adding a specialized septic library with pre-configured components
+designed for SCG:
 
 - **ImageStatusLabel**: For status indicators
 - **ImageXvr**: For standard XVR displays
@@ -810,7 +823,8 @@ When using the SCG tools to extract information from your diagrams:
 - All properties with the `septic_` prefix are included in the CSV with the prefix removed
   - Example: `septic_name` becomes `name` in the CSV output
 - If a component has a `label` attribute, it is also extracted and written to the CSV as a column named `_label`
-- For multi-value fields (e.g., color lists like `"red" "blue" "green"`), a `num_values` column is included with the count of items
+- For multi-value fields (e.g., color lists like `"red" "blue" "green"`), a `num_values` column is included with the
+  count of items
 
 ### Creating Diagrams for SCG
 
@@ -849,7 +863,8 @@ Controlling the diagram size is important for consistent output when exporting t
 
 #### Creating a Fixed Size Background
 
-By default, draw.io will automatically crop images when exporting to PNG, which may result in unexpected dimensions. To ensure consistent sizing:
+By default, draw.io will automatically crop images when exporting to PNG, which may result in unexpected dimensions. To
+ensure consistent sizing:
 
 1. **Create a dedicated background layer**:
 
@@ -861,7 +876,8 @@ By default, draw.io will automatically crop images when exporting to PNG, which 
 
    - Insert a rectangle on the background layer
    - Set its dimensions to match your desired output size (e.g., 1920×1082)
-     - **Note**: For 1920×1080 resolution, add 2 pixels to the width (use 1922) to compensate for draw.io's sizing behavior
+     - **Note**: For 1920×1080 resolution, add 2 pixels to the width (use 1922) to compensate for draw.io's sizing
+       behavior
    - Set the fill color as desired for your background
 
 3. **Lock the background layer**:
@@ -879,4 +895,5 @@ scg drawio components  --input <file.drawio> [--output <coords.csv>]
 scg drawio 2png --ipnut <file.drawio> [--output <file.png>]
 ```
 
-This command extracts component coordinates and properties from a draw.io file and saves them to a CSV file. If no output file is specified, it will create one with the same base name as the input file.
+This command extracts component coordinates and properties from a draw.io file and saves them to a CSV file. If no
+output file is specified, it will create one with the same base name as the input file.
