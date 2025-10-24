@@ -306,33 +306,29 @@ impl<'a> MiniJinja<'a> {
 
             let mut items_set: HashSet<String> = keys.iter().cloned().collect();
 
-            if template.include.is_some() {
-                let include_set = template
-                    .include_exclude_set(
-                        &self.env,
-                        source_data.get(src_name).expect(
-                            "render_template: unable to fetch source. This should not be possible!",
-                        ),
-                        config::IncludeExclude::Include,
-                    )
-                    .with_context(|| format!("template {:?}", &template.name))?;
+            if let Some(ref include_list) = template.include {
+                let include_set = config::include_exclude_set(
+                    include_list,
+                    &self.env,
+                    source_data.get(src_name).expect(
+                        "render_template: unable to fetch source. This should not be possible!",
+                    ),
+                )
+                .with_context(|| format!("template {:?}", &template.name))?;
                 items_set = items_set.intersection(&include_set).cloned().collect();
             }
 
-            items_set = items_set
-                .difference(
-                    &template
-                        .include_exclude_set(
-                            &self.env,
-                            source_data.get(src_name).expect(
-                                "render_template: unable to fetch source. This should not be possible!",
-                            ),
-                            config::IncludeExclude::Exclude,
-                        )
-                        .with_context(|| format!("template {:?}", &template.name))?,
+            if let Some(ref exclude_list) = template.exclude {
+                let exclude_set = config::include_exclude_set(
+                    exclude_list,
+                    &self.env,
+                    source_data.get(src_name).expect(
+                        "render_template: unable to fetch source. This should not be possible!",
+                    ),
                 )
-                .cloned()
-                .collect();
+                .with_context(|| format!("template {:?}", &template.name))?;
+                items_set = items_set.difference(&exclude_set).cloned().collect();
+            }
 
             if let Some(data) = source_data.get(src_name) {
                 for (key, row) in data {

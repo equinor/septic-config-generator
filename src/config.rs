@@ -253,54 +253,6 @@ pub fn include_exclude_set(
     Ok(result)
 }
 
-impl Template {
-    pub fn include_exclude_set(
-        &self,
-        env: &Environment,
-        source_data: &DataSourceRows,
-        include_exclude: IncludeExclude,
-    ) -> Result<HashSet<String>, minijinja::Error> {
-        let mut result: HashSet<String> = HashSet::new();
-        let items = match include_exclude {
-            IncludeExclude::Include => self.include.as_ref(),
-            IncludeExclude::Exclude => self.exclude.as_ref(),
-        };
-
-        if let Some(items) = items {
-            for inc_item in items {
-                let mut matched = false;
-                match inc_item {
-                    Include::Element(elem) => {
-                        result.insert(elem.clone());
-                    }
-                    Include::Conditional(elem) => {
-                        let expr = env.compile_expression(elem.condition.as_str())?;
-                        if let Some(items) = &elem.items {
-                            let eval = expr.eval(context! {})?;
-                            if eval.is_true() {
-                                matched = true;
-                                result.extend(items.clone());
-                            }
-                        } else {
-                            for (key, row) in source_data {
-                                let eval = expr.eval(row)?;
-                                if eval.is_true() {
-                                    matched = true;
-                                    result.insert(key.clone());
-                                }
-                            }
-                        }
-                        if matched && !elem.continue_.unwrap_or(false) {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        Ok(result)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -547,39 +499,36 @@ layout:
     #[test]
     fn include_exclude_set_break_when_condition_matches() {
         let template = create_template_with_includes("true", None);
-        let res = template
-            .include_exclude_set(
-                &minijinja::Environment::new(),
-                &IndexMap::new(),
-                IncludeExclude::Include,
-            )
-            .unwrap();
+        let res = include_exclude_set(
+            template.include.as_ref().unwrap(),
+            &minijinja::Environment::new(),
+            &IndexMap::new(),
+        )
+        .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "two".to_string()]));
     }
 
     #[test]
     fn include_exclude_set_continue_when_condition_not_matched() {
         let template = create_template_with_includes("false", None);
-        let res = template
-            .include_exclude_set(
-                &minijinja::Environment::new(),
-                &IndexMap::new(),
-                IncludeExclude::Include,
-            )
-            .unwrap();
+        let res = include_exclude_set(
+            template.include.as_ref().unwrap(),
+            &minijinja::Environment::new(),
+            &IndexMap::new(),
+        )
+        .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "three".to_string()]));
     }
 
     #[test]
     fn include_exclude_set_continue_when_continue_true() {
         let template = create_template_with_includes("true", Some(true));
-        let res = template
-            .include_exclude_set(
-                &minijinja::Environment::new(),
-                &IndexMap::new(),
-                IncludeExclude::Include,
-            )
-            .unwrap();
+        let res = include_exclude_set(
+            template.include.as_ref().unwrap(),
+            &minijinja::Environment::new(),
+            &IndexMap::new(),
+        )
+        .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "two".to_string(), "three".to_string()]));
     }
 }
