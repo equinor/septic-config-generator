@@ -1,6 +1,6 @@
 use crate::commands::drawio::components::extract_components;
 use crate::commands::drawio::to_png::drawio_to_png;
-use crate::config::{Config, Drawio, Filename, Source};
+use crate::config::{Config, Drawio, Filename, Source, include_exclude_set};
 use crate::datasource::{
     CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
 };
@@ -9,6 +9,7 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use diffy::{PatchFormatter, create_patch};
 use glob::glob;
+use minijinja::Environment;
 use minijinja::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -152,8 +153,10 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         .set_loader(&template_path, &cfg.encoding)
         .map_err(MakeError::MiniJinjaError)?;
 
+    let sources = &cfg.sources.unwrap_or_default();
     let all_source_data: HashMap<String, DataSourceRows> =
-        load_all_source_data(&cfg, &relative_root).map_err(MakeError::LoadSourceError)?;
+        load_all_source_data(sources, &relative_root, &renderer.env)
+            .map_err(MakeError::LoadSourceError)?;
 
     for (key, source_data) in all_source_data.iter() {
         renderer.env.add_global(
@@ -287,20 +290,49 @@ fn ask_should_overwrite() -> Result<bool> {
     Ok(response.trim().eq_ignore_ascii_case("y"))
 }
 
-fn load_all_source_data(
-    cfg: &Config,
-    relative_root: &Path,
-) -> Result<HashMap<String, DataSourceRows>> {
-    if let Some(sources) = &cfg.sources {
-        return sources
-            .iter()
-            .map(|source| {
-                let source_data = load_source_data(source, relative_root)?;
-                Ok((source.id.clone(), source_data))
-            })
-            .collect();
+fn filter_rows(
+    source_rows: &DataSourceRows,
+    source_def: &Source,
+    env: &Environment,
+) -> anyhow::Result<DataSourceRows> {
+    let mut items_set: HashSet<String> = source_rows.keys().cloned().collect();
+
+    if source_def.include.is_some() {
+        let include_set =
+            include_exclude_set(source_def.include.as_ref().unwrap(), env, source_rows)?;
+        items_set = items_set.intersection(&include_set).cloned().collect();
+    };
+
+    if source_def.exclude.is_some() {
+        let exclude_set =
+            include_exclude_set(source_def.exclude.as_ref().unwrap(), env, source_rows)?;
+        items_set = items_set.difference(&exclude_set).cloned().collect();
+    };
+
+    let mut filtered_rows: DataSourceRows = DataSourceRows::new();
+
+    for key in items_set {
+        if let Some(row) = source_rows.get(&key) {
+            filtered_rows.insert(key.clone(), row.clone());
+        }
     }
-    Ok(HashMap::new())
+
+    Ok(filtered_rows)
+}
+
+fn load_all_source_data(
+    sources: &[Source],
+    relative_root: &Path,
+    env: &Environment,
+) -> Result<HashMap<String, DataSourceRows>> {
+    sources
+        .iter()
+        .map(|source| {
+            let source_data = load_source_data(source, relative_root)?;
+            let filtered_source_data = filter_rows(&source_data, source, env)?;
+            Ok((source.id.clone(), filtered_source_data))
+        })
+        .collect()
 }
 
 fn load_source_data(source: &Source, relative_root: &Path) -> Result<DataSourceRows> {
@@ -413,7 +445,7 @@ fn backup_file_if_exists(path: &PathBuf) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config;
+    use crate::config::{self, Include, IncludeConditional};
     use crate::datasource::{DataSourceReader, DataSourceRows, ExcelSourceReader};
     use std::fs::File;
     use tempfile::tempdir;
@@ -448,6 +480,99 @@ mod tests {
             all_source_data.insert(source.id.to_string(), source_data);
         }
         Ok(all_source_data)
+    }
+
+    fn create_csv_source_with_includes(
+        include: Option<Vec<Include>>,
+        exclude: Option<Vec<Include>>,
+    ) -> config::Source {
+        Source {
+            filename: Filename::Single("test.csv".to_string()),
+            id: "main".to_string(),
+            delimiter: Some('|'),
+            include,
+            exclude,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn global_row_filter_works_simple_include() -> Result<()> {
+        let include = Some(vec![
+            config::Include::Element("one".to_string()),
+            config::Include::Element("three".to_string()),
+        ]);
+
+        let source = create_csv_source_with_includes(include, None);
+        let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
+        let source_data = filter_rows(&source_data, &source, &Environment::new())?;
+
+        assert_eq!(source_data.len(), 2);
+        assert!(source_data.contains_key("one"));
+        assert!(!source_data.contains_key("two"));
+        assert!(source_data.contains_key("three"));
+        Ok(())
+    }
+
+    #[test]
+    fn global_row_filter_works_simple_exclude() -> Result<()> {
+        let exclude = Some(vec![config::Include::Element("two".to_string())]);
+
+        let source = create_csv_source_with_includes(None, exclude);
+        let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
+        let source_data = filter_rows(&source_data, &source, &Environment::new())?;
+
+        assert_eq!(source_data.len(), 2);
+        assert!(source_data.contains_key("one"));
+        assert!(!source_data.contains_key("two"));
+        assert!(source_data.contains_key("three"));
+        Ok(())
+    }
+
+    #[test]
+    fn global_row_filter_works_combined_include_exclude() -> Result<()> {
+        let include = Include::Conditional(IncludeConditional {
+            items: None,
+            condition: "Col3_int <= 2".to_string(),
+            continue_: Some(false),
+        });
+        let exclude = Include::Element("one".to_string());
+
+        let source = create_csv_source_with_includes(Some(vec![include]), Some(vec![exclude]));
+        let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
+        let source_data = filter_rows(&source_data, &source, &Environment::new())?;
+
+        assert_eq!(source_data.len(), 1);
+        assert!(!source_data.contains_key("one"));
+        assert!(source_data.contains_key("two"));
+        assert!(!source_data.contains_key("three"));
+        Ok(())
+    }
+
+    #[test]
+    fn global_row_filter_works_with_global_variables() -> Result<()> {
+        let env = {
+            let mut env = Environment::new();
+            env.add_global("min_value", Value::from_serialize(2));
+            env
+        };
+
+        let source = create_csv_source_with_includes(
+            Some(vec![Include::Conditional(IncludeConditional {
+                items: None,
+                condition: "Col3_int >= min_value".to_string(),
+                continue_: Some(false),
+            })]),
+            None,
+        );
+        let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
+        let source_data = filter_rows(&source_data, &source, &env)?;
+
+        assert_eq!(source_data.len(), 2);
+        assert!(!source_data.contains_key("one"));
+        assert!(source_data.contains_key("two"));
+        assert!(source_data.contains_key("three"));
+        Ok(())
     }
 
     #[test]

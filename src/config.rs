@@ -151,6 +151,10 @@ impl From<Vec<&str>> for Filename {
 pub struct Source {
     /// The filename(s) of the source data
     pub filename: Filename,
+    /// Optional list of rows from source to include globally
+    pub include: Option<Vec<Include>>,
+    /// Optional list of rows from source to exclude globally
+    pub exclude: Option<Vec<Include>>,
     /// The unique identifier for this source
     pub id: String,
     /// Optional sheet name for .xlsx files
@@ -164,13 +168,13 @@ pub struct Source {
 pub struct IncludeConditional {
     /// The condition to evaluate. Uses MiniJinja syntax.
     #[serde(rename = "if")]
-    condition: String,
+    pub condition: String,
     /// List of items to include if the condition is true
     #[serde(rename = "then")]
-    items: Option<Vec<String>>,
+    pub items: Option<Vec<String>>,
     /// Whether to continue evaluating further conditions after this one
     #[serde(rename = "continue")]
-    continue_: Option<bool>,
+    pub continue_: Option<bool>,
 }
 
 #[derive(Deserialize, Debug, JsonSchema)]
@@ -207,6 +211,46 @@ pub struct Template {
 pub enum IncludeExclude {
     Include,
     Exclude,
+}
+
+pub fn include_exclude_set(
+    items: &Vec<Include>,
+    env: &Environment,
+    source_data: &DataSourceRows,
+) -> Result<HashSet<String>, minijinja::Error> {
+    let mut result: HashSet<String> = HashSet::new();
+
+    for item in items {
+        let mut matched = false;
+        match item {
+            Include::Element(val) => {
+                result.insert(val.clone());
+            }
+            Include::Conditional(elem) => {
+                let expr = env.compile_expression(elem.condition.as_str())?;
+                if let Some(items) = &elem.items {
+                    let eval = expr.eval(context! {})?;
+                    if eval.is_true() {
+                        matched = true;
+                        result.extend(items.clone());
+                    }
+                } else {
+                    for (key, row) in source_data {
+                        let eval = expr.eval(row)?;
+                        if eval.is_true() {
+                            matched = true;
+                            result.insert(key.clone());
+                        }
+                    }
+                }
+                if matched && !elem.continue_.unwrap_or(false) {
+                    break;
+                }
+            }
+        }
+    }
+
+    Ok(result)
 }
 
 impl Template {
@@ -375,6 +419,7 @@ layout:
             id: "id".to_string(),
             sheet: Some("sheet".to_string()),
             delimiter: Some(':'),
+            ..Default::default()
         };
         let result = validate_source(&source);
         assert!(result.is_err());
