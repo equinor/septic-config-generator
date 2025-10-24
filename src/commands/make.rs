@@ -297,15 +297,13 @@ fn filter_rows(
 ) -> anyhow::Result<DataSourceRows> {
     let mut items_set: HashSet<String> = source_rows.keys().cloned().collect();
 
-    if source_def.include.is_some() {
-        let include_set =
-            include_exclude_set(source_def.include.as_ref().unwrap(), env, source_rows)?;
+    if let Some(ref include_list) = source_def.include {
+        let include_set = include_exclude_set(include_list, env, source_rows)?;
         items_set = items_set.intersection(&include_set).cloned().collect();
     };
 
-    if source_def.exclude.is_some() {
-        let exclude_set =
-            include_exclude_set(source_def.exclude.as_ref().unwrap(), env, source_rows)?;
+    if let Some(ref exclude_list) = source_def.exclude {
+        let exclude_set = include_exclude_set(exclude_list, env, source_rows)?;
         items_set = items_set.difference(&exclude_set).cloned().collect();
     };
 
@@ -577,10 +575,9 @@ mod tests {
 
     #[test]
     fn render_with_normal_values() -> Result<()> {
-        let mut renderer = MiniJinja::new(&[]).unwrap();
-        renderer
-            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
-            .unwrap();
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
+
         let template = config::Template {
             name: "01_normals.tmpl".to_string(),
             source: Some("main".to_string()),
@@ -588,8 +585,7 @@ mod tests {
         };
         let all_source_data = get_all_source_data()?;
         let result = renderer
-            .render_template(&template, &all_source_data, true)
-            .unwrap()
+            .render_template(&template, &all_source_data, true)?
             .trim()
             .replace('\r', "");
         assert_eq!(
@@ -601,10 +597,8 @@ mod tests {
 
     #[test]
     fn render_with_special_values() -> Result<()> {
-        let mut renderer = MiniJinja::new(&[]).unwrap();
-        renderer
-            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
-            .unwrap();
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "02_specials.tmpl".to_string(),
             source: Some("errors".to_string()),
@@ -612,8 +606,7 @@ mod tests {
         };
         let all_source_data = get_all_source_data()?;
         let result = renderer
-            .render_template(&template, &all_source_data, true)
-            .unwrap()
+            .render_template(&template, &all_source_data, true)?
             .trim()
             .replace('\r', "");
         assert_eq!(
@@ -626,19 +619,15 @@ mod tests {
     #[test]
     fn render_with_global_variables() -> Result<()> {
         let globals = ["glob".to_string(), "globvalue".to_string()];
-        let mut renderer = MiniJinja::new(&globals).unwrap();
-        renderer
-            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
-            .unwrap();
+        let mut renderer = MiniJinja::new(&globals)?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "03_globals.tmpl".to_string(),
             ..Default::default()
         };
         let all_source_data = get_all_source_data()?;
 
-        let result = renderer
-            .render_template(&template, &all_source_data, true)
-            .unwrap();
+        let result = renderer.render_template(&template, &all_source_data, true)?;
         assert_eq!(result.trim_end(), "Global: >|globvalue|<");
         Ok(())
     }
@@ -646,10 +635,8 @@ mod tests {
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
     fn render_with_global_source_no_iteration() -> Result<()> {
-        let mut renderer = MiniJinja::new(&[]).unwrap();
-        renderer
-            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
-            .unwrap();
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             ..Default::default()
@@ -661,8 +648,7 @@ mod tests {
                 Value::from_serialize(source_data.values().collect::<Vec<_>>()),
             );
         }
-        let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)
-            .unwrap()
+        let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)?
             .trim()
             .replace('\r', "");
         assert_eq!(
@@ -675,10 +661,8 @@ mod tests {
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
     fn render_with_global_source_and_iteration() -> Result<()> {
-        let mut renderer = MiniJinja::new(&[]).unwrap();
-        renderer
-            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
-            .unwrap();
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             source: Some("main".to_string()),
@@ -692,8 +676,7 @@ mod tests {
                 Value::from_serialize(source_data.values().collect::<Vec<_>>()),
             );
         }
-        let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)
-            .unwrap()
+        let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)?
             .trim()
             .replace('\r', "");
         assert_eq!(
@@ -704,45 +687,41 @@ mod tests {
     }
 
     #[test]
-    fn render_uses_latin1_encoding() {
-        let mut renderer = MiniJinja::new(&[]).unwrap();
-        renderer
-            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
-            .unwrap();
+    fn render_uses_latin1_encoding() -> Result<()> {
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "06_encoding.tmpl".to_string(),
             ..Default::default()
         };
-        let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)
-            .unwrap()
+        let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)?
             .trim()
             .replace('\r', "");
         assert_eq!(result.trim_end(), "ae: æ\noe: ø\naa: å\ns^2: s²\nm^3: m³");
+        Ok(())
     }
 
     #[test]
-    fn render_adjusts_spacing() {
-        let mut renderer = MiniJinja::new(&[]).unwrap();
-        renderer
-            .set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")
-            .unwrap();
+    fn render_adjusts_spacing() -> Result<()> {
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "00_plaintext.tmpl".to_string(),
             ..Default::default()
         };
         let result_false =
-            MiniJinja::render_template(&renderer, &template, &HashMap::new(), false).unwrap();
-        let result_true =
-            MiniJinja::render_template(&renderer, &template, &HashMap::new(), true).unwrap();
+            MiniJinja::render_template(&renderer, &template, &HashMap::new(), false)?;
+        let result_true = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)?;
         assert_eq!(&result_true[result_true.len() - 5..], ".\r\n\r\n");
         #[cfg(target_os = "windows")]
         assert_eq!(&result_false[result_false.len() - 4..], "c.\r\n");
         #[cfg(not(target_os = "windows"))]
         assert_eq!(&result_false[result_false.len() - 3..], "c.\n");
+        Ok(())
     }
 
     #[test]
-    fn collect_file_list_works() -> Result<(), Box<dyn std::error::Error>> {
+    fn collect_file_list_works() -> Result<()> {
         let sources = Some(vec![
             config::Source {
                 filename: Filename::Single("source1".to_string()),
@@ -779,14 +758,8 @@ mod tests {
 
         let result = collect_file_list(&cfg, &cfg_file, relative_root)?;
         let mut expected = HashSet::new();
-        for filename in [
-            file1.to_str().unwrap(),
-            file2.to_str().unwrap(),
-            file3.to_str().unwrap(),
-        ]
-        .iter()
-        {
-            expected.insert(PathBuf::from("relative_root/templates").join(filename));
+        for filename in [file1.to_str(), file2.to_str(), file3.to_str()].iter() {
+            expected.insert(PathBuf::from("relative_root/templates").join(filename.unwrap()));
         }
         for filename in ["source1", "source2", "config.yaml"].iter() {
             expected.insert(PathBuf::from("relative_root").join(filename));
@@ -798,7 +771,7 @@ mod tests {
     }
 
     #[test]
-    fn timestamps_newer_than_works() -> Result<(), Box<dyn std::error::Error>> {
+    fn timestamps_newer_than_works() -> Result<()> {
         let dir = tempdir()?;
 
         let file1_path = dir.path().join("file1.txt");
@@ -828,7 +801,7 @@ mod tests {
     }
 
     #[test]
-    fn timestamps_newer_than_errors_on_missing_outfile() -> Result<(), Box<dyn std::error::Error>> {
+    fn timestamps_newer_than_errors_on_missing_outfile() -> Result<()> {
         let dir = tempdir()?;
         let file1_path = dir.path().join("file1.txt");
         let mut file1 = File::create(&file1_path)?;
@@ -837,14 +810,14 @@ mod tests {
         let outfile_path = dir.path().join("outfile.txt");
         let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
         assert!(result.is_err());
-        let err = result.as_ref().unwrap_err();
+        let err = result.unwrap_err();
         assert!(err.root_cause().to_string().contains("(os error 2)"));
         assert!(err.to_string().contains("outfile.txt"));
         Ok(())
     }
 
     #[test]
-    fn timestamps_newer_than_errors_on_missing_infile() -> Result<(), Box<dyn std::error::Error>> {
+    fn timestamps_newer_than_errors_on_missing_infile() -> Result<()> {
         let dir = tempdir()?;
         let file1_path = dir.path().join("file1.txt");
 
@@ -854,7 +827,7 @@ mod tests {
 
         let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
         assert!(result.is_err());
-        let err = result.as_ref().unwrap_err();
+        let err = result.unwrap_err();
         assert!(err.root_cause().to_string().contains("(os error 2)"));
         assert!(err.to_string().contains("file1.txt"));
         Ok(())
