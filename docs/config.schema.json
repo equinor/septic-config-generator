@@ -106,6 +106,26 @@
             }
           ]
         },
+        "include": {
+          "description": "Optional list of rows from source to include globally",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Include"
+          }
+        },
+        "exclude": {
+          "description": "Optional list of rows from source to exclude globally",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Include"
+          }
+        },
         "id": {
           "description": "The unique identifier for this source",
           "type": "string"
@@ -146,46 +166,6 @@
             "type": "string"
           }
         }
-      ]
-    },
-    "Template": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "description": "The name of the template file",
-          "type": "string"
-        },
-        "source": {
-          "description": "Optional source id to iterate over for this template",
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "include": {
-          "description": "Optional list of fields from source to include in iteration",
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "$ref": "#/definitions/Include"
-          }
-        },
-        "exclude": {
-          "description": "Optional list of fields from source to exclude in iteration",
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "$ref": "#/definitions/Include"
-          }
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "name"
       ]
     },
     "Include": {
@@ -232,6 +212,46 @@
       "additionalProperties": false,
       "required": [
         "if"
+      ]
+    },
+    "Template": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the template file",
+          "type": "string"
+        },
+        "source": {
+          "description": "Optional source id to iterate over for this template",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "include": {
+          "description": "Optional list of fields from source to include in iteration",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Include"
+          }
+        },
+        "exclude": {
+          "description": "Optional list of fields from source to exclude in iteration",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/Include"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name"
       ]
     },
     "Drawio": {
