@@ -1,5 +1,5 @@
-use crate::config;
 use crate::config::Counter as CounterConfig;
+use crate::config::{self, RowFiltering};
 use crate::datasource::DataSourceRows;
 use anyhow::Context;
 use chrono::Local;
@@ -7,7 +7,6 @@ use minijinja::value::{Kwargs, Rest, Value, ValueKind, from_args};
 use minijinja::{Environment, Error, ErrorKind};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -225,33 +224,10 @@ pub struct MiniJinja<'a> {
 }
 
 impl<'a> MiniJinja<'a> {
-    pub fn new(
-        globals: &[String],
-        template_path: &Path,
-        encoding: &str,
-        counter_list: Option<Vec<CounterConfig>>,
-    ) -> anyhow::Result<MiniJinja<'a>> {
+    pub fn new(globals: &[String]) -> anyhow::Result<MiniJinja<'a>> {
         let mut renderer = MiniJinja {
             env: Environment::new(),
         };
-        let counters = Arc::new(Mutex::new(CounterMap::new()));
-        if let Some(cnts) = counter_list {
-            for counter in cnts {
-                counters
-                    .lock()
-                    .unwrap()
-                    .create(&counter.name.clone(), counter.value)?;
-                let increment_closure = {
-                    let counters = counters.clone();
-                    let name = counter.name.clone();
-                    move |value: Option<i32>| counters.lock().unwrap().increment(&name, value)
-                };
-                renderer
-                    .env
-                    .add_function(counter.name.clone(), increment_closure);
-            }
-        }
-
         renderer.add_globals(globals);
         renderer
             .env
@@ -269,13 +245,38 @@ impl<'a> MiniJinja<'a> {
         renderer.env.set_formatter(erroring_formatter);
         // renderer.env.set_debug(false);  // TODO: enable via cmdline flag?
 
-        let closure_template_path = template_path.to_path_buf();
-        let closure_encoding = encoding.to_string();
-
-        renderer
-            .env
-            .set_loader(move |name| load_template(&closure_template_path, &closure_encoding, name));
         Ok(renderer)
+    }
+
+    pub fn set_counters(
+        &mut self,
+        counter_list: &Option<Vec<CounterConfig>>,
+    ) -> anyhow::Result<()> {
+        let counters = Arc::new(Mutex::new(CounterMap::new()));
+        if let Some(cnts) = counter_list {
+            for counter in cnts {
+                counters
+                    .lock()
+                    .unwrap()
+                    .create(&counter.name.clone(), counter.value)?;
+                let increment_closure = {
+                    let counters = counters.clone();
+                    let name = counter.name.clone();
+                    move |value: Option<i32>| counters.lock().unwrap().increment(&name, value)
+                };
+                self.env
+                    .add_function(counter.name.clone(), increment_closure);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn set_loader(&mut self, template_path: &Path, encoding: &str) -> anyhow::Result<()> {
+        let template_path = template_path.to_path_buf();
+        let encoding = encoding.to_string();
+        let loader = move |name: &str| load_template(&template_path, &encoding, name);
+        self.env.set_loader(loader);
+        Ok(())
     }
 
     #[allow(clippy::missing_errors_doc)]
@@ -293,57 +294,25 @@ impl<'a> MiniJinja<'a> {
         let mut rendered = String::new();
 
         if let Some(src_name) = &template.source {
-            let keys: Vec<String> = match source_data.get(src_name) {
-                Some(data) => data.iter().map(|(key, _row)| key.clone()).collect(),
-                None => anyhow::bail!(
+            let source_rows = source_data.get(src_name).with_context(|| {
+                format!(
                     "unknown source '{}' referenced in {}",
-                    src_name,
-                    template.name
-                ),
-            };
-
-            let mut items_set: HashSet<String> = keys.iter().cloned().collect();
-
-            if template.include.is_some() {
-                let include_set = template
-                    .include_exclude_set(
-                        &self.env,
-                        source_data.get(src_name).expect(
-                            "render_template: unable to fetch source. This should not be possible!",
-                        ),
-                        config::IncludeExclude::Include,
-                    )
-                    .with_context(|| format!("template {:?}", &template.name))?;
-                items_set = items_set.intersection(&include_set).cloned().collect();
-            }
-
-            items_set = items_set
-                .difference(
-                    &template
-                        .include_exclude_set(
-                            &self.env,
-                            source_data.get(src_name).expect(
-                                "render_template: unable to fetch source. This should not be possible!",
-                            ),
-                            config::IncludeExclude::Exclude,
-                        )
-                        .with_context(|| format!("template {:?}", &template.name))?,
+                    src_name, template.name
                 )
-                .cloned()
-                .collect();
+            })?;
 
-            if let Some(data) = source_data.get(src_name) {
-                for (key, row) in data {
-                    if items_set.contains(key) {
-                        let mut tmpl_rend = self.render(&template.name, Some(row))?;
+            let filtered_data = template
+                .apply_filters(source_rows, &self.env)
+                .with_context(|| format!("template {:?}", &template.name))?;
 
-                        if adjust_spacing {
-                            tmpl_rend = tmpl_rend.trim_end().to_string();
-                            tmpl_rend.push_str("\r\n\r\n");
-                        }
-                        rendered.push_str(&tmpl_rend);
-                    }
+            for (_key, row) in filtered_data {
+                let mut tmpl_rend = self.render(&template.name, Some(row))?;
+
+                if adjust_spacing {
+                    tmpl_rend = tmpl_rend.trim_end().to_string();
+                    tmpl_rend.push_str("\r\n\r\n");
                 }
+                rendered.push_str(&tmpl_rend);
             }
         } else {
             rendered = self.render(&template.name, minijinja::context!())?;

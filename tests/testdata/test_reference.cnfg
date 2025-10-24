@@ -1,0 +1,89 @@
+This file contains no expressions, variables etc.
+
+String: one
+String: 00
+Bool: TRUE
+Integer: 1
+Whole float: 1.0
+Float: 1.234
+
+String: two
+String: 02
+Bool: FALSE
+Integer: 2
+Whole float: 2.0
+Float: 2.3456
+
+String: three
+String: 030
+Bool: TRUE
+Integer: 3
+Whole float: 3.0
+Float: 34.6
+
+Empty: >|none|<
+Error: >|#DIV/0!|<
+
+Empty: >||<
+Error: >|#N/A|<
+
+Empty: >|""|<
+Error: >|#NAME?|<
+
+Empty: >|""|<
+Error: >|#NULL!|<
+
+Empty: >|none|<
+Error: >|#NUM!|<
+
+Empty: >||<
+Error: >|#REF!|<
+
+Empty: >|""|<
+Error: >|#VALUE!|<
+
+Global: >|'glob' undefined|<
+
+Included file follows:
+This is an included file >|'glob' undefined|<
+
+String manipulation: 00
+Bool: it's true
+Integer: 1 + 42 = 43 and 1 % 7 = 1
+Float: 1.234 ** 2  = 1.522756
+
+Counter:
+1 == 1
+
+ae: æ
+oe: ø
+aa: å
+s^2: s²
+m^3: m³
+
+9f37804
+9f37804e896b1699ab6f74427b96aedd062e0148
+
+2.13.0
+
+Fri 24 Oct 2025 15:53:28
+2025-10-24 15:53:28
+
+00010
+1000000000000000000000000000101
+
+Counter:
+2 == 2
+3 == 3
+268 == 268
+12 == 12
+13 == 13
+
+6 == 6
+
+// Generated with SCG v2.13.0 on 2025-10-24 15:53:28 from git commit 9f37804
+
+Num rows: 3
+Rows in order: onetwothree
+Single value: 34.6
+

@@ -16,6 +16,88 @@ fn _default_encoding() -> String {
     "Windows-1252".to_string()
 }
 
+#[derive(Deserialize, Debug, JsonSchema)]
+#[serde(untagged)] // Allows for multiple representations of the data
+pub enum Filename {
+    /// Single filename as a string
+    Single(String),
+    /// Multiple filenames as a list of strings
+    Multiple(Vec<String>),
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Counter {
+    /// Counter name
+    pub name: String,
+    #[serde(default)]
+    /// Initial value for the counter, defaults to 0
+    pub value: Option<i32>,
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct IncludeConditional {
+    /// The condition to evaluate. Uses MiniJinja syntax.
+    #[serde(rename = "if")]
+    pub condition: String,
+    /// List of items to include if the condition is true
+    #[serde(rename = "then")]
+    pub items: Option<Vec<String>>,
+    /// Whether to continue evaluating further conditions after this one
+    #[serde(rename = "continue")]
+    pub continue_: Option<bool>,
+}
+
+#[derive(Deserialize, Debug, JsonSchema)]
+#[serde(untagged)]
+pub enum Include {
+    /// Include a single element by name
+    Element(String),
+    /// Include a conditional element with a condition and optional items
+    Conditional(IncludeConditional),
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Source {
+    /// The filename(s) of the source data
+    pub filename: Filename,
+    /// Optional list of rows from source to include globally
+    pub include: Option<Vec<Include>>,
+    /// Optional list of rows from source to exclude globally
+    pub exclude: Option<Vec<Include>>,
+    /// The unique identifier for this source
+    pub id: String,
+    /// Optional sheet name for .xlsx files
+    pub sheet: Option<String>,
+    /// Optional delimiter for .csv files
+    pub delimiter: Option<char>,
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Template {
+    /// The name of the template file
+    pub name: String,
+    /// Optional source id to iterate over for this template
+    pub source: Option<String>,
+    /// Optional list of fields from source to include in iteration
+    pub include: Option<Vec<Include>>,
+    /// Optional list of fields from source to exclude in iteration
+    pub exclude: Option<Vec<Include>>,
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+pub struct Drawio {
+    /// The draw.io file to process
+    pub input: String,
+    /// Optional output PNG file path. If not provided, the output will have the same name as input but with .png extension
+    pub pngoutput: Option<String>,
+    /// Optional output CSV file path for components. If not provided, the output will have the same name as input but with _components.csv extension
+    pub csvoutput: Option<String>,
+}
+
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 #[schemars(title = "Septic Config Generator Configuration")]
@@ -43,6 +125,79 @@ pub struct Config {
     pub drawio: Option<Vec<Drawio>>,
 }
 
+pub trait RowFiltering {
+    fn get_include(&self) -> &Option<Vec<Include>>;
+
+    fn get_exclude(&self) -> &Option<Vec<Include>>;
+
+    fn apply_filters(
+        &self,
+        source_rows: &DataSourceRows,
+        env: &Environment,
+    ) -> anyhow::Result<DataSourceRows> {
+        let mut items_set: HashSet<String> = source_rows.keys().cloned().collect();
+
+        if let Some(include_list) = self.get_include() {
+            let include_set = include_exclude_set(include_list, env, source_rows)?;
+            items_set = items_set.intersection(&include_set).cloned().collect();
+        }
+
+        if let Some(exclude_list) = self.get_exclude() {
+            let exclude_set = include_exclude_set(exclude_list, env, source_rows)?;
+            items_set = items_set.difference(&exclude_set).cloned().collect();
+        }
+
+        let mut filtered_rows: DataSourceRows = DataSourceRows::new();
+        for (key, row) in source_rows {
+            if items_set.contains(key) {
+                filtered_rows.insert(key.clone(), row.clone());
+            }
+        }
+
+        Ok(filtered_rows)
+    }
+}
+
+pub enum IncludeExclude {
+    Include,
+    Exclude,
+}
+
+impl Default for Filename {
+    fn default() -> Self {
+        Filename::Single(String::new())
+    }
+}
+
+impl From<&str> for Filename {
+    fn from(s: &str) -> Filename {
+        Filename::Single(s.to_string())
+    }
+}
+
+impl From<Vec<&str>> for Filename {
+    fn from(v: Vec<&str>) -> Filename {
+        let owned_strings: Vec<String> = v.into_iter().map(|s| s.to_string()).collect();
+        Filename::Multiple(owned_strings)
+    }
+}
+
+macro_rules! impl_row_filtering {
+    ($type:ty) => {
+        impl RowFiltering for $type {
+            fn get_include(&self) -> &Option<Vec<Include>> {
+                &self.include
+            }
+            fn get_exclude(&self) -> &Option<Vec<Include>> {
+                &self.exclude
+            }
+        }
+    };
+}
+
+impl_row_filtering!(Source);
+impl_row_filtering!(Template);
+
 impl Config {
     #[allow(clippy::missing_errors_doc)]
     pub fn new(filename: &Path) -> Result<Self> {
@@ -59,6 +214,46 @@ impl Config {
 
         Ok(cfg)
     }
+}
+
+pub fn include_exclude_set(
+    items: &Vec<Include>,
+    env: &Environment,
+    source_data: &DataSourceRows,
+) -> Result<HashSet<String>, minijinja::Error> {
+    let mut result: HashSet<String> = HashSet::new();
+
+    for item in items {
+        let mut matched = false;
+        match item {
+            Include::Element(val) => {
+                result.insert(val.clone());
+            }
+            Include::Conditional(elem) => {
+                let expr = env.compile_expression(elem.condition.as_str())?;
+                if let Some(items) = &elem.items {
+                    let eval = expr.eval(context! {})?;
+                    if eval.is_true() {
+                        matched = true;
+                        result.extend(items.clone());
+                    }
+                } else {
+                    for (key, row) in source_data {
+                        let eval = expr.eval(row)?;
+                        if eval.is_true() {
+                            matched = true;
+                            result.insert(key.clone());
+                        }
+                    }
+                }
+                if matched && !elem.continue_.unwrap_or(false) {
+                    break;
+                }
+            }
+        }
+    }
+
+    Ok(result)
 }
 
 fn validate_encoding(encoding: &str) -> Result<()> {
@@ -106,155 +301,6 @@ fn validate_source(source: &Source) -> Result<()> {
         }
     }
     Ok(())
-}
-
-#[derive(Deserialize, Debug, Default, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct Counter {
-    /// Counter name
-    pub name: String,
-    #[serde(default)]
-    /// Initial value for the counter, defaults to 0
-    pub value: Option<i32>,
-}
-
-#[derive(Deserialize, Debug, JsonSchema)]
-#[serde(untagged)] // Allows for multiple representations of the data
-pub enum Filename {
-    /// Single filename as a string
-    Single(String),
-    /// Multiple filenames as a list of strings
-    Multiple(Vec<String>),
-}
-
-impl Default for Filename {
-    fn default() -> Self {
-        Filename::Single(String::new())
-    }
-}
-
-impl From<&str> for Filename {
-    fn from(s: &str) -> Filename {
-        Filename::Single(s.to_string())
-    }
-}
-
-impl From<Vec<&str>> for Filename {
-    fn from(v: Vec<&str>) -> Filename {
-        let owned_strings: Vec<String> = v.into_iter().map(|s| s.to_string()).collect();
-        Filename::Multiple(owned_strings)
-    }
-}
-
-#[derive(Deserialize, Debug, Default, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct Source {
-    /// The filename(s) of the source data
-    pub filename: Filename,
-    /// The unique identifier for this source
-    pub id: String,
-    /// Optional sheet name for .xlsx files
-    pub sheet: Option<String>,
-    /// Optional delimiter for .csv files
-    pub delimiter: Option<char>,
-}
-
-#[derive(Deserialize, Debug, Default, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct IncludeConditional {
-    /// The condition to evaluate. Uses MiniJinja syntax.
-    #[serde(rename = "if")]
-    condition: String,
-    /// List of items to include if the condition is true
-    #[serde(rename = "then")]
-    items: Option<Vec<String>>,
-    /// Whether to continue evaluating further conditions after this one
-    #[serde(rename = "continue")]
-    continue_: Option<bool>,
-}
-
-#[derive(Deserialize, Debug, JsonSchema)]
-#[serde(untagged)]
-pub enum Include {
-    /// Include a single element by name
-    Element(String),
-    /// Include a conditional element with a condition and optional items
-    Conditional(IncludeConditional),
-}
-
-#[derive(Deserialize, Debug, Default, JsonSchema)]
-pub struct Drawio {
-    /// The draw.io file to process
-    pub input: String,
-    /// Optional output PNG file path. If not provided, the output will have the same name as input but with .png extension
-    pub pngoutput: Option<String>,
-    /// Optional output CSV file path for components. If not provided, the output will have the same name as input but with _components.csv extension
-    pub csvoutput: Option<String>,
-}
-#[derive(Deserialize, Debug, Default, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct Template {
-    /// The name of the template file
-    pub name: String,
-    /// Optional source id to iterate over for this template
-    pub source: Option<String>,
-    /// Optional list of fields from source to include in iteration
-    pub include: Option<Vec<Include>>,
-    /// Optional list of fields from source to exclude in iteration
-    pub exclude: Option<Vec<Include>>,
-}
-
-pub enum IncludeExclude {
-    Include,
-    Exclude,
-}
-
-impl Template {
-    pub fn include_exclude_set(
-        &self,
-        env: &Environment,
-        source_data: &DataSourceRows,
-        include_exclude: IncludeExclude,
-    ) -> Result<HashSet<String>, minijinja::Error> {
-        let mut result: HashSet<String> = HashSet::new();
-        let items = match include_exclude {
-            IncludeExclude::Include => self.include.as_ref(),
-            IncludeExclude::Exclude => self.exclude.as_ref(),
-        };
-
-        if let Some(items) = items {
-            for inc_item in items {
-                let mut matched = false;
-                match inc_item {
-                    Include::Element(elem) => {
-                        result.insert(elem.clone());
-                    }
-                    Include::Conditional(elem) => {
-                        let expr = env.compile_expression(elem.condition.as_str())?;
-                        if let Some(items) = &elem.items {
-                            let eval = expr.eval(context! {})?;
-                            if eval.is_true() {
-                                matched = true;
-                                result.extend(items.clone());
-                            }
-                        } else {
-                            for (key, row) in source_data {
-                                let eval = expr.eval(row)?;
-                                if eval.is_true() {
-                                    matched = true;
-                                    result.insert(key.clone());
-                                }
-                            }
-                        }
-                        if matched && !elem.continue_.unwrap_or(false) {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        Ok(result)
-    }
 }
 
 #[cfg(test)]
@@ -375,6 +421,7 @@ layout:
             id: "id".to_string(),
             sheet: Some("sheet".to_string()),
             delimiter: Some(':'),
+            ..Default::default()
         };
         let result = validate_source(&source);
         assert!(result.is_err());
@@ -502,39 +549,36 @@ layout:
     #[test]
     fn include_exclude_set_break_when_condition_matches() {
         let template = create_template_with_includes("true", None);
-        let res = template
-            .include_exclude_set(
-                &minijinja::Environment::new(),
-                &IndexMap::new(),
-                IncludeExclude::Include,
-            )
-            .unwrap();
+        let res = include_exclude_set(
+            template.include.as_ref().unwrap(),
+            &minijinja::Environment::new(),
+            &IndexMap::new(),
+        )
+        .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "two".to_string()]));
     }
 
     #[test]
     fn include_exclude_set_continue_when_condition_not_matched() {
         let template = create_template_with_includes("false", None);
-        let res = template
-            .include_exclude_set(
-                &minijinja::Environment::new(),
-                &IndexMap::new(),
-                IncludeExclude::Include,
-            )
-            .unwrap();
+        let res = include_exclude_set(
+            template.include.as_ref().unwrap(),
+            &minijinja::Environment::new(),
+            &IndexMap::new(),
+        )
+        .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "three".to_string()]));
     }
 
     #[test]
     fn include_exclude_set_continue_when_continue_true() {
         let template = create_template_with_includes("true", Some(true));
-        let res = template
-            .include_exclude_set(
-                &minijinja::Environment::new(),
-                &IndexMap::new(),
-                IncludeExclude::Include,
-            )
-            .unwrap();
+        let res = include_exclude_set(
+            template.include.as_ref().unwrap(),
+            &minijinja::Environment::new(),
+            &IndexMap::new(),
+        )
+        .unwrap();
         assert!(res == HashSet::from(["one".to_string(), "two".to_string(), "three".to_string()]));
     }
 }

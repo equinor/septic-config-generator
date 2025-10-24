@@ -1,6 +1,6 @@
 use crate::commands::drawio::components::extract_components;
 use crate::commands::drawio::to_png::drawio_to_png;
-use crate::config::{Config, Drawio, Filename, Source};
+use crate::config::{Config, Drawio, Filename, RowFiltering, Source};
 use crate::datasource::{
     CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
 };
@@ -9,6 +9,7 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use diffy::{PatchFormatter, create_patch};
 use glob::glob;
+use minijinja::Environment;
 use minijinja::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -142,12 +143,20 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
     }
 
     // drawio needs to be done before the templates are rendered, so that the .csv files are available
-    let all_source_data: HashMap<String, DataSourceRows> =
-        load_all_source_data(&cfg, &relative_root).map_err(MakeError::LoadSourceError)?;
+    let mut renderer = MiniJinja::new(globals).map_err(MakeError::MiniJinjaError)?;
 
     let template_path = relative_root.join(&cfg.templatepath);
-    let mut renderer = MiniJinja::new(globals, &template_path, &cfg.encoding, cfg.counters)
+    renderer
+        .set_counters(&cfg.counters)
         .map_err(MakeError::MiniJinjaError)?;
+    renderer
+        .set_loader(&template_path, &cfg.encoding)
+        .map_err(MakeError::MiniJinjaError)?;
+
+    let sources = &cfg.sources.unwrap_or_default();
+    let all_source_data: HashMap<String, DataSourceRows> =
+        load_all_source_data(sources, &relative_root, &renderer.env)
+            .map_err(MakeError::LoadSourceError)?;
 
     for (key, source_data) in all_source_data.iter() {
         renderer.env.add_global(
@@ -282,19 +291,18 @@ fn ask_should_overwrite() -> Result<bool> {
 }
 
 fn load_all_source_data(
-    cfg: &Config,
+    sources: &[Source],
     relative_root: &Path,
+    env: &Environment,
 ) -> Result<HashMap<String, DataSourceRows>> {
-    if let Some(sources) = &cfg.sources {
-        return sources
-            .iter()
-            .map(|source| {
-                let source_data = load_source_data(source, relative_root)?;
-                Ok((source.id.clone(), source_data))
-            })
-            .collect();
-    }
-    Ok(HashMap::new())
+    sources
+        .iter()
+        .map(|source| {
+            let source_data = load_source_data(source, relative_root)?;
+            let filtered_source_data = source.apply_filters(&source_data, env)?;
+            Ok((source.id.clone(), filtered_source_data))
+        })
+        .collect()
 }
 
 fn load_source_data(source: &Source, relative_root: &Path) -> Result<DataSourceRows> {
@@ -407,7 +415,7 @@ fn backup_file_if_exists(path: &PathBuf) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config;
+    use crate::config::{self, Include, IncludeConditional, RowFiltering};
     use crate::datasource::{DataSourceReader, DataSourceRows, ExcelSourceReader};
     use std::fs::File;
     use tempfile::tempdir;
@@ -444,15 +452,104 @@ mod tests {
         Ok(all_source_data)
     }
 
+    fn create_csv_source_with_includes(
+        include: Option<Vec<Include>>,
+        exclude: Option<Vec<Include>>,
+    ) -> config::Source {
+        Source {
+            filename: Filename::Single("test.csv".to_string()),
+            id: "main".to_string(),
+            delimiter: Some('|'),
+            include,
+            exclude,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn global_row_filter_works_simple_include() -> Result<()> {
+        let include = Some(vec![
+            config::Include::Element("one".to_string()),
+            config::Include::Element("three".to_string()),
+        ]);
+
+        let source = create_csv_source_with_includes(include, None);
+        let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
+        let source_data = source.apply_filters(&source_data, &Environment::new())?;
+
+        assert_eq!(source_data.len(), 2);
+        assert!(source_data.contains_key("one"));
+        assert!(!source_data.contains_key("two"));
+        assert!(source_data.contains_key("three"));
+        Ok(())
+    }
+
+    #[test]
+    fn global_row_filter_works_simple_exclude() -> Result<()> {
+        let exclude = Some(vec![config::Include::Element("two".to_string())]);
+
+        let source = create_csv_source_with_includes(None, exclude);
+        let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
+        let source_data = source.apply_filters(&source_data, &Environment::new())?;
+
+        assert_eq!(source_data.len(), 2);
+        assert!(source_data.contains_key("one"));
+        assert!(!source_data.contains_key("two"));
+        assert!(source_data.contains_key("three"));
+        Ok(())
+    }
+
+    #[test]
+    fn global_row_filter_works_combined_include_exclude() -> Result<()> {
+        let include = Include::Conditional(IncludeConditional {
+            items: None,
+            condition: "Col3_int <= 2".to_string(),
+            continue_: Some(false),
+        });
+        let exclude = Include::Element("one".to_string());
+
+        let source = create_csv_source_with_includes(Some(vec![include]), Some(vec![exclude]));
+        let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
+        let source_data = source.apply_filters(&source_data, &Environment::new())?;
+
+        assert_eq!(source_data.len(), 1);
+        assert!(!source_data.contains_key("one"));
+        assert!(source_data.contains_key("two"));
+        assert!(!source_data.contains_key("three"));
+        Ok(())
+    }
+
+    #[test]
+    fn global_row_filter_works_with_global_variables() -> Result<()> {
+        let env = {
+            let mut env = Environment::new();
+            env.add_global("min_value", Value::from_serialize(2));
+            env
+        };
+
+        let source = create_csv_source_with_includes(
+            Some(vec![Include::Conditional(IncludeConditional {
+                items: None,
+                condition: "Col3_int >= min_value".to_string(),
+                continue_: Some(false),
+            })]),
+            None,
+        );
+        let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
+        let source_data = source.apply_filters(&source_data, &env)?;
+
+        assert_eq!(source_data.len(), 2);
+        assert!(!source_data.contains_key("one"));
+        assert!(source_data.contains_key("two"));
+        assert!(source_data.contains_key("three"));
+        Ok(())
+    }
+
     #[test]
     fn render_with_normal_values() -> Result<()> {
-        let renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
+
         let template = config::Template {
             name: "01_normals.tmpl".to_string(),
             source: Some("main".to_string()),
@@ -460,8 +557,7 @@ mod tests {
         };
         let all_source_data = get_all_source_data()?;
         let result = renderer
-            .render_template(&template, &all_source_data, true)
-            .unwrap()
+            .render_template(&template, &all_source_data, true)?
             .trim()
             .replace('\r', "");
         assert_eq!(
@@ -473,13 +569,8 @@ mod tests {
 
     #[test]
     fn render_with_special_values() -> Result<()> {
-        let renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "02_specials.tmpl".to_string(),
             source: Some("errors".to_string()),
@@ -487,8 +578,7 @@ mod tests {
         };
         let all_source_data = get_all_source_data()?;
         let result = renderer
-            .render_template(&template, &all_source_data, true)
-            .unwrap()
+            .render_template(&template, &all_source_data, true)?
             .trim()
             .replace('\r', "");
         assert_eq!(
@@ -501,22 +591,15 @@ mod tests {
     #[test]
     fn render_with_global_variables() -> Result<()> {
         let globals = ["glob".to_string(), "globvalue".to_string()];
-        let renderer = MiniJinja::new(
-            &globals,
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&globals)?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "03_globals.tmpl".to_string(),
             ..Default::default()
         };
         let all_source_data = get_all_source_data()?;
 
-        let result = renderer
-            .render_template(&template, &all_source_data, true)
-            .unwrap();
+        let result = renderer.render_template(&template, &all_source_data, true)?;
         assert_eq!(result.trim_end(), "Global: >|globvalue|<");
         Ok(())
     }
@@ -524,13 +607,8 @@ mod tests {
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
     fn render_with_global_source_no_iteration() -> Result<()> {
-        let mut renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             ..Default::default()
@@ -542,8 +620,7 @@ mod tests {
                 Value::from_serialize(source_data.values().collect::<Vec<_>>()),
             );
         }
-        let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)
-            .unwrap()
+        let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)?
             .trim()
             .replace('\r', "");
         assert_eq!(
@@ -556,13 +633,8 @@ mod tests {
     #[test]
     // FIXME: Horrible test with too much code duplication from cmd_main()
     fn render_with_global_source_and_iteration() -> Result<()> {
-        let mut renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "08_sources.tmpl".to_string(),
             source: Some("main".to_string()),
@@ -576,8 +648,7 @@ mod tests {
                 Value::from_serialize(source_data.values().collect::<Vec<_>>()),
             );
         }
-        let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)
-            .unwrap()
+        let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)?
             .trim()
             .replace('\r', "");
         assert_eq!(
@@ -588,51 +659,41 @@ mod tests {
     }
 
     #[test]
-    fn render_uses_latin1_encoding() {
-        let renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+    fn render_uses_latin1_encoding() -> Result<()> {
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "06_encoding.tmpl".to_string(),
             ..Default::default()
         };
-        let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)
-            .unwrap()
+        let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)?
             .trim()
             .replace('\r', "");
         assert_eq!(result.trim_end(), "ae: æ\noe: ø\naa: å\ns^2: s²\nm^3: m³");
+        Ok(())
     }
 
     #[test]
-    fn render_adjusts_spacing() {
-        let renderer = MiniJinja::new(
-            &[],
-            Path::new("tests/testdata/templates/"),
-            "Windows-1252",
-            None,
-        )
-        .unwrap();
+    fn render_adjusts_spacing() -> Result<()> {
+        let mut renderer = MiniJinja::new(&[])?;
+        renderer.set_loader(Path::new("tests/testdata/templates/"), "Windows-1252")?;
         let template = config::Template {
             name: "00_plaintext.tmpl".to_string(),
             ..Default::default()
         };
         let result_false =
-            MiniJinja::render_template(&renderer, &template, &HashMap::new(), false).unwrap();
-        let result_true =
-            MiniJinja::render_template(&renderer, &template, &HashMap::new(), true).unwrap();
+            MiniJinja::render_template(&renderer, &template, &HashMap::new(), false)?;
+        let result_true = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)?;
         assert_eq!(&result_true[result_true.len() - 5..], ".\r\n\r\n");
         #[cfg(target_os = "windows")]
         assert_eq!(&result_false[result_false.len() - 4..], "c.\r\n");
         #[cfg(not(target_os = "windows"))]
         assert_eq!(&result_false[result_false.len() - 3..], "c.\n");
+        Ok(())
     }
 
     #[test]
-    fn collect_file_list_works() -> Result<(), Box<dyn std::error::Error>> {
+    fn collect_file_list_works() -> Result<()> {
         let sources = Some(vec![
             config::Source {
                 filename: Filename::Single("source1".to_string()),
@@ -669,14 +730,8 @@ mod tests {
 
         let result = collect_file_list(&cfg, &cfg_file, relative_root)?;
         let mut expected = HashSet::new();
-        for filename in [
-            file1.to_str().unwrap(),
-            file2.to_str().unwrap(),
-            file3.to_str().unwrap(),
-        ]
-        .iter()
-        {
-            expected.insert(PathBuf::from("relative_root/templates").join(filename));
+        for filename in [file1.to_str(), file2.to_str(), file3.to_str()].iter() {
+            expected.insert(PathBuf::from("relative_root/templates").join(filename.unwrap()));
         }
         for filename in ["source1", "source2", "config.yaml"].iter() {
             expected.insert(PathBuf::from("relative_root").join(filename));
@@ -688,7 +743,7 @@ mod tests {
     }
 
     #[test]
-    fn timestamps_newer_than_works() -> Result<(), Box<dyn std::error::Error>> {
+    fn timestamps_newer_than_works() -> Result<()> {
         let dir = tempdir()?;
 
         let file1_path = dir.path().join("file1.txt");
@@ -718,7 +773,7 @@ mod tests {
     }
 
     #[test]
-    fn timestamps_newer_than_errors_on_missing_outfile() -> Result<(), Box<dyn std::error::Error>> {
+    fn timestamps_newer_than_errors_on_missing_outfile() -> Result<()> {
         let dir = tempdir()?;
         let file1_path = dir.path().join("file1.txt");
         let mut file1 = File::create(&file1_path)?;
@@ -727,14 +782,14 @@ mod tests {
         let outfile_path = dir.path().join("outfile.txt");
         let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
         assert!(result.is_err());
-        let err = result.as_ref().unwrap_err();
+        let err = result.unwrap_err();
         assert!(err.root_cause().to_string().contains("(os error 2)"));
         assert!(err.to_string().contains("outfile.txt"));
         Ok(())
     }
 
     #[test]
-    fn timestamps_newer_than_errors_on_missing_infile() -> Result<(), Box<dyn std::error::Error>> {
+    fn timestamps_newer_than_errors_on_missing_infile() -> Result<()> {
         let dir = tempdir()?;
         let file1_path = dir.path().join("file1.txt");
 
@@ -744,7 +799,7 @@ mod tests {
 
         let result = timestamps_newer_than(&HashSet::from([file1_path]), &outfile_path);
         assert!(result.is_err());
-        let err = result.as_ref().unwrap_err();
+        let err = result.unwrap_err();
         assert!(err.root_cause().to_string().contains("(os error 2)"));
         assert!(err.to_string().contains("file1.txt"));
         Ok(())
