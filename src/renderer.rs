@@ -1,5 +1,5 @@
-use crate::config;
 use crate::config::Counter as CounterConfig;
+use crate::config::{self, RowFiltering};
 use crate::datasource::DataSourceRows;
 use anyhow::Context;
 use chrono::Local;
@@ -301,9 +301,9 @@ impl<'a> MiniJinja<'a> {
                 )
             })?;
 
-            let filtered_data =
-                config::filter_rows(source_rows, &template.include, &template.exclude, &self.env)
-                    .with_context(|| format!("template {:?}", &template.name))?;
+            let filtered_data = template
+                .apply_filters(source_rows, &self.env)
+                .with_context(|| format!("template {:?}", &template.name))?;
 
             for (_key, row) in filtered_data {
                 let mut tmpl_rend = self.render(&template.name, Some(row))?;

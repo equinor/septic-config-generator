@@ -213,6 +213,55 @@ pub enum IncludeExclude {
     Exclude,
 }
 
+pub trait RowFiltering {
+    fn get_include(&self) -> &Option<Vec<Include>>;
+
+    fn get_exclude(&self) -> &Option<Vec<Include>>;
+
+    fn apply_filters(
+        &self,
+        source_rows: &DataSourceRows,
+        env: &Environment,
+    ) -> anyhow::Result<DataSourceRows> {
+        let mut items_set: HashSet<String> = source_rows.keys().cloned().collect();
+
+        if let Some(include_list) = self.get_include() {
+            let include_set = include_exclude_set(include_list, env, source_rows)?;
+            items_set = items_set.intersection(&include_set).cloned().collect();
+        }
+
+        if let Some(exclude_list) = self.get_exclude() {
+            let exclude_set = include_exclude_set(exclude_list, env, source_rows)?;
+            items_set = items_set.difference(&exclude_set).cloned().collect();
+        }
+
+        let mut filtered_rows: DataSourceRows = DataSourceRows::new();
+        for (key, row) in source_rows {
+            if items_set.contains(key) {
+                filtered_rows.insert(key.clone(), row.clone());
+            }
+        }
+
+        Ok(filtered_rows)
+    }
+}
+
+macro_rules! impl_row_filtering {
+    ($type:ty) => {
+        impl RowFiltering for $type {
+            fn get_include(&self) -> &Option<Vec<Include>> {
+                &self.include
+            }
+            fn get_exclude(&self) -> &Option<Vec<Include>> {
+                &self.exclude
+            }
+        }
+    };
+}
+
+impl_row_filtering!(Source);
+impl_row_filtering!(Template);
+
 pub fn include_exclude_set(
     items: &Vec<Include>,
     env: &Environment,
@@ -251,35 +300,6 @@ pub fn include_exclude_set(
     }
 
     Ok(result)
-}
-
-pub fn filter_rows(
-    source_rows: &DataSourceRows,
-    includes: &Option<Vec<Include>>,
-    excludes: &Option<Vec<Include>>,
-    env: &Environment,
-) -> anyhow::Result<DataSourceRows> {
-    let mut items_set: HashSet<String> = source_rows.keys().cloned().collect();
-
-    if let Some(include_list) = includes {
-        let include_set = include_exclude_set(include_list, env, source_rows)?;
-        items_set = items_set.intersection(&include_set).cloned().collect();
-    };
-
-    if let Some(exclude_list) = excludes {
-        let exclude_set = include_exclude_set(exclude_list, env, source_rows)?;
-        items_set = items_set.difference(&exclude_set).cloned().collect();
-    };
-
-    let mut filtered_rows: DataSourceRows = DataSourceRows::new();
-
-    for (key, row) in source_rows {
-        if items_set.contains(key) {
-            filtered_rows.insert(key.clone(), row.clone());
-        }
-    }
-
-    Ok(filtered_rows)
 }
 
 #[cfg(test)]

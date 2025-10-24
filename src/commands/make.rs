@@ -1,6 +1,6 @@
 use crate::commands::drawio::components::extract_components;
 use crate::commands::drawio::to_png::drawio_to_png;
-use crate::config::{Config, Drawio, Filename, Source, filter_rows};
+use crate::config::{Config, Drawio, Filename, RowFiltering, Source};
 use crate::datasource::{
     CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
 };
@@ -299,8 +299,7 @@ fn load_all_source_data(
         .iter()
         .map(|source| {
             let source_data = load_source_data(source, relative_root)?;
-            let filtered_source_data =
-                filter_rows(&source_data, &source.include, &source.exclude, env)?;
+            let filtered_source_data = source.apply_filters(&source_data, env)?;
             Ok((source.id.clone(), filtered_source_data))
         })
         .collect()
@@ -416,7 +415,7 @@ fn backup_file_if_exists(path: &PathBuf) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{self, Include, IncludeConditional};
+    use crate::config::{self, Include, IncludeConditional, RowFiltering};
     use crate::datasource::{DataSourceReader, DataSourceRows, ExcelSourceReader};
     use std::fs::File;
     use tempfile::tempdir;
@@ -476,12 +475,7 @@ mod tests {
 
         let source = create_csv_source_with_includes(include, None);
         let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
-        let source_data = filter_rows(
-            &source_data,
-            &source.include,
-            &source.exclude,
-            &Environment::new(),
-        )?;
+        let source_data = source.apply_filters(&source_data, &Environment::new())?;
 
         assert_eq!(source_data.len(), 2);
         assert!(source_data.contains_key("one"));
@@ -496,12 +490,7 @@ mod tests {
 
         let source = create_csv_source_with_includes(None, exclude);
         let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
-        let source_data = filter_rows(
-            &source_data,
-            &source.include,
-            &source.exclude,
-            &Environment::new(),
-        )?;
+        let source_data = source.apply_filters(&source_data, &Environment::new())?;
 
         assert_eq!(source_data.len(), 2);
         assert!(source_data.contains_key("one"));
@@ -521,12 +510,7 @@ mod tests {
 
         let source = create_csv_source_with_includes(Some(vec![include]), Some(vec![exclude]));
         let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
-        let source_data = filter_rows(
-            &source_data,
-            &source.include,
-            &source.exclude,
-            &Environment::new(),
-        )?;
+        let source_data = source.apply_filters(&source_data, &Environment::new())?;
 
         assert_eq!(source_data.len(), 1);
         assert!(!source_data.contains_key("one"));
@@ -552,7 +536,7 @@ mod tests {
             None,
         );
         let source_data = load_source_data(&source, Path::new("tests/testdata/"))?;
-        let source_data = filter_rows(&source_data, &source.include, &source.exclude, &env)?;
+        let source_data = source.apply_filters(&source_data, &env)?;
 
         assert_eq!(source_data.len(), 2);
         assert!(!source_data.contains_key("one"));
