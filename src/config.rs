@@ -35,14 +35,34 @@ pub struct Counter {
     pub value: Option<i32>,
 }
 
+fn deserialize_string_or_vec_as_vec<'de, D>(
+    deserializer: D,
+) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrVec {
+        String(String),
+        Vec(Vec<String>),
+    }
+
+    let opt: Option<StringOrVec> = Option::deserialize(deserializer)?;
+    Ok(opt.map(|items| match items {
+        StringOrVec::String(s) => vec![s],
+        StringOrVec::Vec(v) => v,
+    }))
+}
+
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct IncludeConditional {
     /// The condition to evaluate. Uses MiniJinja syntax.
     #[serde(rename = "if")]
     pub condition: String,
-    /// List of items to include if the condition is true
-    #[serde(rename = "then")]
+    /// List of items (or single item) to include if the condition is true (can be a single string or array of strings)
+    #[serde(rename = "then", deserialize_with = "deserialize_string_or_vec_as_vec")]
     pub items: Option<Vec<String>>,
     /// Whether to continue evaluating further conditions after this one
     #[serde(rename = "continue")]
