@@ -35,14 +35,34 @@ pub struct Counter {
     pub value: Option<i32>,
 }
 
+fn deserialize_string_or_vec_as_vec<'de, D>(
+    deserializer: D,
+) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum StringOrVec {
+        String(String),
+        Vec(Vec<String>),
+    }
+
+    let opt: Option<StringOrVec> = Option::deserialize(deserializer)?;
+    Ok(opt.map(|items| match items {
+        StringOrVec::String(s) => vec![s],
+        StringOrVec::Vec(v) => v,
+    }))
+}
+
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct IncludeConditional {
     /// The condition to evaluate. Uses MiniJinja syntax.
     #[serde(rename = "if")]
     pub condition: String,
-    /// List of items to include if the condition is true
-    #[serde(rename = "then")]
+    /// Item(s) to include if the condition is true (can be a single string or array of strings)
+    #[serde(rename = "then", deserialize_with = "deserialize_string_or_vec_as_vec")]
     pub items: Option<Vec<String>>,
     /// Whether to continue evaluating further conditions after this one
     #[serde(rename = "continue")]
@@ -362,6 +382,76 @@ layout:
         assert!(config.adjustspacing);
         assert!(config.verifycontent);
         assert_eq!(config.encoding, "Windows-1252");
+    }
+
+    #[test]
+    fn config_parse_single_item_in_conditionals() {
+        let content = r#"
+outputfile: test.cnfg
+templatepath: templates
+sources:
+  - filename: test.csv
+    id: main
+layout:
+  - name: template1.cnfg
+    source: main
+    include:
+      - if: "true"
+        then: one
+"#;
+        let temp_file = create_temp_yaml(content);
+        let config = Config::new(temp_file.path());
+        assert!(config.is_ok());
+        let config = config.unwrap();
+
+        // Check that the single string was converted to a Vec<String> with one element
+        let template = &config.layout[0];
+        let includes = template.include.as_ref().unwrap();
+
+        match &includes[0] {
+            Include::Conditional(conditional) => {
+                let items = conditional.items.as_ref().unwrap();
+                assert_eq!(items.len(), 1);
+                assert_eq!(items[0], "one");
+            }
+            _ => panic!("Expected Include::Conditional"),
+        }
+    }
+
+    #[test]
+    fn config_parse_multiple_items_in_conditionals() {
+        let content = r#"
+outputfile: test.cnfg
+templatepath: templates
+sources:
+  - filename: test.csv
+    id: main
+layout:
+  - name: template1.cnfg
+    source: main
+    include:
+      - if: "true"
+        then: [one, two, three]
+"#;
+        let temp_file = create_temp_yaml(content);
+        let config = Config::new(temp_file.path());
+        assert!(config.is_ok());
+        let config = config.unwrap();
+
+        // Check that the array was preserved correctly
+        let template = &config.layout[0];
+        let includes = template.include.as_ref().unwrap();
+
+        match &includes[0] {
+            Include::Conditional(conditional) => {
+                let items = conditional.items.as_ref().unwrap();
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], "one");
+                assert_eq!(items[1], "two");
+                assert_eq!(items[2], "three");
+            }
+            _ => panic!("Expected Include::Conditional"),
+        }
     }
 
     #[test]
