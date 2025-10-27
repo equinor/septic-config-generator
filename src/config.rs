@@ -385,6 +385,76 @@ layout:
     }
 
     #[test]
+    fn config_parse_single_item_in_conditionals() {
+        let content = r#"
+outputfile: test.cnfg
+templatepath: templates
+sources:
+  - filename: test.csv
+    id: main
+layout:
+  - name: template1.cnfg
+    source: main
+    include:
+      - if: "true"
+        then: one
+"#;
+        let temp_file = create_temp_yaml(content);
+        let config = Config::new(temp_file.path());
+        assert!(config.is_ok());
+        let config = config.unwrap();
+
+        // Check that the single string was converted to a Vec<String> with one element
+        let template = &config.layout[0];
+        let includes = template.include.as_ref().unwrap();
+
+        match &includes[0] {
+            Include::Conditional(conditional) => {
+                let items = conditional.items.as_ref().unwrap();
+                assert_eq!(items.len(), 1);
+                assert_eq!(items[0], "one");
+            }
+            _ => panic!("Expected Include::Conditional"),
+        }
+    }
+
+    #[test]
+    fn config_parse_multiple_items_in_conditionals() {
+        let content = r#"
+outputfile: test.cnfg
+templatepath: templates
+sources:
+  - filename: test.csv
+    id: main
+layout:
+  - name: template1.cnfg
+    source: main
+    include:
+      - if: "true"
+        then: [one, two, three]
+"#;
+        let temp_file = create_temp_yaml(content);
+        let config = Config::new(temp_file.path());
+        assert!(config.is_ok());
+        let config = config.unwrap();
+
+        // Check that the array was preserved correctly
+        let template = &config.layout[0];
+        let includes = template.include.as_ref().unwrap();
+
+        match &includes[0] {
+            Include::Conditional(conditional) => {
+                let items = conditional.items.as_ref().unwrap();
+                assert_eq!(items.len(), 3);
+                assert_eq!(items[0], "one");
+                assert_eq!(items[1], "two");
+                assert_eq!(items[2], "three");
+            }
+            _ => panic!("Expected Include::Conditional"),
+        }
+    }
+
+    #[test]
     fn fail_validate_encoding_unknown() {
         let result = validate_encoding("unknown");
         assert!(result.is_err());
