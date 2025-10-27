@@ -61,7 +61,7 @@ pub struct IncludeConditional {
     /// The condition to evaluate. Uses MiniJinja syntax.
     #[serde(rename = "if")]
     pub condition: String,
-    /// List of items (or single item) to include if the condition is true (can be a single string or array of strings)
+    /// Item(s) to include if the condition is true (can be a single string or array of strings)
     #[serde(rename = "then", deserialize_with = "deserialize_string_or_vec_as_vec")]
     pub items: Option<Vec<String>>,
     /// Whether to continue evaluating further conditions after this one

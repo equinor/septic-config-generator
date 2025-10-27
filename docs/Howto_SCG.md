@@ -271,9 +271,9 @@ column in the source, or `conditional items`. The latter was added in v2.12 and 
 - `if` (string): A [MiniJinja expression](https://docs.rs/minijinja/latest/minijinja/index.html#expression-usage). All
   variables, whether defined on the command line with the `--vars` argument, global sources and rows from the current
   source can be used in the expression.
-- `then` (optional list of strings): A list of items that will be included if the `if`-expression evaluates to `true`.
+- `then` (optional string or list of strings): Item(s) that will be included if the `if`-expression evaluates to `true`.
 - `continue` (optional boolean): If not set or if `false`, stop evaluating further include (or exclude) items for this
-  template. If `true`, continue evaluating following include (or exclude) items.
+  template. If `true`, continue evaluating following include (or exclude) items. String variant was added in v2.15.
 
 If `then` is not specified, the `if`-expression will be evaluated for each row in the source. Any row that causes the
 expression to evaluate to `true` will be included. Use this format for including individual rows based on some property,
