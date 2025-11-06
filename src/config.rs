@@ -60,13 +60,16 @@ where
 pub struct IncludeConditional {
     /// The condition to evaluate. Uses MiniJinja syntax.
     #[serde(rename = "if")]
-    pub condition: String,
+    pub if_: Option<String>,
     /// Item(s) to include if the condition is true (can be a single string or array of strings)
     #[serde(rename = "then", deserialize_with = "deserialize_string_or_vec_as_vec")]
     pub items: Option<Vec<String>>,
-    /// Whether to continue evaluating further conditions after this one
-    #[serde(rename = "continue")]
-    pub continue_: Option<bool>,
+    /// Condition to evaluate for else-if (elif)
+    #[serde(rename = "elif")]
+    pub elif_: Option<String>,
+    /// Item(s) to include if no previous matches (can be a single string or array of strings)
+    #[serde(rename = "else", deserialize_with = "deserialize_string_or_vec_as_vec")]
+    pub else_: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Debug, JsonSchema)]
@@ -243,31 +246,63 @@ pub fn include_exclude_set(
 ) -> Result<HashSet<String>, minijinja::Error> {
     let mut result: HashSet<String> = HashSet::new();
 
+    let mut inside_if = false;
     for item in items {
-        let mut matched = false;
         match item {
             Include::Element(val) => {
                 result.insert(val.clone());
+                inside_if = false;
             }
             Include::Conditional(elem) => {
-                let expr = env.compile_expression(elem.condition.as_str())?;
-                if let Some(items) = &elem.items {
-                    let eval = expr.eval(context! {})?;
-                    if eval.is_true() {
-                        matched = true;
-                        result.extend(items.clone());
-                    }
-                } else {
-                    for (key, row) in source_data {
-                        let eval = expr.eval(row)?;
+                if let Some(if_condition) = &elem.if_ {
+                    inside_if = true;
+                    let expr = env.compile_expression(if_condition.as_str())?;
+                    if let Some(items) = &elem.items {
+                        let eval = expr.eval(context! {})?;
                         if eval.is_true() {
-                            matched = true;
-                            result.insert(key.clone());
+                            result.extend(items.clone());
+                        }
+                    } else {
+                        for (key, row) in source_data {
+                            let eval = expr.eval(row)?;
+                            if eval.is_true() {
+                                result.insert(key.clone());
+                            }
                         }
                     }
                 }
-                if matched && !elem.continue_.unwrap_or(false) {
-                    break;
+                if let Some(elif_condition) = &elem.elif_ {
+                    if !inside_if {
+                        panic!(
+                            // TODO: bail
+                            "'elif' provided without a preceding 'if' in conditional include/exclude"
+                        );
+                    }
+                    let expr = env.compile_expression(elif_condition.as_str())?;
+                    if let Some(items) = &elem.items {
+                        let eval = expr.eval(context! {})?;
+                        if eval.is_true() {
+                            result.extend(items.clone());
+                        }
+                    } else {
+                        for (key, row) in source_data {
+                            let eval = expr.eval(row)?;
+                            if eval.is_true() {
+                                result.insert(key.clone());
+                            }
+                        }
+                    }
+                } else if let Some(else_) = &elem.else_ {
+                    if !inside_if {
+                        panic!(
+                            // TODO: bail
+                            "'else' provided without a preceding 'if' in conditional include/exclude"
+                        );
+                    }
+                    for key in else_ {
+                        result.insert(key.clone());
+                    }
+                    inside_if = false;
                 }
             }
         }
