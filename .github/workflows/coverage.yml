@@ -19,7 +19,7 @@ jobs:
       pull-requests: write # codecov/codecov-action
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: 🦀 Install Rust
         uses: dtolnay/rust-toolchain@stable

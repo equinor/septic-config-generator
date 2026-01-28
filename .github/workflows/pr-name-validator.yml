@@ -24,7 +24,7 @@ jobs:
       pull-requests: write # gh pr edit (gh pr checkout and jef/conventional-commits-pr-action require read)
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Checkout current PR
         run: gh pr checkout $GITHUB_HEAD_REF
 

@@ -21,7 +21,7 @@ jobs:
       checks: write # rustsec/audit-check to create status checks
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: 🕵️ Run cargo audit
         uses: rustsec/audit-check@v2
