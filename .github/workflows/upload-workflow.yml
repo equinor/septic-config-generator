@@ -30,6 +30,9 @@ jobs:
           - x86_64-unknown-linux-gnu
 
     steps:
+      - name: Checkout (to make gh work)
+        uses: actions/checkout@v5
+
       - name: Download artifact
         uses: actions/download-artifact@v7
         with:
@@ -52,7 +55,8 @@ jobs:
           fi
 
       - name: 🚀 Upload binary for ${{ matrix.target }}
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ./release/${{ env.ASSET }}
-          tag_name: ${{ inputs.tag_name }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload ${{ inputs.tag_name }} ./release/$ASSET --clobber
