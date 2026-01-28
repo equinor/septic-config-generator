@@ -7,7 +7,7 @@ on:
       artifact_base_name:
         value: ${{ jobs.build.outputs.artifact_base_name }}
 
-permissions:
+permissions: {}
 
 env:
   CARGO_TERM_COLOR: always

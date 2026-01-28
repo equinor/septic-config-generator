@@ -9,7 +9,7 @@ on:
       - "**/Cargo.toml"
       - "**/Cargo.lock"
 
-permissions:
+permissions: {}
 
 jobs:
   security_audit:

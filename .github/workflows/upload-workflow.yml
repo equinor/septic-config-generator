@@ -10,7 +10,7 @@ on:
         required: true
         type: string
 
-permissions:
+permissions: {}
 
 env:
   CARGO_TERM_COLOR: always
