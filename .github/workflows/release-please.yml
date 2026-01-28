@@ -6,7 +6,7 @@ on:
     branches:
       - main
 
-permissions:
+permissions: {}
 
 jobs:
   release_please:

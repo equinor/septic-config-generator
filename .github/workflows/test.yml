@@ -5,7 +5,7 @@ on:
   workflow_call:
   schedule: [cron: "40 1 * * *"]
 
-permissions:
+permissions: {}
 
 env:
   CARGO_TERM_COLOR: always
