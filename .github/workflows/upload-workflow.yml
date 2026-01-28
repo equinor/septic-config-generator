@@ -11,8 +11,6 @@ on:
         type: string
 
 permissions:
-  contents: write  # softprops/action-gh-release
-  actions: read    # actions/download-artifact
 
 env:
   CARGO_TERM_COLOR: always
@@ -20,7 +18,10 @@ env:
 jobs:
   upload:
     name: Upload to GitHub release
-    runs-on: ubuntu-latest   
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # softprops/action-gh-release
+      actions: read # actions/download-artifact
     strategy:
       matrix:
         target:
@@ -39,7 +40,7 @@ jobs:
         shell: bash
         run: |
           archive_name="scg-${{ inputs.tag_name }}-${{ matrix.target }}"
-          
+
           cd ./release/
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             7z a ${archive_name}.zip scg.exe
@@ -50,7 +51,7 @@ jobs:
             echo "ASSET=$archive_name.tar.gz" >> $GITHUB_ENV
           fi
 
-      - name: 🚀 Upload binary for ${{ matrix.target }} 
+      - name: 🚀 Upload binary for ${{ matrix.target }}
         uses: softprops/action-gh-release@v2
         with:
           files: ./release/${{ env.ASSET }}

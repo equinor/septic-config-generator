@@ -8,9 +8,6 @@ on:
       - reopened
 
 permissions:
-  contents: read        # actions/checkout
-  issues: write         # gh label create
-  pull-requests: write  # gh pr edit (gh pr checkout and jef/conventional-commits-pr-action require read)
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -21,6 +18,11 @@ jobs:
     name: Lint pull request title
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # actions/checkout
+      issues: write # gh label create
+      pull-requests: write # gh pr edit (gh pr checkout and jef/conventional-commits-pr-action require read)
+
     steps:
       - uses: actions/checkout@v5
       - name: Checkout current PR

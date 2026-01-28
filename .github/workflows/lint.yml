@@ -5,7 +5,6 @@ on:
   workflow_call:
 
 permissions:
-  contents: read  # actions/checkout
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,8 +14,7 @@ jobs:
     name: ✨ Format & 📎 Lint
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      security-events: write
+      contents: read # actions/checkout
     steps:
       - name: Checkout source code
         uses: actions/checkout@v5
