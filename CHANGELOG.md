@@ -1,5 +1,37 @@
 # Changelog
 
+## [2.15.0](https://github.com/equinor/septic-config-generator/compare/v2.14.0...v2.15.0) (2026-01-28)
+
+
+### ✨ Features
+
+* conditional inclusion of single row ([#376](https://github.com/equinor/septic-config-generator/issues/376)) ([09904f6](https://github.com/equinor/septic-config-generator/commit/09904f62294074e52a680545402b2359e04c35b8))
+
+
+### 🧹 Chores
+
+* **deps:** bump clap from 4.5.40 to 4.5.55 ([#396](https://github.com/equinor/septic-config-generator/issues/396)) ([a8e7ab9](https://github.com/equinor/septic-config-generator/commit/a8e7ab915de41374be209b4dac4fab7bd345bb7f))
+* **deps:** bump filetime from 0.2.25 to 0.2.27 ([#395](https://github.com/equinor/septic-config-generator/issues/395)) ([53d7f82](https://github.com/equinor/septic-config-generator/commit/53d7f825bb6440715b1c3e4d878d3896f02f05d6))
+* **deps:** bump glob from 0.3.2 to 0.3.3 ([#380](https://github.com/equinor/septic-config-generator/issues/380)) ([35d4eef](https://github.com/equinor/septic-config-generator/commit/35d4eef523bbd2d5b140f8ab6dece9677bb8f20a))
+* **deps:** bump minijinja from 2.10.2 to 2.15.1 ([#394](https://github.com/equinor/septic-config-generator/issues/394)) ([a217ed0](https://github.com/equinor/septic-config-generator/commit/a217ed0c1109ac61e0eff00e08b3320b88b7da28))
+* **deps:** bump regex from 1.11.1 to 1.12.2 ([#383](https://github.com/equinor/septic-config-generator/issues/383)) ([b334c68](https://github.com/equinor/septic-config-generator/commit/b334c6854ed99c750ab4796ef63fbfef7ffe9d6f))
+* **deps:** bump tempfile from 3.20.0 to 3.23.0 ([#378](https://github.com/equinor/septic-config-generator/issues/378)) ([c5ee439](https://github.com/equinor/septic-config-generator/commit/c5ee43992bc0d0ef7f0d7a70a9fd0fe17e8fc4a7))
+
+
+### 👷 CI/CD
+
+* **deps:** bump actions/checkout from 5 to 6 ([#387](https://github.com/equinor/septic-config-generator/issues/387)) ([a2da8bb](https://github.com/equinor/septic-config-generator/commit/a2da8bb1a3ecb7979b2eae33df29323f8ba5bb70))
+* **deps:** bump actions/download-artifact from 5 to 6 ([#379](https://github.com/equinor/septic-config-generator/issues/379)) ([bf54248](https://github.com/equinor/septic-config-generator/commit/bf542485efedde5a6206fd276042ac466e204fc7))
+* **deps:** bump actions/download-artifact from 6 to 7 ([#390](https://github.com/equinor/septic-config-generator/issues/390)) ([1a6a516](https://github.com/equinor/septic-config-generator/commit/1a6a5163a3678200c36fd783e87555827a2a1124))
+* **deps:** bump actions/upload-artifact from 4 to 6 ([#389](https://github.com/equinor/septic-config-generator/issues/389)) ([1949442](https://github.com/equinor/septic-config-generator/commit/19494420f06a7a18bf3c422382d0f1cc92f13ae0))
+* fix workflow permission syntax ([#393](https://github.com/equinor/septic-config-generator/issues/393)) ([7f77a32](https://github.com/equinor/septic-config-generator/commit/7f77a329e2e230d4aaeb4cf1fa3f97192997a3ef))
+* update workflow permissions ([#392](https://github.com/equinor/septic-config-generator/issues/392)) ([e9474c2](https://github.com/equinor/septic-config-generator/commit/e9474c25e1cf283102410b56f9f0fa239600ab59))
+
+
+### 🔨 Refactor
+
+* make clippy happy ([#391](https://github.com/equinor/septic-config-generator/issues/391)) ([6fa99d0](https://github.com/equinor/septic-config-generator/commit/6fa99d0e6cc9fbbdb0b3cf9ffe59902cd0142e27))
+
 ## [2.14.0](https://github.com/equinor/septic-config-generator/compare/v2.13.0...v2.14.0) (2025-10-24)
 
 
