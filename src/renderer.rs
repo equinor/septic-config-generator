@@ -44,7 +44,7 @@ impl CounterMap {
                 format!("Counter '{name}' not found"),
             )
         })?;
-        let new_value = value.map_or_else(|| *counter + 1, |v| v);
+        let new_value = value.unwrap_or_else(|| *counter + 1);
         *counter = new_value;
         Ok(new_value)
     }

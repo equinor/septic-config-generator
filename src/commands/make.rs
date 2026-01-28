@@ -121,12 +121,10 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         .with_context(|| format!("'{}'", cfg_file.display()))
         .map_err(MakeError::CfgFileReadError)?;
 
-    if only_if_changed & cfg.outputfile.is_some() {
-        let outfile = relative_root.join(
-            cfg.outputfile
-                .as_ref()
-                .expect("cmd_make: Unable to unwrap cfg.outputfile"),
-        );
+    if let Some(output) = &cfg.outputfile
+        && only_if_changed
+    {
+        let outfile = relative_root.join(output);
         if outfile.exists() {
             let file_list = collect_file_list(&cfg, &cfg_file, &relative_root)
                 .map_err(MakeError::CollectFileList)?;
