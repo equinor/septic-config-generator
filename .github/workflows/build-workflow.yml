@@ -8,8 +8,6 @@ on:
         value: ${{ jobs.build.outputs.artifact_base_name }}
 
 permissions:
-  contents: read  # actions/checkout
-  actions: write  # actions/upload-artifact
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,7 +15,10 @@ env:
 jobs:
   build:
     name: 🛠️ Build
-    runs-on: ${{ matrix.os }}    
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read # actions/checkout
+      actions: write # actions/upload-artifact
     strategy:
       matrix:
         include:
@@ -51,7 +52,7 @@ jobs:
 
       - name: 🧪 Test
         run: cargo nextest run --profile ci
-         
+
       - name: 🛠️ Build
         run: cargo build --release --verbose --target ${{ matrix.target }}
 
@@ -59,7 +60,7 @@ jobs:
         shell: bash
         run: |
           echo "ARTIFACT_BASE_NAME=SCG-$GITHUB_SHA" >> $GITHUB_ENV
-          
+
           mkdir ./asset
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             mv ./target/${{ matrix.target }}/release/scg.exe ./asset/

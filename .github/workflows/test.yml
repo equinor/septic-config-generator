@@ -6,9 +6,6 @@ on:
   schedule: [cron: "40 1 * * *"]
 
 permissions:
-  contents: read        # actions/checkout
-  checks: write         # EnricoMi/publish-unit-test-result-action to create status checks
-  pull-requests: write  # EnricoMi/publish-unit-test-result-action to comment on PRs
 
 env:
   CARGO_TERM_COLOR: always
@@ -18,9 +15,9 @@ jobs:
     name: 🧪 Test ${{ matrix.rust }}
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      checks: write
-      pull-requests: write
+      contents: read # actions/checkout
+      checks: write # EnricoMi/publish-unit-test-result-action
+      pull-requests: write # EnricoMi/publish-unit-test-result-action
     strategy:
       fail-fast: false
       matrix:

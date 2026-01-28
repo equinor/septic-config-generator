@@ -6,29 +6,41 @@ on:
       - main
   pull_request:
     paths:
-      - '.github/workflows/**'
-      - 'src/**'
-      - 'tests/**'
-      - 'build.rs'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
+      - ".github/workflows/**"
+      - "src/**"
+      - "tests/**"
+      - "build.rs"
+      - "Cargo.toml"
+      - "Cargo.lock"
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+
 jobs:
   lint:
     name: "💎 Code quality"
+    permissions:
+      contents: read # actions/checkout
     uses: ./.github/workflows/lint.yml
 
   test:
     name: "🧪 Test code"
+    permissions:
+      contents: read # actions/checkout
+      checks: write # EnricoMi/publish-unit-test-result-action
+      pull-requests: write # EnricoMi/publish-unit-test-result-action
     uses: ./.github/workflows/test.yml
     secrets: inherit
 
   coverage:
     name: "☂️ Code coverage"
+    permissions:
+      contents: read # actions/checkout
+      checks: write # codecov/codecov-action
+      pull-requests: write # codecov/codecov-action
     uses: ./.github/workflows/coverage.yml
     secrets: inherit

@@ -6,13 +6,15 @@ on:
     branches:
       - main
 
+permissions:
+
 jobs:
   release_please:
     name: 🔖 Release Please
     runs-on: ubuntu-latest
     permissions:
-      contents: write       # googleapis/release-please-action
-      pull-requests: write  # googleapis/release-please-action
+      contents: write
+      pull-requests: write
     steps:
       - name: Create Release
         id: release
@@ -29,11 +31,17 @@ jobs:
     name: "🛠️ Build"
     if: ${{ needs.release_please.outputs.release_created }}
     needs: [release_please]
+    permissions:
+      contents: read
+      actions: write
     uses: ./.github/workflows/build-workflow.yml
 
   upload:
     name: "🚀 Upload"
     needs: [build, release_please]
+    permissions:
+      contents: write
+      actions: read
     uses: ./.github/workflows/upload-workflow.yml
     with:
       artifact_base_name: ${{ needs.build.outputs.artifact_base_name }}
