@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.15.2](https://github.com/equinor/septic-config-generator/compare/v2.15.1...v2.15.2) (2026-01-29)
+
+
+### 🐛 Bug Fixes
+
+* broken conditional include ([#400](https://github.com/equinor/septic-config-generator/issues/400)) ([f2562bf](https://github.com/equinor/septic-config-generator/commit/f2562bfa2709a2336c2333419d1cf815ae8e495c))
+
 ## [2.15.1](https://github.com/equinor/septic-config-generator/compare/v2.15.0...v2.15.1) (2026-01-28)
 
 
