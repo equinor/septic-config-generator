@@ -62,7 +62,11 @@ pub struct IncludeConditional {
     #[serde(rename = "if")]
     pub condition: String,
     /// Item(s) to include if the condition is true (can be a single string or array of strings)
-    #[serde(rename = "then", deserialize_with = "deserialize_string_or_vec_as_vec")]
+    #[serde(
+        rename = "then",
+        default,
+        deserialize_with = "deserialize_string_or_vec_as_vec"
+    )]
     pub items: Option<Vec<String>>,
     /// Whether to continue evaluating further conditions after this one
     #[serde(rename = "continue")]
@@ -449,6 +453,37 @@ layout:
                 assert_eq!(items[0], "one");
                 assert_eq!(items[1], "two");
                 assert_eq!(items[2], "three");
+            }
+            _ => panic!("Expected Include::Conditional"),
+        }
+    }
+
+    #[test]
+    fn config_parse_conditional_without_then() {
+        let content = r#"
+outputfile: test.cnfg
+templatepath: templates
+sources:
+  - filename: test.csv
+    id: main
+layout:
+  - name: template1.cnfg
+    source: main
+    include:
+      - if: "Active is true"
+"#;
+        let temp_file = create_temp_yaml(content);
+        let config = Config::new(temp_file.path());
+        assert!(config.is_ok(), "Config parsing failed: {:?}", config.err());
+        let config = config.unwrap();
+
+        let template = &config.layout[0];
+        let includes = template.include.as_ref().unwrap();
+
+        match &includes[0] {
+            Include::Conditional(conditional) => {
+                assert_eq!(conditional.condition, "Active is true");
+                assert!(conditional.items.is_none());
             }
             _ => panic!("Expected Include::Conditional"),
         }
