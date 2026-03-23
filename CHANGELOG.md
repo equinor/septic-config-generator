@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.15.3](https://github.com/equinor/septic-config-generator/compare/v2.15.2...v2.15.3) (2026-03-23)
+
+
+### 👷 CI/CD
+
+* **deps:** bump actions/checkout from 5 to 6 ([#402](https://github.com/equinor/septic-config-generator/issues/402)) ([73695f3](https://github.com/equinor/septic-config-generator/commit/73695f3a0caa5c416c13d7951609c864b57550e8))
+* **deps:** bump actions/download-artifact from 7 to 8 ([#412](https://github.com/equinor/septic-config-generator/issues/412)) ([72423b3](https://github.com/equinor/septic-config-generator/commit/72423b3e74acf7641e51deaa3660f90826ed2b95))
+* **deps:** bump actions/upload-artifact from 6 to 7 ([#411](https://github.com/equinor/septic-config-generator/issues/411)) ([1e6c91b](https://github.com/equinor/septic-config-generator/commit/1e6c91b5aa8dc03200bd44a4d62ba6b41f18abc5))
+
 ## [2.15.2](https://github.com/equinor/septic-config-generator/compare/v2.15.1...v2.15.2) (2026-01-29)
 
 
