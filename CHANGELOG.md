@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.15.3](https://github.com/equinor/septic-config-generator/compare/v2.15.2...v2.15.3) (2026-04-30)
+
+
+### 🧹 Chores
+
+* **deps:** bump bytes from 1.10.0 to 1.11.1 in the cargo group across 1 directory ([#408](https://github.com/equinor/septic-config-generator/issues/408)) ([70e479a](https://github.com/equinor/septic-config-generator/commit/70e479af919ace1b0a4376822e6a396b979bfd50))
+* **deps:** bump bytes in the cargo group across 1 directory ([70e479a](https://github.com/equinor/septic-config-generator/commit/70e479af919ace1b0a4376822e6a396b979bfd50))
+* **deps:** bump clap from 4.5.40 to 4.5.56 ([#403](https://github.com/equinor/septic-config-generator/issues/403)) ([313b033](https://github.com/equinor/septic-config-generator/commit/313b033a7e4c1624a21cb2bba186921d96f8edc7))
+* **deps:** bump clap from 4.5.56 to 4.5.60 ([#426](https://github.com/equinor/septic-config-generator/issues/426)) ([803c5e3](https://github.com/equinor/septic-config-generator/commit/803c5e3b962743d4bdef861fcbdcf7801bef54f0))
+* **deps:** bump colored from 3.0.0 to 3.1.1 ([#405](https://github.com/equinor/septic-config-generator/issues/405)) ([d6aa7e1](https://github.com/equinor/septic-config-generator/commit/d6aa7e18c3bf67db05ace7d655cc509aae740856))
+* **deps:** bump csv from 1.3.1 to 1.4.0 ([#406](https://github.com/equinor/septic-config-generator/issues/406)) ([bb99a6e](https://github.com/equinor/septic-config-generator/commit/bb99a6e5478e6e1d640d75ed3ef33d02e07b96db))
+* **deps:** bump minijinja from 2.15.1 to 2.19.0 ([#427](https://github.com/equinor/septic-config-generator/issues/427)) ([cd65a2e](https://github.com/equinor/septic-config-generator/commit/cd65a2e4d97ed222bf49eb30960cbf7b291206fa))
+* **deps:** bump schemars from 1.0.4 to 1.2.1 ([#407](https://github.com/equinor/septic-config-generator/issues/407)) ([539ba68](https://github.com/equinor/septic-config-generator/commit/539ba68c4fbd2835c57f18080bc46647498def67))
+* **deps:** bump serde_json from 1.0.140 to 1.0.149 ([#428](https://github.com/equinor/septic-config-generator/issues/428)) ([6ae480c](https://github.com/equinor/septic-config-generator/commit/6ae480ccf7a79c1a94f8c03360068dff28949662))
+* **deps:** bump winresource from 0.1.23 to 0.1.31 ([#429](https://github.com/equinor/septic-config-generator/issues/429)) ([9214731](https://github.com/equinor/septic-config-generator/commit/9214731949f1fdde7d020c1602330f958a18cebc))
+
+
+### 👷 CI/CD
+
+* **deps:** bump actions/checkout from 5 to 6 ([#402](https://github.com/equinor/septic-config-generator/issues/402)) ([73695f3](https://github.com/equinor/septic-config-generator/commit/73695f3a0caa5c416c13d7951609c864b57550e8))
+* **deps:** bump actions/download-artifact from 7 to 8 ([#412](https://github.com/equinor/septic-config-generator/issues/412)) ([72423b3](https://github.com/equinor/septic-config-generator/commit/72423b3e74acf7641e51deaa3660f90826ed2b95))
+* **deps:** bump actions/upload-artifact from 6 to 7 ([#411](https://github.com/equinor/septic-config-generator/issues/411)) ([1e6c91b](https://github.com/equinor/septic-config-generator/commit/1e6c91b5aa8dc03200bd44a4d62ba6b41f18abc5))
+* **deps:** bump codecov/codecov-action from 5 to 6 ([#419](https://github.com/equinor/septic-config-generator/issues/419)) ([edd2cca](https://github.com/equinor/septic-config-generator/commit/edd2cca0a79ff668005d0362ed052d35a27066f2))
+* **deps:** bump googleapis/release-please-action from 4 to 5 ([#424](https://github.com/equinor/septic-config-generator/issues/424)) ([79f6eda](https://github.com/equinor/septic-config-generator/commit/79f6edae5d5dba2ca346018d461809a0d1609a80))
+
 ## [2.15.2](https://github.com/equinor/septic-config-generator/compare/v2.15.1...v2.15.2) (2026-01-29)
 
 
