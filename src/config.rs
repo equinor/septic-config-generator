@@ -124,6 +124,37 @@ pub struct Drawio {
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct ExtractionRowLabel {
+    /// Header for the first column in the extracted CSV file
+    pub header: String,
+    /// Row label template using named placeholders from the extraction paths
+    pub value: String,
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ExtractionValue {
+    /// Path on the form [ObjectType:]ObjectName[.Member]. Member defaults to Meas.
+    pub path: String,
+    /// Header for this value in the extracted CSV file
+    pub header: String,
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Extraction {
+    /// Default Septic config file to extract values from
+    pub from: Option<String>,
+    /// ID of the CSV source that receives the extracted values
+    pub source: String,
+    /// Configuration for the first CSV column
+    pub rowlabel: ExtractionRowLabel,
+    /// Values to extract into the remaining CSV columns
+    pub values: Vec<ExtractionValue>,
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
 #[schemars(title = "Septic Config Generator Configuration")]
 pub struct Config {
     /// The file that will be generated. Writes to stdout if not specified.
@@ -147,6 +178,8 @@ pub struct Config {
     pub layout: Vec<Template>,
     /// List of .drawio files to process
     pub drawio: Option<Vec<Drawio>>,
+    /// Configurations for extracting values from existing Septic configs
+    pub extraction: Option<Vec<Extraction>>,
 }
 
 pub trait RowFiltering {
@@ -233,6 +266,8 @@ impl Config {
                 validate_source(source)?;
             }
         }
+
+        validate_extraction(&cfg)?;
 
         validate_encoding(&cfg.encoding)?;
 
@@ -327,6 +362,83 @@ fn validate_source(source: &Source) -> Result<()> {
     Ok(())
 }
 
+fn validate_extraction(config: &Config) -> Result<()> {
+    let Some(extractions) = &config.extraction else {
+        return Ok(());
+    };
+
+    if extractions.is_empty() {
+        bail!("field 'extraction' must contain at least one element");
+    }
+
+    let mut extraction_sources = HashSet::new();
+    for extraction in extractions {
+        if !extraction_sources.insert(&extraction.source) {
+            bail!("duplicate extraction source '{}'", extraction.source);
+        }
+
+        validate_extraction_element(config, extraction)?;
+    }
+
+    Ok(())
+}
+
+fn validate_extraction_element(config: &Config, extraction: &Extraction) -> Result<()> {
+    if extraction.values.is_empty() {
+        bail!("field 'extraction.values' must contain at least one value");
+    }
+
+    let mut headers = HashSet::new();
+    for header in std::iter::once(&extraction.rowlabel.header)
+        .chain(extraction.values.iter().map(|value| &value.header))
+    {
+        if header.trim().is_empty() {
+            bail!("extraction headers must not be empty");
+        }
+        if !headers.insert(header) {
+            bail!("duplicate extraction header '{header}'");
+        }
+    }
+
+    if extraction.rowlabel.value.trim().is_empty() {
+        bail!("field 'extraction.rowlabel.value' must not be empty");
+    }
+    if let Some(value) = extraction
+        .values
+        .iter()
+        .find(|value| value.path.trim().is_empty())
+    {
+        bail!(
+            "extraction path for header '{}' must not be empty",
+            value.header
+        );
+    }
+
+    let matching_sources: Vec<_> = config
+        .sources
+        .iter()
+        .flatten()
+        .filter(|source| source.id == extraction.source)
+        .collect();
+    let [source] = matching_sources.as_slice() else {
+        bail!(
+            "extraction source '{}' must reference exactly one configured source",
+            extraction.source
+        );
+    };
+
+    match &source.filename {
+        Filename::Single(filename)
+            if Path::new(filename).extension().and_then(|ext| ext.to_str()) == Some("csv") => {}
+        _ => bail!(
+            "extraction source '{}' must reference a single .csv file",
+            extraction.source
+        ),
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -386,6 +498,43 @@ layout:
         assert!(config.adjustspacing);
         assert!(config.verifycontent);
         assert_eq!(config.encoding, "Windows-1252");
+    }
+
+    #[test]
+    fn config_reads_valid_extraction() {
+        let content = r#"{
+"templatepath": "templates",
+"sources": [{"filename": "extracted.csv", "id": "extracted"}],
+"layout": [],
+"extraction": [{
+    "from": "current.cnfg",
+    "source": "extracted",
+    "rowlabel": {"header": "Wellname", "value": "Well{well}"},
+    "values": [{"path": "Cvr:D{well}Qg.Meas", "header": "QgMeas"}]
+}]}
+"#;
+        let config = Config::new(create_temp_yaml(content).path()).unwrap();
+        let extraction = config.extraction.unwrap().remove(0);
+
+        assert_eq!(extraction.source, "extracted");
+        assert_eq!(extraction.values[0].header, "QgMeas");
+    }
+
+    #[test]
+    fn config_rejects_non_csv_extraction_source() {
+        let content = r#"{
+"templatepath": "templates",
+"sources": [{"filename": "extracted.xlsx", "id": "extracted", "sheet": "Sheet1"}],
+"layout": [],
+"extraction": [{
+    "source": "extracted",
+    "rowlabel": {"header": "Wellname", "value": "Well{well}"},
+    "values": [{"path": "Cvr:D{well}Qg.Meas", "header": "QgMeas"}]
+}]}
+"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(error.to_string().contains("single .csv file"));
     }
 
     #[test]

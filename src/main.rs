@@ -18,5 +18,6 @@ fn main() {
         Commands::Update(update) => update.execute(),
         Commands::Drawio(drawio) => drawio.execute(),
         Commands::Schema(schema) => schema.execute(),
+        Commands::Extract(extract) => extract.execute(),
     }
 }

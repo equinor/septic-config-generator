@@ -65,6 +65,16 @@
       "items": {
         "$ref": "#/definitions/Drawio"
       }
+    },
+    "extraction": {
+      "description": "Configurations for extracting values from existing Septic configs",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Extraction"
+      }
     }
   },
   "additionalProperties": false,
@@ -192,14 +202,15 @@
           "type": "string"
         },
         "then": {
-          "description": "List of items to include if the condition is true",
+          "description": "Item(s) to include if the condition is true (can be a single string or array of strings)",
           "type": [
             "array",
             "null"
           ],
           "items": {
             "type": "string"
-          }
+          },
+          "default": null
         },
         "continue": {
           "description": "Whether to continue evaluating further conditions after this one",
@@ -278,6 +289,79 @@
       },
       "required": [
         "input"
+      ]
+    },
+    "Extraction": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "Default Septic config file to extract values from",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "description": "ID of the CSV source that receives the extracted values",
+          "type": "string"
+        },
+        "rowlabel": {
+          "description": "Configuration for the first CSV column",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ExtractionRowLabel"
+            }
+          ]
+        },
+        "values": {
+          "description": "Values to extract into the remaining CSV columns",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExtractionValue"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "rowlabel",
+        "values"
+      ]
+    },
+    "ExtractionRowLabel": {
+      "type": "object",
+      "properties": {
+        "header": {
+          "description": "Header for the first column in the extracted CSV file",
+          "type": "string"
+        },
+        "value": {
+          "description": "Row label template using named placeholders from the extraction paths",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "header",
+        "value"
+      ]
+    },
+    "ExtractionValue": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "Path on the form [ObjectType:]ObjectName[.Member]. Member defaults to Meas.",
+          "type": "string"
+        },
+        "header": {
+          "description": "Header for this value in the extracted CSV file",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "header"
       ]
     }
   }

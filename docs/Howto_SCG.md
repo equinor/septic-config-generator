@@ -30,6 +30,7 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look in
     - [`gitcommitlong`](#gitcommitlong)
     - [`now()`](#now)
     - [`scgversion`](#scgversion)
+  - [scg extract](#scg-extract)
 - [scg checklogs](#scg-checklogs)
 - [scg update](#scg-update)
 - [Howto/tutorial](#howtotutorial)
@@ -591,6 +592,54 @@ Example:
 Try for example to add the following line at the top of the first template file:  
 `// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
 
+## scg extract
+
+This command extracts values from an existing Septic configuration into a CSV source that can thereafter be used
+`scg make`:
+
+```text
+scg extract CONFIG.yaml [SOURCE.cnfg]
+```
+
+One command can update multiple CSV sources, as defined in the optional `extraction` section in the YAML configuration
+file. The optional command-line source overrides `from` for every extraction element. Configured paths are relative to
+the YAML file; a command-line source is relative to the current directory. Each extraction target is selected by its ID
+from `sources` and must be a single CSV file.
+
+```yaml
+sources:
+  - filename: extracted.csv
+    id: extracted
+    delimiter: ";"
+
+extraction:
+  - from: example.cnfg
+    source: extracted
+    rowlabel:
+      header: Wellname
+      value: "{well}"
+    values:
+      - path: "Evr:{well}CEstCvG"
+        header: CEstCvG
+      - path: "Evr:{well}CEstCvO.Meas"
+        header: CEstCvO
+```
+
+Paths use `[ObjectType:]ObjectName[.Member]`. If `.Member` is omitted, it defaults to `.Meas`. Named placeholders in the
+object name join values into rows and can be used in `rowlabel.value`. The object type is optional, but an unqualified
+path that finds multiple values is an error. All value paths must use the same placeholders.
+
+The example produces `extracted.csv` with the following format::
+
+```csv
+Wellname;CEstCvG;CEstCvO
+D01;0.934;0.142
+D02;1.129;-0.135
+```
+
+Rows follow their first occurrence in the CNFG file. Missing values produce empty cells and one compact warning after
+extraction. Quoted CNFG strings are written as logical values without their CNFG quote characters.
+
 ## scg checklogs
 
 This command is used to inspect the `.out` file and the newest (by timestamp) `.cnc` file in the specified run directory
@@ -789,7 +838,6 @@ images and extracting coordinates and metadata for use in configuration files.
 To use these features, you must have the following installed:
 
 1. **draw.io Desktop Application**
-
    - Windows: Open PowerShell as Administrator and run:
 
      ```sh
@@ -807,7 +855,6 @@ To use these features, you must have the following installed:
 2. **VSCode Extensions**
 
    Two extensions are required for the best experience:
-
    - **draw.io Integration**: Provides draw.io diagram editing capabilities directly in VSCode
    - **Septic Extension**: Adds specialized diagram components for SCG
 
@@ -878,13 +925,11 @@ By default, draw.io will automatically crop images when exporting to PNG, which 
 ensure consistent sizing:
 
 1. **Create a dedicated background layer**:
-
    - Open the layers panel (usually in the bottom-right)
    - Add a new layer and name it "Background"
    - Move it to the bottom of the layer stack
 
 2. **Add a fixed-size background rectangle**:
-
    - Insert a rectangle on the background layer
    - Set its dimensions to match your desired output size (e.g., 1920×1082)
      - **Note**: For 1920×1080 resolution, add 2 pixels to the width (use 1922) to compensate for draw.io's sizing
