@@ -1,5 +1,5 @@
-use crate::cnfg;
 use crate::config::{Config, Extraction, Filename};
+use crate::septic_cnfg;
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use csv::WriterBuilder;
@@ -82,7 +82,7 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
                 config.encoding
             );
         }
-        let objects = cnfg::parse(&contents)?;
+        let objects = septic_cnfg::parse(&contents)?;
         let (output, warnings) = extract_to_csv(extraction, &config, &objects)?;
         let target_source = config
             .sources
@@ -116,7 +116,7 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
 fn extract_to_csv(
     extraction: &Extraction,
     config: &Config,
-    objects: &[cnfg::Object],
+    objects: &[septic_cnfg::Object],
 ) -> Result<(Vec<u8>, Vec<String>)> {
     let patterns: Vec<_> = extraction
         .values
@@ -350,7 +350,7 @@ mod tests {
     #[test]
     fn extracts_rows_by_named_placeholder() {
         let (config, extraction) = config_and_extraction();
-        let objects = cnfg::parse(
+        let objects = septic_cnfg::parse(
             "Cvr: D01Qg\nMeas= 230000\nMvr: D01Zpc\nMeas= 35\nCvr: D02Qg\nMeas= 240000",
         )
         .unwrap();
@@ -369,7 +369,7 @@ mod tests {
         let (config, mut extraction) = config_and_extraction();
         extraction.values.truncate(1);
         extraction.values[0].path = "D{well}Qg.Meas".to_string();
-        let objects = cnfg::parse("SopcCvr: D01Qg\nMeas= 1\nCvr: D01Qg\nMeas= 2").unwrap();
+        let objects = septic_cnfg::parse("SopcCvr: D01Qg\nMeas= 1\nCvr: D01Qg\nMeas= 2").unwrap();
 
         let error = extract_to_csv(&extraction, &config, &objects).unwrap_err();
 
