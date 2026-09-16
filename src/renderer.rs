@@ -303,7 +303,7 @@ impl<'a> MiniJinja<'a> {
 
             let filtered_data = template
                 .apply_filters(source_rows, &self.env)
-                .with_context(|| format!("template {:?}", &template.name))?;
+                .with_context(|| format!("template {:?}", template.name))?;
 
             for (_key, row) in filtered_data {
                 let mut tmpl_rend = self.render(&template.name, Some(row))?;

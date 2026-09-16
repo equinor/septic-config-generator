@@ -121,9 +121,9 @@ fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>)> {
     let entries = glob(rundir.join("*.out").to_str().unwrap())?;
     let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
     let path = match pathvec.len() {
-        0 => return Err(anyhow!("No .out file found in {:?}", &rundir)),
+        0 => return Err(anyhow!("No .out file found in {:?}", rundir)),
         1 => pathvec[0].clone(),
-        _ => return Err(anyhow!("More than one .out file found in {:?}", &rundir)),
+        _ => return Err(anyhow!("More than one .out file found in {:?}", rundir)),
     };
     let lines = process_single_startlog(&path, &regex_set)?;
     Ok((path, lines))
@@ -140,7 +140,7 @@ fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>)> {
     let entries = glob(rundir.join("*.cnc").to_str().unwrap())?;
     let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
     let path = match pathvec.len() {
-        0 => return Err(anyhow!("No .cnc file found in {:?}", &rundir)),
+        0 => return Err(anyhow!("No .cnc file found in {:?}", rundir)),
         1 => pathvec[0].clone(),
         _ => {
             if let Some(newest_file) = get_newest_file(&pathvec) {

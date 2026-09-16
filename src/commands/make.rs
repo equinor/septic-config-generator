@@ -181,7 +181,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
         {
             backup_file_if_exists(&path);
             let mut f = fs::File::create(&path)
-                .with_context(|| format!("Problem creating output file '{}'", &path.display()))
+                .with_context(|| format!("Problem creating output file '{}'", path.display()))
                 .map_err(MakeError::CreateOutputFile)?;
 
             let encoding = encoding_rs::Encoding::for_label(cfg.encoding.as_bytes())
@@ -190,7 +190,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
             let (buffer, _encoding, _b) = encoding.encode(&rendered);
 
             f.write_all(&buffer)
-                .with_context(|| format!("Problem writing output file '{}'", &path.display()))
+                .with_context(|| format!("Problem writing output file '{}'", path.display()))
                 .map_err(MakeError::CreateOutputFile)?
         }
     } else {
@@ -248,7 +248,7 @@ fn check_if_overwrite_outfile(
     verifycontent: bool,
 ) -> Result<bool, MakeError> {
     let file = fs::File::open(path)
-        .with_context(|| format!("Problem opening file '{}'", &path.display()))
+        .with_context(|| format!("Problem opening file '{}'", path.display()))
         .map_err(MakeError::Other)?;
 
     let encoding =
@@ -259,7 +259,7 @@ fn check_if_overwrite_outfile(
     let mut old_file_content = String::new();
     reader
         .read_to_string(&mut old_file_content)
-        .with_context(|| format!("Problem reading file '{}'", &path.display()))
+        .with_context(|| format!("Problem reading file '{}'", path.display()))
         .map_err(MakeError::Other)?;
 
     let diff = create_patch(&old_file_content, rendered);
