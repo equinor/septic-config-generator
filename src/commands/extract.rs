@@ -2,7 +2,7 @@ use crate::config::{Config, Extraction, Filename};
 use crate::septic_cnfg;
 use anyhow::{Context, Result, bail};
 use clap::Parser;
-use csv::WriterBuilder;
+use csv::{ReaderBuilder, Trim, WriterBuilder};
 use indexmap::IndexMap;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
@@ -42,7 +42,14 @@ struct ExtractedRow {
 struct PreparedExtraction {
     target: PathBuf,
     output: Vec<u8>,
-    warnings: Vec<String>,
+    messages: Vec<String>,
+}
+
+#[derive(Debug)]
+struct ExtractionResult {
+    output: Vec<u8>,
+    row_labels: Vec<String>,
+    missing_values: Vec<String>,
 }
 
 fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()> {
@@ -79,7 +86,7 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
             encoding,
             &config.encoding,
         )?;
-        let (output, warnings) = extract_to_csv(extraction, &config, objects)?;
+        let result = extract_to_csv(extraction, &config, objects)?;
         let target_source = config
             .sources
             .iter()
@@ -89,21 +96,26 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
         let Filename::Single(target) = &target_source.filename else {
             unreachable!("Config::new validates extraction target type")
         };
+        let target = root.join(target);
+        let delimiter = target_source.delimiter.unwrap_or(';');
+        let mut messages = if target.exists() {
+            compare_row_labels(&read_row_labels(&target, delimiter)?, &result.row_labels)
+        } else {
+            Vec::new()
+        };
+        messages.extend(result.missing_values);
         prepared.push(PreparedExtraction {
-            target: root.join(target),
-            output,
-            warnings,
+            target,
+            output: result.output,
+            messages,
         });
     }
 
     for extraction in prepared {
         fs::write(&extraction.target, extraction.output)
             .with_context(|| format!("Problem writing '{}'", extraction.target.display()))?;
-        if !extraction.warnings.is_empty() {
-            eprintln!(
-                "Unable to find value for the following: {}",
-                extraction.warnings.join(", ")
-            );
+        for message in extraction.messages {
+            eprintln!("{message}");
         }
     }
     Ok(())
@@ -137,7 +149,7 @@ fn extract_to_csv(
     extraction: &Extraction,
     config: &Config,
     objects: &[septic_cnfg::Object],
-) -> Result<(Vec<u8>, Vec<String>)> {
+) -> Result<ExtractionResult> {
     let patterns: Vec<_> = extraction
         .values
         .iter()
@@ -224,7 +236,6 @@ fn extract_to_csv(
         .chain(extraction.values.iter().map(|value| value.header.as_str()));
     writer.write_record(headers)?;
 
-    let mut warnings = Vec::new();
     for row in rows.values() {
         let record = std::iter::once(row.label.as_str()).chain(
             row.values
@@ -232,22 +243,70 @@ fn extract_to_csv(
                 .map(|value| value.as_deref().unwrap_or("")),
         );
         writer.write_record(record)?;
-        for (column, value) in row.values.iter().enumerate() {
-            if value.is_none() {
-                warnings.push(format!(
-                    "{} ({})",
-                    row.label, extraction.values[column].header
-                ));
-            }
-        }
-    }
-    if rows.is_empty() {
-        for pattern in &patterns {
-            warnings.push(pattern.original.clone());
-        }
     }
     writer.flush()?;
-    Ok((writer.into_inner()?, warnings))
+    let missing_values = extraction
+        .values
+        .iter()
+        .enumerate()
+        .filter_map(|(column, value)| {
+            let labels: Vec<_> = rows
+                .values()
+                .filter(|row| row.values[column].is_none())
+                .map(|row| format!("'{}'", row.label))
+                .collect();
+            (!labels.is_empty()).then(|| {
+                format!(
+                    "Value '{}' not found for {}",
+                    value.header,
+                    labels.join(", ")
+                )
+            })
+        })
+        .collect();
+    Ok(ExtractionResult {
+        output: writer.into_inner()?,
+        row_labels: rows.values().map(|row| row.label.clone()).collect(),
+        missing_values,
+    })
+}
+
+fn read_row_labels(path: &Path, delimiter: char) -> Result<Vec<String>> {
+    let mut reader = ReaderBuilder::new()
+        .delimiter(delimiter as u8)
+        .trim(Trim::All)
+        .from_path(path)
+        .with_context(|| format!("Problem reading existing CSV '{}'", path.display()))?;
+    let mut labels = Vec::new();
+    for record in reader.records() {
+        let record =
+            record.with_context(|| format!("Problem reading existing CSV '{}'", path.display()))?;
+        labels.push(record.get(0).unwrap_or_default().to_string());
+    }
+    Ok(labels)
+}
+
+fn compare_row_labels(existing: &[String], extracted: &[String]) -> Vec<String> {
+    let existing_set: HashSet<_> = existing.iter().collect();
+    let extracted_set: HashSet<_> = extracted.iter().collect();
+    let added: Vec<_> = extracted
+        .iter()
+        .filter(|label| !existing_set.contains(label))
+        .cloned()
+        .collect();
+    let removed: Vec<_> = existing
+        .iter()
+        .filter(|label| !extracted_set.contains(label))
+        .cloned()
+        .collect();
+    let mut messages = Vec::new();
+    if !added.is_empty() {
+        messages.push(format!("Rows added: {}", added.join(", ")));
+    }
+    if !removed.is_empty() {
+        messages.push(format!("Rows removed: {}", removed.join(", ")));
+    }
+    messages
 }
 
 fn compile_path(path: &str) -> Result<PathPattern> {
@@ -382,13 +441,37 @@ mod tests {
         )
         .unwrap();
 
-        let (output, warnings) = extract_to_csv(&extraction, &config, &objects).unwrap();
+        let result = extract_to_csv(&extraction, &config, &objects).unwrap();
 
         assert_eq!(
-            String::from_utf8(output).unwrap(),
+            String::from_utf8(result.output).unwrap(),
             "Wellname,QgMeas,ZpcMeas\nWell01,230000,35\nWell02,240000,\n"
         );
-        assert_eq!(warnings, ["Well02 (ZpcMeas)"]);
+        assert_eq!(
+            result.missing_values,
+            ["Value 'ZpcMeas' not found for 'Well02'"]
+        );
+        assert_eq!(result.row_labels, ["Well01", "Well02"]);
+    }
+
+    #[test]
+    fn reports_added_and_removed_rows_in_source_order() {
+        let existing = vec!["D11".to_string(), "D01".to_string(), "D12".to_string()];
+        let extracted = vec!["D01".to_string(), "D02".to_string(), "D03".to_string()];
+
+        assert_eq!(
+            compare_row_labels(&existing, &extracted),
+            ["Rows added: D02, D03", "Rows removed: D11, D12"]
+        );
+    }
+
+    #[test]
+    fn reads_existing_labels_with_configured_delimiter() {
+        let directory = tempdir().unwrap();
+        let path = directory.path().join("existing.csv");
+        fs::write(&path, "Well;Value\n D01 ;1\nD02;2\n").unwrap();
+
+        assert_eq!(read_row_labels(&path, ';').unwrap(), ["D01", "D02"]);
     }
 
     #[test]
@@ -484,6 +567,48 @@ mod tests {
                 .unwrap()
                 .len(),
             1
+        );
+    }
+
+    #[test]
+    fn invalid_existing_csv_does_not_overwrite_prepared_targets() {
+        let directory = tempdir().unwrap();
+        let config_file = directory.path().join("extract.yaml");
+        let source_file = directory.path().join("source.cnfg");
+        let first_target = directory.path().join("first.csv");
+        let second_target = directory.path().join("second.csv");
+        fs::write(
+            &config_file,
+            r#"{
+"templatepath": "templates",
+"sources": [
+    {"filename": "first.csv", "id": "first"},
+    {"filename": "second.csv", "id": "second"}
+],
+"layout": [],
+"extraction": [
+    {
+        "source": "first",
+        "rowlabel": {"header": "Well", "value": "{well}"},
+        "values": [{"path": "Cvr:{well}Qg", "header": "Meas"}]
+    },
+    {
+        "source": "second",
+        "rowlabel": {"header": "Well", "value": "{well}"},
+        "values": [{"path": "Cvr:{well}Qg", "header": "Meas"}]
+    }
+]}
+"#,
+        )
+        .unwrap();
+        fs::write(&source_file, "Cvr: D01Qg\nMeas= 1").unwrap();
+        fs::write(&first_target, "Well;Meas\nold;1\n").unwrap();
+        fs::write(&second_target, "Well;Meas\nbroken\n").unwrap();
+
+        assert!(cmd_extract(&config_file, Some(&source_file)).is_err());
+        assert_eq!(
+            fs::read_to_string(first_target).unwrap(),
+            "Well;Meas\nold;1\n"
         );
     }
 }

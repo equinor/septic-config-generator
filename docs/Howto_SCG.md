@@ -30,7 +30,7 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look in
     - [`gitcommitlong`](#gitcommitlong)
     - [`now()`](#now)
     - [`scgversion`](#scgversion)
-  - [scg extract](#scg-extract)
+- [scg extract](#scg-extract)
 - [scg checklogs](#scg-checklogs)
 - [scg update](#scg-update)
 - [Howto/tutorial](#howtotutorial)
@@ -637,8 +637,8 @@ D01;0.934;0.142
 D02;1.129;-0.135
 ```
 
-Rows follow their first occurrence in the CNFG file. Missing values produce empty cells and one compact warning after
-extraction. Quoted CNFG strings are written as logical values without their CNFG quote characters.
+Rows follow their first occurrence in the CNFG file. Added and removed row labels are reported. Missing values produce
+empty cells and are reported.
 
 ## scg checklogs
 
