@@ -13,10 +13,11 @@ impl Update {
     pub fn execute(&self) {
         cmd_update(&self.token).unwrap_or_else(|err| {
             eprintln!("{err}");
-            if let su_Error::Network(_) = err
-                && err.to_string().contains("403") {
-                    eprintln!("Most likely you are rate limited. Wait a while before trying again or use another network.")
-                };
+            if let su_Error::RateLimited { .. } = err {
+                eprintln!(
+                    "You are rate limited. Wait a while before trying again or use another network."
+                )
+            };
             std::process::exit(1);
         });
     }
@@ -37,10 +38,13 @@ fn cmd_update(token: &Option<String>) -> Result<(), su_Error> {
 
     let status = updater.build()?.update()?;
     match status {
-        self_update::Status::UpToDate(_) => println!("Already at latest version, nothing to do."),
-        self_update::Status::Updated(version) => {
+        self_update::VersionStatus::UpToDate(_) => {
+            println!("Already at latest version, nothing to do.")
+        }
+        self_update::VersionStatus::Updated(version) => {
             println!("Successfully updated to v{version:#}!")
         }
+        _ => println!("Update completed with an unrecognized status."),
     }
     Ok(())
 }
