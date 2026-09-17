@@ -66,7 +66,7 @@
         "$ref": "#/definitions/Drawio"
       }
     },
-    "extraction": {
+    "extract": {
       "description": "Configuration for extracting values from an existing Septic config",
       "anyOf": [
         {
@@ -302,7 +302,7 @@
             "null"
           ]
         },
-        "sources": {
+        "to": {
           "description": "CSV sources to generate from the extracted values",
           "type": "array",
           "items": {
@@ -312,7 +312,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "sources"
+        "to"
       ]
     },
     "ExtractionSource": {

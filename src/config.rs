@@ -161,7 +161,7 @@ pub struct Extraction {
     /// Default Septic config file to extract values from
     pub from: Option<String>,
     /// CSV sources to generate from the extracted values
-    pub sources: Vec<ExtractionSource>,
+    pub to: Vec<ExtractionSource>,
 }
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
@@ -190,7 +190,7 @@ pub struct Config {
     /// List of .drawio files to process
     pub drawio: Option<Vec<Drawio>>,
     /// Configuration for extracting values from an existing Septic config
-    pub extraction: Option<Extraction>,
+    pub extract: Option<Extraction>,
 }
 
 pub trait RowFiltering {
@@ -374,18 +374,18 @@ fn validate_source(source: &Source) -> Result<()> {
 }
 
 fn validate_extraction(config: &Config) -> Result<()> {
-    let Some(extraction) = &config.extraction else {
+    let Some(extraction) = &config.extract else {
         return Ok(());
     };
 
-    if extraction.sources.is_empty() {
-        bail!("field 'extraction.sources' must contain at least one source");
+    if extraction.to.is_empty() {
+        bail!("field 'extract.to' must contain at least one source");
     }
 
     let mut extraction_sources = HashSet::new();
-    for source in &extraction.sources {
+    for source in &extraction.to {
         if !extraction_sources.insert(&source.id) {
-            bail!("duplicate extraction source '{}'", source.id);
+            bail!("duplicate extract source '{}'", source.id);
         }
         validate_extraction_source(config, source)?;
     }
@@ -395,7 +395,7 @@ fn validate_extraction(config: &Config) -> Result<()> {
 
 fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) -> Result<()> {
     if extraction.values.is_empty() {
-        bail!("field 'extraction.values' must contain at least one value");
+        bail!("field 'extract.values' must contain at least one value");
     }
 
     let mut headers = HashSet::new();
@@ -403,15 +403,15 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
         .chain(extraction.values.iter().map(|value| &value.header))
     {
         if header.trim().is_empty() {
-            bail!("extraction headers must not be empty");
+            bail!("extract headers must not be empty");
         }
         if !headers.insert(header) {
-            bail!("duplicate extraction header '{header}'");
+            bail!("duplicate extract header '{header}'");
         }
     }
 
     if extraction.rowlabel.value.trim().is_empty() {
-        bail!("field 'extraction.rowlabel.value' must not be empty");
+        bail!("field 'extract.rowlabel.value' must not be empty");
     }
     if let Some(value) = extraction
         .values
@@ -419,7 +419,7 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
         .find(|value| value.name.trim().is_empty())
     {
         bail!(
-            "extraction type and name for header '{}' must not be empty",
+            "extract type and name for header '{}' must not be empty",
             value.header
         );
     }
@@ -432,7 +432,7 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
         .collect();
     let [source] = matching_sources.as_slice() else {
         bail!(
-            "extraction source '{}' must reference exactly one configured source",
+            "extract source '{}' must reference exactly one configured source",
             extraction.id
         );
     };
@@ -441,7 +441,7 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
         Filename::Single(filename)
             if Path::new(filename).extension().and_then(|ext| ext.to_str()) == Some("csv") => {}
         _ => bail!(
-            "extraction source '{}' must reference a single .csv file",
+            "extract source '{}' must reference a single .csv file",
             extraction.id
         ),
     }
@@ -516,9 +516,9 @@ layout:
 "templatepath": "templates",
 "sources": [{"filename": "extracted.csv", "id": "extracted"}],
 "layout": [],
-"extraction": {
+"extract": {
     "from": "current.cnfg",
-    "sources": [{
+    "to": [{
         "id": "extracted",
         "rowlabel": {"header": "Wellname", "value": "Well{well}"},
         "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "QgMeas"}]
@@ -526,10 +526,10 @@ layout:
 }}
 "#;
         let config = Config::new(create_temp_yaml(content).path()).unwrap();
-        let extraction = config.extraction.unwrap();
+        let extraction = config.extract.unwrap();
 
-        assert_eq!(extraction.sources[0].id, "extracted");
-        assert_eq!(extraction.sources[0].values[0].header, "QgMeas");
+        assert_eq!(extraction.to[0].id, "extracted");
+        assert_eq!(extraction.to[0].values[0].header, "QgMeas");
     }
 
     #[test]
@@ -538,8 +538,8 @@ layout:
 "templatepath": "templates",
 "sources": [{"filename": "extracted.xlsx", "id": "extracted", "sheet": "Sheet1"}],
 "layout": [],
-"extraction": {
-    "sources": [{
+"extract": {
+    "to": [{
         "id": "extracted",
         "rowlabel": {"header": "Wellname", "value": "Well{well}"},
         "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "QgMeas"}]

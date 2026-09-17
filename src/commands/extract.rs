@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 pub struct Extract {
     /// The yaml config file
     pub config_file: PathBuf,
-    /// Septic config file to extract from (overrides extraction.from)
+    /// Septic config file to extract from (overrides extract.from)
     pub source_file: Option<PathBuf>,
 }
 
@@ -61,10 +61,7 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
     let root = config_file.parent().unwrap_or_else(|| Path::new(""));
     let config = Config::new(&config_file)
         .with_context(|| format!("Problem reading '{}'", config_file.display()))?;
-    let extraction = config
-        .extraction
-        .as_ref()
-        .context("missing field 'extraction'")?;
+    let extraction = config.extract.as_ref().context("missing field 'extract'")?;
     let encoding = encoding_rs::Encoding::for_label(config.encoding.as_bytes())
         .expect("Config::new validates encoding");
 
@@ -74,12 +71,12 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
             extraction
                 .from
                 .as_deref()
-                .context("missing field 'extraction.from' and no source file was provided")?,
+                .context("missing field 'extract.from' and no source file was provided")?,
         ),
     };
     let objects = load_objects(&source_file, encoding, &config.encoding)?;
     let mut prepared = Vec::new();
-    for extraction_source in &extraction.sources {
+    for extraction_source in &extraction.to {
         let result = extract_to_csv(extraction_source, &config, &objects)?;
         let target_source = config
             .sources
@@ -533,9 +530,9 @@ mod tests {
     {"filename": "secondary.csv", "id": "secondary"}
 ],
 "layout": [],
-"extraction": {
+"extract": {
         "from": "missing.cnfg",
-        "sources": [
+        "to": [
             {
                 "id": "extracted",
                 "rowlabel": {"header": "Wellname", "value": "Well{well}"},
