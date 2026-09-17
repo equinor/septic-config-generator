@@ -1831,7 +1831,7 @@ name = "septic-config-generator"
 version = "2.15.3"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
+ "base64 0.23.1",
  "calamine",
  "chrono",
  "clap",
