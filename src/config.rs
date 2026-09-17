@@ -127,15 +127,19 @@ pub struct Drawio {
 pub struct ExtractionRowLabel {
     /// Header for the first column in the extracted CSV file
     pub header: String,
-    /// Row label template using named placeholders from the extraction paths
+    /// Row label template using named captures from extraction names
     pub value: String,
 }
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ExtractionValue {
-    /// Path on the form [ObjectType:]ObjectName[.Member]. Member defaults to Meas.
-    pub path: String,
+    /// Optional object type regular expression
+    pub r#type: Option<String>,
+    /// Object name regular expression, optionally containing named captures
+    pub name: String,
+    /// Member regular expression. Defaults to Meas.
+    pub member: Option<String>,
     /// Header for this value in the extracted CSV file
     pub header: String,
 }
@@ -412,10 +416,10 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
     if let Some(value) = extraction
         .values
         .iter()
-        .find(|value| value.path.trim().is_empty())
+        .find(|value| value.name.trim().is_empty())
     {
         bail!(
-            "extraction path for header '{}' must not be empty",
+            "extraction type and name for header '{}' must not be empty",
             value.header
         );
     }
@@ -517,7 +521,7 @@ layout:
     "sources": [{
         "id": "extracted",
         "rowlabel": {"header": "Wellname", "value": "Well{well}"},
-        "values": [{"path": "Cvr:D{well}Qg.Meas", "header": "QgMeas"}]
+        "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "QgMeas"}]
     }]
 }}
 "#;
@@ -538,7 +542,7 @@ layout:
     "sources": [{
         "id": "extracted",
         "rowlabel": {"header": "Wellname", "value": "Well{well}"},
-        "values": [{"path": "Cvr:D{well}Qg.Meas", "header": "QgMeas"}]
+        "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "QgMeas"}]
     }]
 }}
 "#;

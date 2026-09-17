@@ -27,9 +27,9 @@ impl Extract {
 }
 
 struct PathPattern {
-    object_type: Option<String>,
+    object_type: Option<Regex>,
     object_name: Regex,
-    member: String,
+    member: Regex,
     placeholders: Vec<String>,
     original: String,
 }
@@ -141,7 +141,7 @@ fn extract_to_csv(
     let patterns: Vec<_> = extraction
         .values
         .iter()
-        .map(|value| compile_path(&value.path))
+        .map(compile_path)
         .collect::<Result<_>>()?;
     let placeholders = &patterns[0].placeholders;
     let expected: HashSet<_> = placeholders.iter().collect();
@@ -159,7 +159,7 @@ fn extract_to_csv(
             if pattern
                 .object_type
                 .as_ref()
-                .is_some_and(|object_type| object_type != &object.object_type)
+                .is_some_and(|object_type| !object_type.is_match(&object.object_type))
             {
                 continue;
             }
@@ -170,7 +170,10 @@ fn extract_to_csv(
                 .iter()
                 .map(|name| {
                     let value = captures.name(name).with_context(|| {
-                        format!("path '{}' is missing {{{name}}}", pattern.original)
+                        format!(
+                            "name regex '{}' is missing capture '{name}'",
+                            pattern.original
+                        )
                     })?;
                     Ok((name.as_str(), value.as_str()))
                 })
@@ -185,14 +188,18 @@ fn extract_to_csv(
                 values: vec![None; patterns.len()],
             });
 
-            if let Some(value) = object.attributes.get(&pattern.member)
-                && row.values[column].replace(value.clone()).is_some()
+            for value in object
+                .attributes
+                .iter()
+                .filter_map(|(member, value)| pattern.member.is_match(member).then_some(value))
             {
-                bail!(
-                    "multiple values found for row '{}' and path '{}'",
-                    row.label,
-                    pattern.original
-                );
+                if row.values[column].replace(value.clone()).is_some() {
+                    bail!(
+                        "multiple values found for row '{}' and path '{}'",
+                        row.label,
+                        pattern.original
+                    );
+                }
             }
         }
     }
@@ -294,52 +301,31 @@ fn compare_row_labels(existing: &[String], extracted: &[String]) -> Vec<String> 
     messages
 }
 
-fn compile_path(path: &str) -> Result<PathPattern> {
-    let (object, member) = path.rsplit_once('.').unwrap_or((path, "Meas"));
-    if object.is_empty() || member.is_empty() {
-        bail!("invalid extraction path '{path}'");
-    }
-    let (object_type, object_name) = object
-        .split_once(':')
-        .map_or((None, object), |(object_type, object_name)| {
-            (Some(object_type.to_string()), object_name)
-        });
-    if object_type.as_deref().is_some_and(str::is_empty) || object_name.is_empty() {
-        bail!("invalid extraction path '{path}'");
-    }
-    let (regex, placeholders) = compile_name_pattern(object_name, path)?;
+fn compile_path(value: &crate::config::ExtractionValue) -> Result<PathPattern> {
+    let object_type = value
+        .r#type
+        .as_deref()
+        .map(|pattern| compile_regex(pattern, "type"))
+        .transpose()?;
+    let object_name = compile_regex(&value.name, "name")?;
+    let member = compile_regex(value.member.as_deref().unwrap_or("Meas"), "member")?;
+    let placeholders = object_name
+        .capture_names()
+        .flatten()
+        .map(str::to_string)
+        .collect();
     Ok(PathPattern {
         object_type,
-        object_name: regex,
-        member: member.to_string(),
+        object_name,
+        member,
         placeholders,
-        original: path.to_string(),
+        original: format!("{}:{}", value.r#type.as_deref().unwrap_or("*"), value.name),
     })
 }
 
-fn compile_name_pattern(pattern: &str, path: &str) -> Result<(Regex, Vec<String>)> {
-    let placeholder = Regex::new(r"\{([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
-    let mut regex = String::from("^");
-    let mut placeholders = Vec::new();
-    let mut end = 0;
-    let without_placeholders = placeholder.replace_all(pattern, "");
-    if without_placeholders.contains(['{', '}']) {
-        bail!("invalid placeholder in path '{path}'");
-    }
-    for captures in placeholder.captures_iter(pattern) {
-        let matched = captures.get(0).unwrap();
-        regex.push_str(&regex::escape(&pattern[end..matched.start()]));
-        let name = captures.get(1).unwrap().as_str();
-        if placeholders.iter().any(|existing| existing == name) {
-            bail!("duplicate placeholder '{{{name}}}' in path '{path}'");
-        }
-        placeholders.push(name.to_string());
-        regex.push_str(&format!(r"(?P<{name}>\S+?)"));
-        end = matched.end();
-    }
-    regex.push_str(&regex::escape(&pattern[end..]));
-    regex.push('$');
-    Ok((Regex::new(&regex)?, placeholders))
+fn compile_regex(pattern: &str, label: &str) -> Result<Regex> {
+    Regex::new(&format!(r"^(?:{pattern})$"))
+        .with_context(|| format!("invalid {label} regex '{pattern}'"))
 }
 
 fn validate_row_label(
@@ -405,11 +391,15 @@ mod tests {
             },
             values: vec![
                 ExtractionValue {
-                    path: "Cvr:D{well}Qg.Meas".to_string(),
+                    r#type: Some("Cvr".to_string()),
+                    name: "D(?<well>[0-9]{2})Qg".to_string(),
+                    member: None,
                     header: "QgMeas".to_string(),
                 },
                 ExtractionValue {
-                    path: "Mvr:D{well}Zpc.Meas".to_string(),
+                    r#type: Some("Mvr".to_string()),
+                    name: "D(?<well>[0-9]{2})Zpc".to_string(),
+                    member: None,
                     header: "ZpcMeas".to_string(),
                 },
             ],
@@ -443,7 +433,7 @@ mod tests {
         let (config, mut extraction) = config_and_extraction();
         extraction.rowlabel.value = "Fixed".to_string();
         extraction.values.truncate(1);
-        extraction.values[0].path = "Cvr:D01Qg.Meas".to_string();
+        extraction.values[0].name = "D01Qg".to_string();
         let objects = septic_cnfg::parse("Cvr: D01Qg\nMeas= 230000").unwrap();
 
         let result = extract_to_csv(&extraction, &config, &objects).unwrap();
@@ -451,6 +441,24 @@ mod tests {
         assert_eq!(
             String::from_utf8(result.output).unwrap(),
             "Wellname,QgMeas\nFixed,230000\n"
+        );
+    }
+
+    #[test]
+    fn extracts_matching_member_regex_with_placeholders() {
+        let (config, mut extraction) = config_and_extraction();
+        extraction.rowlabel.value = "Well{well}".to_string();
+        extraction.values.truncate(1);
+        extraction.values[0].name = "D(?<well>[0-9]{2})Qg".to_string();
+        extraction.values[0].member = Some("Low(?:On|Off)".to_string());
+        let objects =
+            septic_cnfg::parse("Cvr: D01Qg\nLowOn= 230000\nCvr: D02Qg\nLowOff= 240000").unwrap();
+
+        let result = extract_to_csv(&extraction, &config, &objects).unwrap();
+
+        assert_eq!(
+            String::from_utf8(result.output).unwrap(),
+            "Wellname,QgMeas\nWell01,230000\nWell02,240000\n"
         );
     }
 
@@ -478,7 +486,8 @@ mod tests {
     fn unqualified_ambiguous_path_fails() {
         let (config, mut extraction) = config_and_extraction();
         extraction.values.truncate(1);
-        extraction.values[0].path = "D{well}Qg.Meas".to_string();
+        extraction.values[0].r#type = None;
+        extraction.values[0].name = "D(?<well>[0-9]{2})Qg".to_string();
         let objects = septic_cnfg::parse("SopcCvr: D01Qg\nMeas= 1\nCvr: D01Qg\nMeas= 2").unwrap();
 
         let error = extract_to_csv(&extraction, &config, &objects).unwrap_err();
@@ -488,13 +497,25 @@ mod tests {
 
     #[test]
     fn omitted_member_defaults_to_meas() {
-        let pattern = compile_path("Evr:{well}CEstCvG").unwrap();
+        let pattern = compile_path(&ExtractionValue {
+            r#type: Some("Evr".to_string()),
+            name: "D(?<well>[0-9]{2})CEstCvG".to_string(),
+            member: None,
+            header: "value".to_string(),
+        })
+        .unwrap();
 
-        assert_eq!(pattern.object_type.as_deref(), Some("Evr"));
-        assert_eq!(pattern.member, "Meas");
+        assert!(
+            pattern
+                .object_type
+                .as_ref()
+                .is_some_and(|object_type| object_type.is_match("Evr"))
+        );
+        assert!(pattern.member.is_match("Meas"));
+        assert!(!pattern.member.is_match("Measured"));
         assert_eq!(
             &pattern.object_name.captures("D01CEstCvG").unwrap()["well"],
-            "D01"
+            "01"
         );
     }
 
@@ -518,12 +539,12 @@ mod tests {
             {
                 "id": "extracted",
                 "rowlabel": {"header": "Wellname", "value": "Well{well}"},
-                "values": [{"path": "Cvr:D{well}Qg.Meas", "header": "QgMeas"}]
+                "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "QgMeas"}]
             },
             {
                 "id": "secondary",
                 "rowlabel": {"header": "Wellname", "value": "Well{well}"},
-                "values": [{"path": "Cvr:D{well}Qg.Meas", "header": "Measured"}]
+                "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "Measured"}]
             }
         ]
     }

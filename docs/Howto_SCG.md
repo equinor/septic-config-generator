@@ -620,22 +620,25 @@ extraction:
         header: Wellname
         value: "{well}"
       values:
-        - path: "Evr:{well}CEstCvG"
-          header: CEstCvG
-        - path: "Evr:{well}CEstCvO.Meas"
+        - name: "(?<well>W[0-9]{2})Rate"
+          member: SetPnt
+          type: Cvr
+          header: QgSetPnt
+        - name: "(?<well>W[0-9]{2})CEstCvO"
           header: CEstCvO
 ```
 
-Paths use `[ObjectType:]ObjectName[.Member]`. If `.Member` is omitted, it defaults to `.Meas`. Named placeholders in the
-object name join values into rows and can be used in `rowlabel.value`. The object type is optional, but an unqualified
-path that finds multiple values is an error. All value paths must use the same placeholders.
+Each value specifies a regular expression for `name`, an optional regular expression for `type`, and an optional regular
+expression for `member`. If `member` is omitted, it defaults to `Meas`. If `type` is omitted, any object type matches.
+In most cases `type` is not needed. Named captures in `name`, such as `(?<well>W[0-9]{2})`, can be used in
+`rowlabel.value`. All values in one extraction source must use the same named captures.
 
 The example produces `extracted.csv` with the following format::
 
 ```csv
-Wellname;CEstCvG;CEstCvO
-D01;0.934;0.142
-D02;1.129;-0.135
+Wellname;QgSetPnt;CEstCvO
+D01;4.5;0.142
+D02;4.8;-0.135
 ```
 
 Rows follow their first occurrence in the CNFG file. Added and removed row labels are reported. Missing values produce

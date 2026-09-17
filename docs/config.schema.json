@@ -68,13 +68,12 @@
     },
     "extraction": {
       "description": "Configuration for extracting values from an existing Septic config",
-      "type": [
-        "object",
-        "null"
-      ],
-      "allOf": [
+      "anyOf": [
         {
           "$ref": "#/definitions/Extraction"
+        },
+        {
+          "type": "null"
         }
       ]
     }
@@ -354,7 +353,7 @@
           "type": "string"
         },
         "value": {
-          "description": "Row label template using named placeholders from the extraction paths",
+          "description": "Row label template using named captures from extraction names",
           "type": "string"
         }
       },
@@ -367,9 +366,23 @@
     "ExtractionValue": {
       "type": "object",
       "properties": {
-        "path": {
-          "description": "Path on the form [ObjectType:]ObjectName[.Member]. Member defaults to Meas.",
+        "type": {
+          "description": "Optional object type regular expression",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Object name regular expression, optionally containing named captures",
           "type": "string"
+        },
+        "member": {
+          "description": "Member regular expression. Defaults to Meas.",
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "header": {
           "description": "Header for this value in the extracted CSV file",
@@ -378,7 +391,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "path",
+        "name",
         "header"
       ]
     }
