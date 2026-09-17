@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.15.4](https://github.com/equinor/septic-config-generator/compare/v2.15.3...v2.15.4) (2026-09-17)
+
+
+### 🧹 Chores
+
+* **deps:** bump base64 from 0.22.1 to 0.23.1 ([#470](https://github.com/equinor/septic-config-generator/issues/470)) ([e752f43](https://github.com/equinor/septic-config-generator/commit/e752f4389f9230ff12074912c68400085f03357e))
+* **deps:** bump calamine from 0.26.1 to 0.36.1 ([#468](https://github.com/equinor/septic-config-generator/issues/468)) ([0b23a7b](https://github.com/equinor/septic-config-generator/commit/0b23a7b428564e3f8fec3accb0be07b13620be99))
+* **deps:** bump diffy from 0.4.2 to 0.5.2 ([#469](https://github.com/equinor/septic-config-generator/issues/469)) ([97ac433](https://github.com/equinor/septic-config-generator/commit/97ac43300da082d11a64c7d7cfc49f99b0295069))
+* **deps:** bump imagesize from 0.14.0 to 0.15.0 ([#471](https://github.com/equinor/septic-config-generator/issues/471)) ([68c4dc5](https://github.com/equinor/septic-config-generator/commit/68c4dc501de73b784fd390c8065a14f39bb6b29a))
+* **deps:** bump roxmltree from 0.20.0 to 0.21.1 ([#472](https://github.com/equinor/septic-config-generator/issues/472)) ([73dcc77](https://github.com/equinor/septic-config-generator/commit/73dcc77f09ca3560f145f650c801b37be0eb2ad4))
+
+
+### 🔨 Refactor
+
+* bump minijinja and self_update, use ureq instead of reqwest ([#465](https://github.com/equinor/septic-config-generator/issues/465)) ([43914e6](https://github.com/equinor/septic-config-generator/commit/43914e6a67acc92d798510f896b479e0c4cf8186))
+
 ## [2.15.3](https://github.com/equinor/septic-config-generator/compare/v2.15.2...v2.15.3) (2026-09-17)
 
 
