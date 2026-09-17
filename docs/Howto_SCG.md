@@ -601,10 +601,10 @@ This command extracts values from an existing Septic configuration into a CSV so
 scg extract CONFIG.yaml [SOURCE.cnfg]
 ```
 
-One command can update multiple CSV sources, as defined in the optional `extraction` section in the YAML configuration
-file. The optional command-line source overrides `from` for every extraction element. Configured paths are relative to
-the YAML file; a command-line source is relative to the current directory. Each extraction target is selected by its ID
-from `sources` and must be a single CSV file.
+The optional `extraction` section in the YAML configuration file defines one cnfg input and one or more CSV sources to
+update. The optional command-line source overrides `from`. The configured path is relative to the YAML file; a
+command-line source is relative to the current directory. Each extraction target is selected by its ID from `sources`
+and must be a single CSV file.
 
 ```yaml
 sources:
@@ -613,16 +613,17 @@ sources:
     delimiter: ";"
 
 extraction:
-  - from: example.cnfg
-    source: extracted
-    rowlabel:
-      header: Wellname
-      value: "{well}"
-    values:
-      - path: "Evr:{well}CEstCvG"
-        header: CEstCvG
-      - path: "Evr:{well}CEstCvO.Meas"
-        header: CEstCvO
+  from: example.cnfg
+  sources:
+    - id: extracted
+      rowlabel:
+        header: Wellname
+        value: "{well}"
+      values:
+        - path: "Evr:{well}CEstCvG"
+          header: CEstCvG
+        - path: "Evr:{well}CEstCvO.Meas"
+          header: CEstCvO
 ```
 
 Paths use `[ObjectType:]ObjectName[.Member]`. If `.Member` is omitted, it defaults to `.Meas`. Named placeholders in the

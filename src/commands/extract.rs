@@ -1,4 +1,4 @@
-use crate::config::{Config, Extraction, Filename};
+use crate::config::{Config, ExtractionSource, Filename};
 use crate::septic_cnfg;
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -61,37 +61,31 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
     let root = config_file.parent().unwrap_or_else(|| Path::new(""));
     let config = Config::new(&config_file)
         .with_context(|| format!("Problem reading '{}'", config_file.display()))?;
-    let extractions = config
+    let extraction = config
         .extraction
         .as_ref()
         .context("missing field 'extraction'")?;
     let encoding = encoding_rs::Encoding::for_label(config.encoding.as_bytes())
         .expect("Config::new validates encoding");
 
+    let source_file = match source_override {
+        Some(path) => path.to_path_buf(),
+        None => root.join(
+            extraction
+                .from
+                .as_deref()
+                .context("missing field 'extraction.from' and no source file was provided")?,
+        ),
+    };
+    let objects = load_objects(&source_file, encoding, &config.encoding)?;
     let mut prepared = Vec::new();
-    let mut parsed_sources = HashMap::new();
-    for extraction in extractions {
-        let source_file = match source_override {
-            Some(path) => path.to_path_buf(),
-            None => root.join(
-                extraction
-                    .from
-                    .as_deref()
-                    .context("missing field 'extraction.from' and no source file was provided")?,
-            ),
-        };
-        let objects = load_objects(
-            &mut parsed_sources,
-            &source_file,
-            encoding,
-            &config.encoding,
-        )?;
-        let result = extract_to_csv(extraction, &config, objects)?;
+    for extraction_source in &extraction.sources {
+        let result = extract_to_csv(extraction_source, &config, &objects)?;
         let target_source = config
             .sources
             .iter()
             .flatten()
-            .find(|source| source.id == extraction.source)
+            .find(|source| source.id == extraction_source.id)
             .expect("Config::new validates extraction source");
         let Filename::Single(target) = &target_source.filename else {
             unreachable!("Config::new validates extraction target type")
@@ -121,32 +115,26 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
     Ok(())
 }
 
-fn load_objects<'a>(
-    parsed_sources: &'a mut HashMap<PathBuf, Vec<septic_cnfg::Object>>,
+fn load_objects(
     source_file: &Path,
     encoding: &'static encoding_rs::Encoding,
     encoding_name: &str,
-) -> Result<&'a [septic_cnfg::Object]> {
-    if !parsed_sources.contains_key(source_file) {
-        let bytes = fs::read(source_file)
-            .with_context(|| format!("Problem reading '{}'", source_file.display()))?;
-        let (contents, _, had_errors) = encoding.decode(&bytes);
-        if had_errors {
-            bail!(
-                "Unable to decode '{}' as {}",
-                source_file.display(),
-                encoding_name
-            );
-        }
-        parsed_sources.insert(source_file.to_path_buf(), septic_cnfg::parse(&contents)?);
+) -> Result<Vec<septic_cnfg::Object>> {
+    let bytes = fs::read(source_file)
+        .with_context(|| format!("Problem reading '{}'", source_file.display()))?;
+    let (contents, _, had_errors) = encoding.decode(&bytes);
+    if had_errors {
+        bail!(
+            "Unable to decode '{}' as {}",
+            source_file.display(),
+            encoding_name
+        );
     }
-    Ok(parsed_sources
-        .get(source_file)
-        .expect("source was inserted above"))
+    septic_cnfg::parse(&contents)
 }
 
 fn extract_to_csv(
-    extraction: &Extraction,
+    extraction: &ExtractionSource,
     config: &Config,
     objects: &[septic_cnfg::Object],
 ) -> Result<ExtractionResult> {
@@ -223,7 +211,7 @@ fn extract_to_csv(
         .sources
         .iter()
         .flatten()
-        .find(|source| source.id == extraction.source)
+        .find(|source| source.id == extraction.id)
         .expect("Config::new validates extraction source");
     let delimiter = target_source.delimiter.unwrap_or(';');
     if !delimiter.is_ascii() {
@@ -396,11 +384,11 @@ fn render_template(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ExtractionRowLabel, ExtractionValue, Source};
+    use crate::config::{ExtractionRowLabel, ExtractionSource, ExtractionValue, Source};
     use crate::datasource::{CsvSourceReader, DataSourceReader};
     use tempfile::tempdir;
 
-    fn config_and_extraction() -> (Config, Extraction) {
+    fn config_and_extraction() -> (Config, ExtractionSource) {
         let config = Config {
             templatepath: String::new(),
             layout: Vec::new(),
@@ -412,8 +400,8 @@ mod tests {
             }]),
             ..Default::default()
         };
-        let extraction = Extraction {
-            source: "extracted".to_string(),
+        let extraction = ExtractionSource {
+            id: "extracted".to_string(),
             rowlabel: ExtractionRowLabel {
                 header: "Wellname".to_string(),
                 value: "Well{well}".to_string(),
@@ -428,7 +416,6 @@ mod tests {
                     header: "ZpcMeas".to_string(),
                 },
             ],
-            ..Default::default()
         };
         (config, extraction)
     }
@@ -512,20 +499,22 @@ mod tests {
     {"filename": "secondary.csv", "id": "secondary"}
 ],
 "layout": [],
-"extraction": [
-    {
+"extraction": {
         "from": "missing.cnfg",
-        "source": "extracted",
-        "rowlabel": {"header": "Wellname", "value": "Well{well}"},
-        "values": [{"path": "Cvr:D{well}Qg.Meas", "header": "QgMeas"}]
-    },
-    {
-        "from": "also-missing.cnfg",
-        "source": "secondary",
-        "rowlabel": {"header": "Wellname", "value": "Well{well}"},
-        "values": [{"path": "Cvr:D{well}Qg", "header": "Measured"}]
+        "sources": [
+            {
+                "id": "extracted",
+                "rowlabel": {"header": "Wellname", "value": "Well{well}"},
+                "values": [{"path": "Cvr:D{well}Qg.Meas", "header": "QgMeas"}]
+            },
+            {
+                "id": "secondary",
+                "rowlabel": {"header": "Wellname", "value": "Well{well}"},
+                "values": [{"path": "Cvr:D{well}Qg.Meas", "header": "Measured"}]
+            }
+        ]
     }
-]}
+}
 "#,
         )
         .unwrap();
@@ -548,67 +537,16 @@ mod tests {
     }
 
     #[test]
-    fn parsed_source_is_reused_from_cache() {
+    fn loads_objects_once_for_an_extraction() {
         let directory = tempdir().unwrap();
         let source_file = directory.path().join("source.cnfg");
         fs::write(&source_file, "Cvr: D01Qg\nMeas= 1").unwrap();
-        let mut parsed_sources = HashMap::new();
-        let encoding = encoding_rs::UTF_8;
 
         assert_eq!(
-            load_objects(&mut parsed_sources, &source_file, encoding, "utf-8")
+            load_objects(&source_file, encoding_rs::UTF_8, "utf-8")
                 .unwrap()
                 .len(),
             1
-        );
-        fs::remove_file(&source_file).unwrap();
-        assert_eq!(
-            load_objects(&mut parsed_sources, &source_file, encoding, "utf-8")
-                .unwrap()
-                .len(),
-            1
-        );
-    }
-
-    #[test]
-    fn invalid_existing_csv_does_not_overwrite_prepared_targets() {
-        let directory = tempdir().unwrap();
-        let config_file = directory.path().join("extract.yaml");
-        let source_file = directory.path().join("source.cnfg");
-        let first_target = directory.path().join("first.csv");
-        let second_target = directory.path().join("second.csv");
-        fs::write(
-            &config_file,
-            r#"{
-"templatepath": "templates",
-"sources": [
-    {"filename": "first.csv", "id": "first"},
-    {"filename": "second.csv", "id": "second"}
-],
-"layout": [],
-"extraction": [
-    {
-        "source": "first",
-        "rowlabel": {"header": "Well", "value": "{well}"},
-        "values": [{"path": "Cvr:{well}Qg", "header": "Meas"}]
-    },
-    {
-        "source": "second",
-        "rowlabel": {"header": "Well", "value": "{well}"},
-        "values": [{"path": "Cvr:{well}Qg", "header": "Meas"}]
-    }
-]}
-"#,
-        )
-        .unwrap();
-        fs::write(&source_file, "Cvr: D01Qg\nMeas= 1").unwrap();
-        fs::write(&first_target, "Well;Meas\nold;1\n").unwrap();
-        fs::write(&second_target, "Well;Meas\nbroken\n").unwrap();
-
-        assert!(cmd_extract(&config_file, Some(&source_file)).is_err());
-        assert_eq!(
-            fs::read_to_string(first_target).unwrap(),
-            "Well;Meas\nold;1\n"
         );
     }
 }

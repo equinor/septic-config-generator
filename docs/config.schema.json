@@ -67,14 +67,16 @@
       }
     },
     "extraction": {
-      "description": "Configurations for extracting values from existing Septic configs",
+      "description": "Configuration for extracting values from an existing Septic config",
       "type": [
-        "array",
+        "object",
         "null"
       ],
-      "items": {
-        "$ref": "#/definitions/Extraction"
-      }
+      "allOf": [
+        {
+          "$ref": "#/definitions/Extraction"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -301,7 +303,23 @@
             "null"
           ]
         },
-        "source": {
+        "sources": {
+          "description": "CSV sources to generate from the extracted values",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExtractionSource"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "sources"
+      ]
+    },
+    "ExtractionSource": {
+      "type": "object",
+      "properties": {
+        "id": {
           "description": "ID of the CSV source that receives the extracted values",
           "type": "string"
         },
@@ -323,7 +341,7 @@
       },
       "additionalProperties": false,
       "required": [
-        "source",
+        "id",
         "rowlabel",
         "values"
       ]
