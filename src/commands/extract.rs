@@ -62,6 +62,7 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
         .expect("Config::new validates encoding");
 
     let mut prepared = Vec::new();
+    let mut parsed_sources = HashMap::new();
     for extraction in extractions {
         let source_file = match source_override {
             Some(path) => path.to_path_buf(),
@@ -72,18 +73,13 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
                     .context("missing field 'extraction.from' and no source file was provided")?,
             ),
         };
-        let bytes = fs::read(&source_file)
-            .with_context(|| format!("Problem reading '{}'", source_file.display()))?;
-        let (contents, _, had_errors) = encoding.decode(&bytes);
-        if had_errors {
-            bail!(
-                "Unable to decode '{}' as {}",
-                source_file.display(),
-                config.encoding
-            );
-        }
-        let objects = septic_cnfg::parse(&contents)?;
-        let (output, warnings) = extract_to_csv(extraction, &config, &objects)?;
+        let objects = load_objects(
+            &mut parsed_sources,
+            &source_file,
+            encoding,
+            &config.encoding,
+        )?;
+        let (output, warnings) = extract_to_csv(extraction, &config, objects)?;
         let target_source = config
             .sources
             .iter()
@@ -113,6 +109,30 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
     Ok(())
 }
 
+fn load_objects<'a>(
+    parsed_sources: &'a mut HashMap<PathBuf, Vec<septic_cnfg::Object>>,
+    source_file: &Path,
+    encoding: &'static encoding_rs::Encoding,
+    encoding_name: &str,
+) -> Result<&'a [septic_cnfg::Object]> {
+    if !parsed_sources.contains_key(source_file) {
+        let bytes = fs::read(source_file)
+            .with_context(|| format!("Problem reading '{}'", source_file.display()))?;
+        let (contents, _, had_errors) = encoding.decode(&bytes);
+        if had_errors {
+            bail!(
+                "Unable to decode '{}' as {}",
+                source_file.display(),
+                encoding_name
+            );
+        }
+        parsed_sources.insert(source_file.to_path_buf(), septic_cnfg::parse(&contents)?);
+    }
+    Ok(parsed_sources
+        .get(source_file)
+        .expect("source was inserted above"))
+}
+
 fn extract_to_csv(
     extraction: &Extraction,
     config: &Config,
@@ -133,7 +153,8 @@ fn extract_to_csv(
             bail!("all extraction paths must use the same named placeholders");
         }
     }
-    validate_row_label(&extraction.rowlabel.value, &expected)?;
+    let row_label_pattern = Regex::new(r"\{([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
+    validate_row_label(&extraction.rowlabel.value, &expected, &row_label_pattern)?;
 
     let mut rows: IndexMap<Vec<String>, ExtractedRow> = IndexMap::new();
     for object in objects {
@@ -161,7 +182,7 @@ fn extract_to_csv(
                 .iter()
                 .map(|name| captured[name.as_str()].to_string())
                 .collect();
-            let label = render_template(&extraction.rowlabel.value, &captured)?;
+            let label = render_template(&extraction.rowlabel.value, &captured, &row_label_pattern)?;
             let row = rows.entry(key).or_insert_with(|| ExtractedRow {
                 label,
                 values: vec![None; patterns.len()],
@@ -277,9 +298,12 @@ fn compile_name_pattern(pattern: &str, path: &str) -> Result<(Regex, Vec<String>
     Ok((Regex::new(&regex)?, placeholders))
 }
 
-fn validate_row_label(template: &str, placeholders: &HashSet<&String>) -> Result<()> {
-    let placeholder = Regex::new(r"\{([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
-    for captures in placeholder.captures_iter(template) {
+fn validate_row_label(
+    template: &str,
+    placeholders: &HashSet<&String>,
+    placeholder_pattern: &Regex,
+) -> Result<()> {
+    for captures in placeholder_pattern.captures_iter(template) {
         let name = captures.get(1).unwrap().as_str();
         if !placeholders
             .iter()
@@ -291,10 +315,13 @@ fn validate_row_label(template: &str, placeholders: &HashSet<&String>) -> Result
     Ok(())
 }
 
-fn render_template(template: &str, values: &HashMap<&str, &str>) -> Result<String> {
-    let placeholder = Regex::new(r"\{([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
+fn render_template(
+    template: &str,
+    values: &HashMap<&str, &str>,
+    placeholder_pattern: &Regex,
+) -> Result<String> {
     let mut error = None;
-    let rendered = placeholder.replace_all(template, |captures: &regex::Captures<'_>| {
+    let rendered = placeholder_pattern.replace_all(template, |captures: &regex::Captures<'_>| {
         let name = &captures[1];
         values.get(name).copied().unwrap_or_else(|| {
             error = Some(name.to_string());
@@ -434,6 +461,29 @@ mod tests {
         assert_eq!(
             fs::read_to_string(directory.path().join("secondary.csv")).unwrap(),
             "Wellname;Measured\nWell01;115.5\n"
+        );
+    }
+
+    #[test]
+    fn parsed_source_is_reused_from_cache() {
+        let directory = tempdir().unwrap();
+        let source_file = directory.path().join("source.cnfg");
+        fs::write(&source_file, "Cvr: D01Qg\nMeas= 1").unwrap();
+        let mut parsed_sources = HashMap::new();
+        let encoding = encoding_rs::UTF_8;
+
+        assert_eq!(
+            load_objects(&mut parsed_sources, &source_file, encoding, "utf-8")
+                .unwrap()
+                .len(),
+            1
+        );
+        fs::remove_file(&source_file).unwrap();
+        assert_eq!(
+            load_objects(&mut parsed_sources, &source_file, encoding, "utf-8")
+                .unwrap()
+                .len(),
+            1
         );
     }
 }
