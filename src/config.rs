@@ -149,6 +149,8 @@ pub struct ExtractionValue {
 pub struct ExtractionSource {
     /// ID of the CSV source that receives the extracted values
     pub id: String,
+    /// Filename within a multi-file CSV source to receive the extracted values
+    pub filename: Option<String>,
     /// Configuration for the first CSV column
     pub rowlabel: ExtractionRowLabel,
     /// Values to extract into the remaining CSV columns
@@ -437,11 +439,25 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
         );
     };
 
-    match &source.filename {
-        Filename::Single(filename)
+    match (&source.filename, &extraction.filename) {
+        (Filename::Single(filename), None)
             if Path::new(filename).extension().and_then(|ext| ext.to_str()) == Some("csv") => {}
+        (Filename::Single(_), Some(_)) => bail!(
+            "extract filename is invalid for single-file source '{}'",
+            extraction.id
+        ),
+        (Filename::Multiple(filenames), Some(filename)) if filenames.contains(filename) => {}
+        (Filename::Multiple(_), None) => bail!(
+            "extract filename is required for multi-file source '{}'",
+            extraction.id
+        ),
+        (Filename::Multiple(_), Some(filename)) => bail!(
+            "extract filename '{}' is not part of source '{}'",
+            filename,
+            extraction.id
+        ),
         _ => bail!(
-            "extract source '{}' must reference a single .csv file",
+            "extract source '{}' must reference a .csv file",
             extraction.id
         ),
     }
@@ -548,7 +564,7 @@ layout:
 "#;
         let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
 
-        assert!(error.to_string().contains("single .csv file"));
+        assert!(error.to_string().contains(".csv file"));
     }
 
     #[test]

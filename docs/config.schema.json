@@ -322,6 +322,13 @@
           "description": "ID of the CSV source that receives the extracted values",
           "type": "string"
         },
+        "filename": {
+          "description": "Filename within a multi-file CSV source to receive the extracted values",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "rowlabel": {
           "description": "Configuration for the first CSV column",
           "allOf": [

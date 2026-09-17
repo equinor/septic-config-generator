@@ -84,8 +84,12 @@ fn cmd_extract(config_file: &Path, source_override: Option<&Path>) -> Result<()>
             .flatten()
             .find(|source| source.id == extraction_source.id)
             .expect("Config::new validates extraction source");
-        let Filename::Single(target) = &target_source.filename else {
-            unreachable!("Config::new validates extraction target type")
+        let target = match &target_source.filename {
+            Filename::Single(target) => target,
+            Filename::Multiple(_) => extraction_source
+                .filename
+                .as_ref()
+                .expect("Config::new validates extraction filename"),
         };
         let target = root.join(target);
         let delimiter = target_source.delimiter.unwrap_or(';');
@@ -382,6 +386,7 @@ mod tests {
         };
         let extraction = ExtractionSource {
             id: "extracted".to_string(),
+            filename: None,
             rowlabel: ExtractionRowLabel {
                 header: "Wellname".to_string(),
                 value: "Well{well}".to_string(),
@@ -527,7 +532,7 @@ mod tests {
 "templatepath": "templates",
 "sources": [
     {"filename": "extracted.csv", "id": "extracted", "delimiter": ","},
-    {"filename": "secondary.csv", "id": "secondary"}
+    {"filename": ["first.csv", "secondary.csv"], "id": "secondary"}
 ],
 "layout": [],
 "extract": {
@@ -540,6 +545,7 @@ mod tests {
             },
             {
                 "id": "secondary",
+                "filename": "secondary.csv",
                 "rowlabel": {"header": "Wellname", "value": "Well{well}"},
                 "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "Measured"}]
             }

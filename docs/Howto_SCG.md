@@ -603,19 +603,23 @@ scg extract CONFIG.yaml [SOURCE.cnfg]
 
 The optional `extract` section in the YAML configuration file defines one cnfg input and one or more CSV sources to
 update. The optional command-line source overrides `from`. The configured path is relative to the YAML file; a
-command-line source is relative to the current directory. Each extraction target is selected by its ID from `sources`
-and must be a single CSV file.
+command-line source is relative to the current directory. Each extraction target is selected by its ID from `sources`.
+For a multi-file CSV source, add `filename` to select the file to update. `filename` is required for multi-file sources
+and must be omitted for single-file sources.
 
 ```yaml
 sources:
-  - filename: extracted.csv
-    id: extracted
+  - filename:
+      - extracted.csv
+      - constant.csv
+    id: main
     delimiter: ";"
 
 extract:
   from: example.cnfg
   to:
-    - id: extracted
+    - id: main
+      filename: extracted.csv
       rowlabel:
         header: Wellname
         value: "{well}"
