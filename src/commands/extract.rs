@@ -144,9 +144,6 @@ fn extract_to_csv(
         .map(|value| compile_path(&value.path))
         .collect::<Result<_>>()?;
     let placeholders = &patterns[0].placeholders;
-    if placeholders.is_empty() {
-        bail!("extraction paths must contain at least one named placeholder");
-    }
     let expected: HashSet<_> = placeholders.iter().collect();
     for pattern in &patterns[1..] {
         if pattern.placeholders.iter().collect::<HashSet<_>>() != expected {
@@ -439,6 +436,22 @@ mod tests {
             ["Value 'ZpcMeas' not found for 'Well02'"]
         );
         assert_eq!(result.row_labels, ["Well01", "Well02"]);
+    }
+
+    #[test]
+    fn extracts_values_without_placeholders() {
+        let (config, mut extraction) = config_and_extraction();
+        extraction.rowlabel.value = "Fixed".to_string();
+        extraction.values.truncate(1);
+        extraction.values[0].path = "Cvr:D01Qg.Meas".to_string();
+        let objects = septic_cnfg::parse("Cvr: D01Qg\nMeas= 230000").unwrap();
+
+        let result = extract_to_csv(&extraction, &config, &objects).unwrap();
+
+        assert_eq!(
+            String::from_utf8(result.output).unwrap(),
+            "Wellname,QgMeas\nFixed,230000\n"
+        );
     }
 
     #[test]
