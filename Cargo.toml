@@ -42,12 +42,15 @@ indexmap = { version = "2.2.3", features = ["serde"] }
 minijinja = { version = "2.0.1", features = ["loader", "preserve_order"] }
 regex = "1.7.1"
 roxmltree = "0.20.0"
-self_update = { version = "1.3.0", features = [
+self_update = { version = "1.3.0", default-features = false, features = [
+    "ureq",
+    "rustls",
+    "progress-bar",
+    "github",
     "archive-zip",
     "archive-tar",
     "compression-tar-gz",
     "compression-zip-deflate",
-    "compression-zip-bzip2",
 ] }
 serde = { version = "1.0.156", features = ["derive"] }
 serde_yaml = "0.9.19"
