@@ -125,14 +125,14 @@ pub struct Drawio {
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ExtractionValue {
-    /// Optional object type regular expression
+    /// Optional object type to match
     pub r#type: Option<String>,
-    /// Object name regular expression, optionally containing named captures
+    /// Object name template using columns from the target CSV source
     pub name: String,
-    /// Member regular expression. Defaults to Meas.
-    pub member: Option<String>,
-    /// Header for this value in the extracted CSV file
-    pub header: String,
+    /// Object members to extract
+    pub members: Vec<String>,
+    /// CSV headers to receive the extracted member values
+    pub headers: Vec<String>,
 }
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
@@ -142,10 +142,6 @@ pub struct ExtractionSource {
     pub id: String,
     /// Filename within a multi-file CSV source to receive the extracted values
     pub filename: Option<String>,
-    /// Header for the first column in the extracted CSV file
-    pub key_header: String,
-    /// Row label template using named captures from extraction names
-    pub row_labels: String,
     /// Values to extract into the remaining CSV columns
     pub values: Vec<ExtractionValue>,
 }
@@ -393,30 +389,52 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
         bail!("field 'extract.values' must contain at least one value");
     }
 
-    let mut headers = HashSet::new();
-    for header in std::iter::once(&extraction.key_header)
-        .chain(extraction.values.iter().map(|value| &value.header))
-    {
-        if header.trim().is_empty() {
-            bail!("extract headers must not be empty");
-        }
-        if !headers.insert(header) {
-            bail!("duplicate extract header '{header}'");
-        }
-    }
-
-    if extraction.row_labels.trim().is_empty() {
-        bail!("field 'extract.row_labels' must not be empty");
-    }
-    if let Some(value) = extraction
+    if extraction
         .values
         .iter()
-        .find(|value| value.name.trim().is_empty())
+        .any(|value| value.name.trim().is_empty())
     {
         bail!(
-            "extract type and name for header '{}' must not be empty",
-            value.header
+            "extract name must not be empty for source '{}'",
+            extraction.id
         );
+    }
+    for value in &extraction.values {
+        if value.members.is_empty() {
+            bail!(
+                "extract members must not be empty for '{}':{}",
+                extraction.id,
+                value.name
+            );
+        }
+        if value.headers.is_empty() {
+            bail!(
+                "extract headers must not be empty for '{}':{}",
+                extraction.id,
+                value.name
+            );
+        }
+        if value.members.len() != value.headers.len() {
+            bail!(
+                "extract members and headers must have the same length for '{}':{}",
+                extraction.id,
+                value.name
+            );
+        }
+        if value.members.iter().any(|member| member.trim().is_empty()) {
+            bail!(
+                "extract members must not contain empty values for '{}':{}",
+                extraction.id,
+                value.name
+            );
+        }
+        if value.headers.iter().any(|header| header.trim().is_empty()) {
+            bail!(
+                "extract headers must not contain empty values for '{}':{}",
+                extraction.id,
+                value.name
+            );
+        }
     }
 
     let matching_sources: Vec<_> = config
@@ -529,9 +547,7 @@ layout:
     "from": "current.cnfg",
     "to": [{
         "id": "extracted",
-        "key_header": "Wellname",
-        "row_labels": "Well{well}",
-        "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "QgMeas"}]
+        "values": [{"type": "Cvr", "name": "{{ Wellname }}Qg", "members": ["Meas"], "headers": ["QgMeas"]}]
     }]
 }}
 "#;
@@ -539,7 +555,7 @@ layout:
         let extraction = config.extract.unwrap();
 
         assert_eq!(extraction.to[0].id, "extracted");
-        assert_eq!(extraction.to[0].values[0].header, "QgMeas");
+        assert_eq!(extraction.to[0].values[0].headers[0], "QgMeas");
     }
 
     #[test]
@@ -551,9 +567,7 @@ layout:
 "extract": {
     "to": [{
         "id": "extracted",
-        "key_header": "Wellname",
-        "row_labels": "Well{well}",
-        "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "QgMeas"}]
+        "values": [{"type": "Cvr", "name": "{{ Wellname }}Qg", "members": ["Meas"], "headers": ["QgMeas"]}]
     }]
 }}
 "#;

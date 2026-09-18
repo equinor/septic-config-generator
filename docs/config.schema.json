@@ -329,14 +329,6 @@
             "null"
           ]
         },
-        "key_header": {
-          "description": "Header for the first column in the extracted CSV file",
-          "type": "string"
-        },
-        "row_labels": {
-          "description": "Row label template using named captures from extraction names",
-          "type": "string"
-        },
         "values": {
           "description": "Values to extract into the remaining CSV columns",
           "type": "array",
@@ -348,8 +340,6 @@
       "additionalProperties": false,
       "required": [
         "id",
-        "key_header",
-        "row_labels",
         "values"
       ]
     },
@@ -357,32 +347,36 @@
       "type": "object",
       "properties": {
         "type": {
-          "description": "Optional object type regular expression",
+          "description": "Optional object type to match",
           "type": [
             "string",
             "null"
           ]
         },
         "name": {
-          "description": "Object name regular expression, optionally containing named captures",
+          "description": "Object name template using columns from the target CSV source",
           "type": "string"
         },
-        "member": {
-          "description": "Member regular expression. Defaults to Meas.",
-          "type": [
-            "string",
-            "null"
-          ]
+        "members": {
+          "description": "Object members to extract",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
-        "header": {
-          "description": "Header for this value in the extracted CSV file",
-          "type": "string"
+        "headers": {
+          "description": "CSV headers to receive the extracted member values",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       },
       "additionalProperties": false,
       "required": [
         "name",
-        "header"
+        "members",
+        "headers"
       ]
     }
   }
