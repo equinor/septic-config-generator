@@ -65,6 +65,17 @@
       "items": {
         "$ref": "#/definitions/Drawio"
       }
+    },
+    "extract": {
+      "description": "Configuration for extracting values from an existing Septic config",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Extraction"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -192,14 +203,15 @@
           "type": "string"
         },
         "then": {
-          "description": "List of items to include if the condition is true",
+          "description": "Item(s) to include if the condition is true (can be a single string or array of strings)",
           "type": [
             "array",
             "null"
           ],
           "items": {
             "type": "string"
-          }
+          },
+          "default": null
         },
         "continue": {
           "description": "Whether to continue evaluating further conditions after this one",
@@ -278,6 +290,95 @@
       },
       "required": [
         "input"
+      ]
+    },
+    "Extraction": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "description": "Default Septic config file to extract values from",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "to": {
+          "description": "CSV sources to generate from the extracted values",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExtractionSource"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "to"
+      ]
+    },
+    "ExtractionSource": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "ID of the CSV source that receives the extracted values",
+          "type": "string"
+        },
+        "filename": {
+          "description": "Filename within a multi-file CSV source to receive the extracted values",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "values": {
+          "description": "Values to extract into the remaining CSV columns",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExtractionValue"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "values"
+      ]
+    },
+    "ExtractionValue": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "description": "Optional object type to match",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "Object name template using columns from the target CSV source",
+          "type": "string"
+        },
+        "members": {
+          "description": "Object members to extract. Defaults to Meas when omitted.",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "headers": {
+          "description": "CSV headers to receive the extracted member values",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "headers"
       ]
     }
   }

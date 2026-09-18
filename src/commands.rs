@@ -14,11 +14,14 @@ pub enum Commands {
     Drawio(Drawio),
     /// Dump json schema for yaml config
     Schema(Schema),
+    /// Extract values from an existing Septic config into a CSV source
+    Extract(Extract),
 }
 
 mod checklogs;
 mod diff;
 mod drawio;
+mod extract;
 mod make;
 mod schema;
 mod update;
@@ -26,6 +29,7 @@ mod update;
 pub use checklogs::Checklogs;
 pub use diff::Diff;
 pub use drawio::Drawio;
+pub use extract::Extract;
 pub use make::Make;
 pub use schema::Schema;
 pub use update::Update;
