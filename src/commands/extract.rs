@@ -234,13 +234,27 @@ fn find_attribute(
             object_type.is_none_or(|object_type| object.object_type == object_type)
                 && object.name == object_name
         })
-        .filter_map(|object| object.attributes.get(member))
+        .flat_map(|object| {
+            object
+                .attributes
+                .iter()
+                .filter_map(move |(attribute, value)| {
+                    member_matches(member, attribute).then_some(value)
+                })
+        })
         .collect();
     match values.as_slice() {
         [] => Ok(None),
         [value] => Ok(Some((*value).clone())),
         _ => bail!("multiple values found for object '{object_name}' and member '{member}'"),
     }
+}
+
+fn member_matches(requested: &str, actual: &str) -> bool {
+    if matches!(requested, "High" | "Low" | "SetPnt" | "Iv") {
+        return actual == format!("{requested}On") || actual == format!("{requested}Off");
+    }
+    requested == actual
 }
 
 #[cfg(test)]
@@ -333,7 +347,7 @@ mod tests {
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName,QgLoLim,QgSP\nW11,,\nW12,,\n").unwrap();
         let objects = septic_cnfg::parse(
-            "Cvr: W11Rate\nLow= 2.0\nSetPnt= 3.4\nCvr: W12Rate\nLow= 2.1\nSetPnt= 3.5",
+            "Cvr: W11Rate\nLowOff= 2.0\nSetPntOn= 3.4\nCvr: W12Rate\nLowOff= 2.1\nSetPntOn= 3.5",
         )
         .unwrap();
 
@@ -379,6 +393,40 @@ mod tests {
             find_attribute(&objects, Some("Cvr"), "D01Qg", "Meas").unwrap(),
             Some("2".to_string())
         );
+    }
+
+    #[test]
+    fn selected_member_basenames_match_on_off_suffixes() {
+        let objects = septic_cnfg::parse(
+            "Cvr: W11Rate\nHighOn= 7.0\nLow= 1.0\nLowOff= 2.0\nLowPenalty= 99.0\nIvOn= 1",
+        )
+        .unwrap();
+
+        assert_eq!(
+            find_attribute(&objects, Some("Cvr"), "W11Rate", "High").unwrap(),
+            Some("7.0".to_string())
+        );
+        assert_eq!(
+            find_attribute(&objects, Some("Cvr"), "W11Rate", "Low").unwrap(),
+            Some("2.0".to_string())
+        );
+        assert_eq!(
+            find_attribute(&objects, Some("Cvr"), "W11Rate", "Iv").unwrap(),
+            Some("1".to_string())
+        );
+        assert_eq!(
+            find_attribute(&objects, Some("Cvr"), "W11Rate", "LowPenalty").unwrap(),
+            Some("99.0".to_string())
+        );
+    }
+
+    #[test]
+    fn selected_member_basenames_fail_if_both_suffixes_exist() {
+        let objects = septic_cnfg::parse("Cvr: W11Rate\nSetPntOn= 3.4\nSetPntOff= 0.0").unwrap();
+
+        let error = find_attribute(&objects, Some("Cvr"), "W11Rate", "SetPnt").unwrap_err();
+
+        assert!(error.to_string().contains("multiple values"));
     }
 
     #[test]
