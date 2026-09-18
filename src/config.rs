@@ -124,15 +124,6 @@ pub struct Drawio {
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct ExtractionRowLabel {
-    /// Header for the first column in the extracted CSV file
-    pub header: String,
-    /// Row label template using named captures from extraction names
-    pub value: String,
-}
-
-#[derive(Deserialize, Debug, Default, JsonSchema)]
-#[serde(deny_unknown_fields)]
 pub struct ExtractionValue {
     /// Optional object type regular expression
     pub r#type: Option<String>,
@@ -151,8 +142,10 @@ pub struct ExtractionSource {
     pub id: String,
     /// Filename within a multi-file CSV source to receive the extracted values
     pub filename: Option<String>,
-    /// Configuration for the first CSV column
-    pub rowlabel: ExtractionRowLabel,
+    /// Header for the first column in the extracted CSV file
+    pub key_header: String,
+    /// Row label template using named captures from extraction names
+    pub row_labels: String,
     /// Values to extract into the remaining CSV columns
     pub values: Vec<ExtractionValue>,
 }
@@ -401,7 +394,7 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
     }
 
     let mut headers = HashSet::new();
-    for header in std::iter::once(&extraction.rowlabel.header)
+    for header in std::iter::once(&extraction.key_header)
         .chain(extraction.values.iter().map(|value| &value.header))
     {
         if header.trim().is_empty() {
@@ -412,8 +405,8 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
         }
     }
 
-    if extraction.rowlabel.value.trim().is_empty() {
-        bail!("field 'extract.rowlabel.value' must not be empty");
+    if extraction.row_labels.trim().is_empty() {
+        bail!("field 'extract.row_labels' must not be empty");
     }
     if let Some(value) = extraction
         .values
@@ -536,7 +529,8 @@ layout:
     "from": "current.cnfg",
     "to": [{
         "id": "extracted",
-        "rowlabel": {"header": "Wellname", "value": "Well{well}"},
+        "key_header": "Wellname",
+        "row_labels": "Well{well}",
         "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "QgMeas"}]
     }]
 }}
@@ -557,7 +551,8 @@ layout:
 "extract": {
     "to": [{
         "id": "extracted",
-        "rowlabel": {"header": "Wellname", "value": "Well{well}"},
+        "key_header": "Wellname",
+        "row_labels": "Well{well}",
         "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "QgMeas"}]
     }]
 }}

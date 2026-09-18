@@ -152,7 +152,7 @@ fn extract_to_csv(
         }
     }
     let row_label_pattern = Regex::new(r"\{([A-Za-z_][A-Za-z0-9_]*)\}").unwrap();
-    validate_row_label(&extraction.rowlabel.value, &expected, &row_label_pattern)?;
+    validate_row_label(&extraction.row_labels, &expected, &row_label_pattern)?;
 
     let mut rows: IndexMap<Vec<String>, ExtractedRow> = IndexMap::new();
     for object in objects {
@@ -183,7 +183,7 @@ fn extract_to_csv(
                 .iter()
                 .map(|name| captured[name.as_str()].to_string())
                 .collect();
-            let label = render_template(&extraction.rowlabel.value, &captured, &row_label_pattern)?;
+            let label = render_template(&extraction.row_labels, &captured, &row_label_pattern)?;
             let row = rows.entry(key).or_insert_with(|| ExtractedRow {
                 label,
                 values: vec![None; patterns.len()],
@@ -225,7 +225,7 @@ fn extract_to_csv(
     let mut writer = WriterBuilder::new()
         .delimiter(delimiter as u8)
         .from_writer(Vec::new());
-    let headers = std::iter::once(extraction.rowlabel.header.as_str())
+    let headers = std::iter::once(extraction.key_header.as_str())
         .chain(extraction.values.iter().map(|value| value.header.as_str()));
     writer.write_record(headers)?;
 
@@ -368,7 +368,7 @@ fn render_template(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ExtractionRowLabel, ExtractionSource, ExtractionValue, Source};
+    use crate::config::{ExtractionSource, ExtractionValue, Source};
     use crate::datasource::{CsvSourceReader, DataSourceReader};
     use tempfile::tempdir;
 
@@ -387,10 +387,8 @@ mod tests {
         let extraction = ExtractionSource {
             id: "extracted".to_string(),
             filename: None,
-            rowlabel: ExtractionRowLabel {
-                header: "Wellname".to_string(),
-                value: "Well{well}".to_string(),
-            },
+            key_header: "Wellname".to_string(),
+            row_labels: "Well{well}".to_string(),
             values: vec![
                 ExtractionValue {
                     r#type: Some("Cvr".to_string()),
@@ -433,7 +431,7 @@ mod tests {
     #[test]
     fn extracts_values_without_placeholders() {
         let (config, mut extraction) = config_and_extraction();
-        extraction.rowlabel.value = "Fixed".to_string();
+        extraction.row_labels = "Fixed".to_string();
         extraction.values.truncate(1);
         extraction.values[0].name = "D01Qg".to_string();
         let objects = septic_cnfg::parse("Cvr: D01Qg\nMeas= 230000").unwrap();
@@ -449,7 +447,7 @@ mod tests {
     #[test]
     fn extracts_matching_member_regex_with_placeholders() {
         let (config, mut extraction) = config_and_extraction();
-        extraction.rowlabel.value = "Well{well}".to_string();
+        extraction.row_labels = "Well{well}".to_string();
         extraction.values.truncate(1);
         extraction.values[0].name = "D(?<well>[0-9]{2})Qg".to_string();
         extraction.values[0].member = Some("Low(?:On|Off)".to_string());
@@ -540,13 +538,15 @@ mod tests {
         "to": [
             {
                 "id": "extracted",
-                "rowlabel": {"header": "Wellname", "value": "Well{well}"},
+                "key_header": "Wellname",
+                "row_labels": "Well{well}",
                 "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "QgMeas"}]
             },
             {
                 "id": "secondary",
                 "filename": "secondary.csv",
-                "rowlabel": {"header": "Wellname", "value": "Well{well}"},
+                "key_header": "Wellname",
+                "row_labels": "Well{well}",
                 "values": [{"type": "Cvr", "name": "D(?<well>[0-9]{2})Qg", "header": "Measured"}]
             }
         ]

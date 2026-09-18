@@ -620,9 +620,8 @@ extract:
   to:
     - id: main
       filename: extracted.csv
-      rowlabel:
-        header: Wellname
-        value: "{well}"
+      key_header: Wellname
+      row_labels: "{well}"
       values:
         - name: "(?<well>W[0-9]{2})Rate"
           member: SetPnt
@@ -634,8 +633,8 @@ extract:
 
 Each value specifies a regular expression for `name`, an optional regular expression for `type`, and an optional regular
 expression for `member`. If `member` is omitted, it defaults to `Meas`. If `type` is omitted, any object type matches.
-In most cases `type` is not needed. Named captures in `name`, such as `(?<well>W[0-9]{2})`, can be used in
-`rowlabel.value`. All values in one extraction source must use the same named captures.
+In most cases `type` is not needed. Named captures in `name`, such as `(?<well>W[0-9]{2})`, can be used in `row_labels`.
+All values in one extraction source must use the same named captures.
 
 The example produces `extracted.csv` with the following format::
 

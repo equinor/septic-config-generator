@@ -329,13 +329,13 @@
             "null"
           ]
         },
-        "rowlabel": {
-          "description": "Configuration for the first CSV column",
-          "allOf": [
-            {
-              "$ref": "#/definitions/ExtractionRowLabel"
-            }
-          ]
+        "key_header": {
+          "description": "Header for the first column in the extracted CSV file",
+          "type": "string"
+        },
+        "row_labels": {
+          "description": "Row label template using named captures from extraction names",
+          "type": "string"
         },
         "values": {
           "description": "Values to extract into the remaining CSV columns",
@@ -348,26 +348,9 @@
       "additionalProperties": false,
       "required": [
         "id",
-        "rowlabel",
+        "key_header",
+        "row_labels",
         "values"
-      ]
-    },
-    "ExtractionRowLabel": {
-      "type": "object",
-      "properties": {
-        "header": {
-          "description": "Header for the first column in the extracted CSV file",
-          "type": "string"
-        },
-        "value": {
-          "description": "Row label template using named captures from extraction names",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "header",
-        "value"
       ]
     },
     "ExtractionValue": {
