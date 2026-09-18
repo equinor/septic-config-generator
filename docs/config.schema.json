@@ -358,8 +358,11 @@
           "type": "string"
         },
         "members": {
-          "description": "Object members to extract",
-          "type": "array",
+          "description": "Object members to extract. Defaults to Meas when omitted.",
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
             "type": "string"
           }
@@ -375,7 +378,6 @@
       "additionalProperties": false,
       "required": [
         "name",
-        "members",
         "headers"
       ]
     }

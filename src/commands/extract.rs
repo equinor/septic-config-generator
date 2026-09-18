@@ -174,7 +174,14 @@ fn extract_to_csv(
 
         for value in &extraction.values {
             let object_name = env.template_from_str(&value.name)?.render(&context)?;
-            for (member, header) in value.members.iter().zip(&value.headers) {
+            let default_members;
+            let members = if let Some(members) = &value.members {
+                members.as_slice()
+            } else {
+                default_members = [String::from("Meas")];
+                &default_members
+            };
+            for (member, header) in members.iter().zip(&value.headers) {
                 let extracted =
                     find_attribute(objects, value.r#type.as_deref(), &object_name, member)?;
                 let index = header_indexes[header];
@@ -282,13 +289,13 @@ mod tests {
                 ExtractionValue {
                     r#type: Some("Cvr".to_string()),
                     name: "{{ WellName }}Qg".to_string(),
-                    members: vec!["Meas".to_string()],
+                    members: Some(vec!["Meas".to_string()]),
                     headers: vec!["QgMeas".to_string()],
                 },
                 ExtractionValue {
                     r#type: Some("Mvr".to_string()),
                     name: "{{ WellName }}Zpc".to_string(),
-                    members: vec!["Meas".to_string()],
+                    members: Some(vec!["Meas".to_string()]),
                     headers: vec!["ZpcMeas".to_string()],
                 },
             ],
@@ -337,11 +344,30 @@ mod tests {
     }
 
     #[test]
+    fn omitted_members_defaults_to_meas() {
+        let (config, mut extraction) = config_and_extraction();
+        extraction.values.truncate(1);
+        extraction.values[0].members = None;
+        extraction.values[0].headers = vec!["QgMeas".to_string()];
+        let directory = tempdir().unwrap();
+        let target = directory.path().join("out.csv");
+        fs::write(&target, "WellName,QgMeas\nD01,\n").unwrap();
+        let objects = septic_cnfg::parse("Cvr: D01Qg\nMeas= 230000").unwrap();
+
+        let result = extract_to_csv(&extraction, &config, &target, &objects).unwrap();
+
+        assert_eq!(
+            String::from_utf8(result.output).unwrap(),
+            "WellName,QgMeas\nD01,230000\n"
+        );
+    }
+
+    #[test]
     fn extracts_multiple_members_from_one_rendered_object_name() {
         let (config, mut extraction) = config_and_extraction();
         extraction.values.truncate(1);
         extraction.values[0].name = "{{ WellName }}Rate".to_string();
-        extraction.values[0].members = vec!["Low".to_string(), "SetPnt".to_string()];
+        extraction.values[0].members = Some(vec!["Low".to_string(), "SetPnt".to_string()]);
         extraction.values[0].headers = vec!["QgLoLim".to_string(), "QgSP".to_string()];
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");

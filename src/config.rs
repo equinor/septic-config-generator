@@ -129,8 +129,8 @@ pub struct ExtractionValue {
     pub r#type: Option<String>,
     /// Object name template using columns from the target CSV source
     pub name: String,
-    /// Object members to extract
-    pub members: Vec<String>,
+    /// Object members to extract. Defaults to Meas when omitted.
+    pub members: Option<Vec<String>>,
     /// CSV headers to receive the extracted member values
     pub headers: Vec<String>,
 }
@@ -400,13 +400,6 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
         );
     }
     for value in &extraction.values {
-        if value.members.is_empty() {
-            bail!(
-                "extract members must not be empty for '{}':{}",
-                extraction.id,
-                value.name
-            );
-        }
         if value.headers.is_empty() {
             bail!(
                 "extract headers must not be empty for '{}':{}",
@@ -414,16 +407,31 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
                 value.name
             );
         }
-        if value.members.len() != value.headers.len() {
+        if let Some(members) = &value.members {
+            if members.is_empty() {
+                bail!(
+                    "extract members must not be empty for '{}':{}",
+                    extraction.id,
+                    value.name
+                );
+            }
+            if members.len() != value.headers.len() {
+                bail!(
+                    "extract members and headers must have the same length for '{}':{}",
+                    extraction.id,
+                    value.name
+                );
+            }
+            if members.iter().any(|member| member.trim().is_empty()) {
+                bail!(
+                    "extract members must not contain empty values for '{}':{}",
+                    extraction.id,
+                    value.name
+                );
+            }
+        } else if value.headers.len() != 1 {
             bail!(
-                "extract members and headers must have the same length for '{}':{}",
-                extraction.id,
-                value.name
-            );
-        }
-        if value.members.iter().any(|member| member.trim().is_empty()) {
-            bail!(
-                "extract members must not contain empty values for '{}':{}",
+                "extract headers must contain exactly one value when members is omitted for '{}':{}",
                 extraction.id,
                 value.name
             );
