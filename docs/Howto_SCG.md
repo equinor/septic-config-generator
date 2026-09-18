@@ -604,14 +604,14 @@ scg extract CONFIG.yaml [SOURCE.cnfg]
 The optional `extract` section in the YAML configuration file defines one cnfg input and one or more CSV sources to
 update. The optional command-line source overrides `from`. The configured path is relative to the YAML file; a
 command-line source is relative to the current directory. Each extraction target is selected by its ID from `sources`.
-For a multi-file CSV source, add `filename` to select the file to update. `filename` is required for multi-file sources
+For a multi-file CSV source, add `filename` to specify the file to update. `filename` is required for multi-file sources
 and must be omitted for single-file sources.
 
 ```yaml
 sources:
   - filename:
+      - default.csv
       - extracted.csv
-      - constant.csv
     id: main
     delimiter: ";"
 
@@ -620,32 +620,37 @@ extract:
   to:
     - id: main
       filename: extracted.csv
-      key_header: Wellname
-      row_labels: "{well}"
       values:
-        - name: "(?<well>W[0-9]{2})Rate"
-          member: SetPnt
+        - name: "{{ WellName }}Choke"
+          members: ["Low", "High"]
+          headers: ["ZpcLoLim", "ZpcHiLim"]
+        - name: "{{ WellName }}Rate"
           type: Cvr
-          header: QgSetPnt
-        - name: "(?<well>W[0-9]{2})CEstCvO"
-          header: CEstCvO
+          members: ["Low", "SetPnt"]
+          headers: ["QgLoLim", "QgSP"]
 ```
 
-Each value specifies a regular expression for `name`, an optional regular expression for `type`, and an optional regular
-expression for `member`. If `member` is omitted, it defaults to `Meas`. If `type` is omitted, any object type matches.
-In most cases `type` is not needed. Named captures in `name`, such as `(?<well>W[0-9]{2})`, can be used in `row_labels`.
-All values in one extraction source must use the same named captures.
+The target CSV file must already exist and contain at least one column. The first column header and its row values
+define the rows to update. If the csv file has a first column with header `WellName` and row labels `D01`, `D02` etc,
+the configuration above will search for `D01Rate`, `D02Rate`, and so on by replacing `WellName` with the row labels.
+`type` is optional; if omitted, any object type matches. `members` lists object members to extract, and `headers` lists
+the CSV columns to receive those values. If `members` is omitted, `Meas` is extracted and `headers` must contain exactly
+one value. If `members` is provided, `members` and `headers` must have the same length.
 
-The example produces `extracted.csv` with the following format::
+There is a special case for member names `High`, `Low`, `SetPnt`, and `Iv`: Specifying one of these will match the
+corresponding `On` or `Off` variant. For instance: specifying `High` will match both `HighOn` and `HighOff` variants.
+
+The example aligns with a source file `extracted.csv` that would look like this:
 
 ```csv
-Wellname;QgSetPnt;CEstCvO
-D01;4.5;0.142
-D02;4.8;-0.135
+WellName;ZpcLoLim;ZpcHiLim;QgLoLim;QgSP
+D01;10.0;101.0;1.8.0;3.4;4.0
+D02;10.0;101.0;1.8;3.4;4.5
+D03;10.0;101.0;1.8;3.5;4.5
 ```
 
-Rows follow their first occurrence in the CNFG file. Added and removed row labels are reported. Missing values produce
-empty cells and are reported.
+Existing rows and columns are preserved. Missing configured headers are appended. Missing values produce empty cells and
+are reported.
 
 ## scg checklogs
 
