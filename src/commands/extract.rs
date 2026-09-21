@@ -4,6 +4,7 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use csv::{ReaderBuilder, StringRecord, Trim, WriterBuilder};
 use minijinja::Environment;
+use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -141,12 +142,24 @@ fn extract_to_csv(
         .enumerate()
         .map(|(index, header)| (header.clone(), index))
         .collect();
-    for value in &extraction.values {
+    for value in extraction.values.iter().flatten() {
         for header in &value.headers {
             if !header_indexes.contains_key(header) {
                 header_indexes.insert(header.clone(), headers.len());
                 headers.push(header.clone());
             }
+        }
+    }
+    let freetexts = extraction
+        .freetexts
+        .iter()
+        .flatten()
+        .map(|freetext| Ok((freetext, Regex::new(&freetext.regex)?)))
+        .collect::<Result<Vec<_>>>()?;
+    for (freetext, _) in &freetexts {
+        if !header_indexes.contains_key(&freetext.header) {
+            header_indexes.insert(freetext.header.clone(), headers.len());
+            headers.push(freetext.header.clone());
         }
     }
 
@@ -172,7 +185,7 @@ fn extract_to_csv(
             );
         }
 
-        for value in &extraction.values {
+        for value in extraction.values.iter().flatten() {
             let object_name = env.template_from_str(&value.name)?.render(&context)?;
             let default_members;
             let members = if let Some(members) = &value.members {
@@ -192,6 +205,20 @@ fn extract_to_csv(
                     missing_values
                         .push(format!("Value '{}' not found for '{}'", header, row_label));
                 }
+            }
+        }
+        for (freetext, regex) in &freetexts {
+            let object_name = env.template_from_str(&freetext.name)?.render(&context)?;
+            let extracted = find_freetext(objects, &object_name, regex)?;
+            let index = header_indexes[&freetext.header];
+            if let Some(extracted) = extracted {
+                record[index] = extracted;
+            } else {
+                record[index].clear();
+                missing_values.push(format!(
+                    "Value '{}' not found for '{}'",
+                    freetext.header, row_label
+                ));
             }
         }
     }
@@ -257,6 +284,30 @@ fn find_attribute(
     }
 }
 
+fn find_freetext(
+    objects: &[septic_cnfg::Object],
+    object_name: &str,
+    regex: &Regex,
+) -> Result<Option<String>> {
+    let mut matches = Vec::new();
+    for object in objects.iter().filter(|object| object.name == object_name) {
+        for (member, value) in &object.attributes {
+            let text = format!("{member}={value}");
+            for captures in regex.captures_iter(&text) {
+                let capture = captures
+                    .get(1)
+                    .context("extract freetext regex capture group did not match")?;
+                matches.push(capture.as_str().to_string());
+            }
+        }
+    }
+    match matches.as_slice() {
+        [] => Ok(None),
+        [value] => Ok(Some(value.clone())),
+        _ => bail!("multiple freetext matches found for object '{object_name}'"),
+    }
+}
+
 fn member_matches(requested: &str, actual: &str) -> bool {
     if matches!(requested, "High" | "Low" | "SetPnt" | "Iv") {
         return actual == format!("{requested}On") || actual == format!("{requested}Off");
@@ -285,7 +336,7 @@ mod tests {
         let extraction = ExtractionSource {
             id: "extracted".to_string(),
             filename: None,
-            values: vec![
+            values: Some(vec![
                 ExtractionValue {
                     r#type: Some("Cvr".to_string()),
                     name: "{{ WellName }}Qg".to_string(),
@@ -298,7 +349,8 @@ mod tests {
                     members: Some(vec!["Meas".to_string()]),
                     headers: vec!["ZpcMeas".to_string()],
                 },
-            ],
+            ]),
+            freetexts: None,
         };
         (config, extraction)
     }
@@ -329,7 +381,7 @@ mod tests {
     #[test]
     fn appends_configured_headers_that_are_missing_from_csv() {
         let (config, mut extraction) = config_and_extraction();
-        extraction.values.truncate(1);
+        extraction.values.as_mut().unwrap().truncate(1);
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName\nD01\n").unwrap();
@@ -346,9 +398,9 @@ mod tests {
     #[test]
     fn omitted_members_defaults_to_meas() {
         let (config, mut extraction) = config_and_extraction();
-        extraction.values.truncate(1);
-        extraction.values[0].members = None;
-        extraction.values[0].headers = vec!["QgMeas".to_string()];
+        extraction.values.as_mut().unwrap().truncate(1);
+        extraction.values.as_mut().unwrap()[0].members = None;
+        extraction.values.as_mut().unwrap()[0].headers = vec!["QgMeas".to_string()];
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName,QgMeas\nD01,\n").unwrap();
@@ -365,10 +417,12 @@ mod tests {
     #[test]
     fn extracts_multiple_members_from_one_rendered_object_name() {
         let (config, mut extraction) = config_and_extraction();
-        extraction.values.truncate(1);
-        extraction.values[0].name = "{{ WellName }}Rate".to_string();
-        extraction.values[0].members = Some(vec!["Low".to_string(), "SetPnt".to_string()]);
-        extraction.values[0].headers = vec!["QgLoLim".to_string(), "QgSP".to_string()];
+        extraction.values.as_mut().unwrap().truncate(1);
+        extraction.values.as_mut().unwrap()[0].name = "{{ WellName }}Rate".to_string();
+        extraction.values.as_mut().unwrap()[0].members =
+            Some(vec!["Low".to_string(), "SetPnt".to_string()]);
+        extraction.values.as_mut().unwrap()[0].headers =
+            vec!["QgLoLim".to_string(), "QgSP".to_string()];
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName,QgLoLim,QgSP\nW11,,\nW12,,\n").unwrap();
@@ -386,6 +440,39 @@ mod tests {
     }
 
     #[test]
+    fn extracts_freetext_capture_from_member_value_pair() {
+        let (config, mut extraction) = config_and_extraction();
+        extraction.values = None;
+        extraction.freetexts = Some(vec![crate::config::ExtractionFreetext {
+            name: "{{ WellName }}Rate".to_string(),
+            regex: "Low(On|Off)".to_string(),
+            header: "RateLoLimActive".to_string(),
+        }]);
+        let directory = tempdir().unwrap();
+        let target = directory.path().join("out.csv");
+        fs::write(&target, "WellName\nW11\nW12\n").unwrap();
+        let objects =
+            septic_cnfg::parse("Cvr: W11Rate\nLowOn= 2.0\nCvr: W12Rate\nLowOff= 2.1").unwrap();
+
+        let result = extract_to_csv(&extraction, &config, &target, &objects).unwrap();
+
+        assert_eq!(
+            String::from_utf8(result.output).unwrap(),
+            "WellName,RateLoLimActive\nW11,On\nW12,Off\n"
+        );
+    }
+
+    #[test]
+    fn freetext_fails_on_multiple_matches() {
+        let objects = septic_cnfg::parse("Cvr: W11Rate\nLowOn= 2.0\nLowOff= 2.1").unwrap();
+        let regex = Regex::new("Low(On|Off)").unwrap();
+
+        let error = find_freetext(&objects, "W11Rate", &regex).unwrap_err();
+
+        assert!(error.to_string().contains("multiple freetext matches"));
+    }
+
+    #[test]
     fn reads_existing_csv_with_configured_delimiter() {
         let directory = tempdir().unwrap();
         let path = directory.path().join("existing.csv");
@@ -399,8 +486,8 @@ mod tests {
     #[test]
     fn duplicate_object_member_fails() {
         let (config, mut extraction) = config_and_extraction();
-        extraction.values.truncate(1);
-        extraction.values[0].r#type = None;
+        extraction.values.as_mut().unwrap().truncate(1);
+        extraction.values.as_mut().unwrap()[0].r#type = None;
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName,QgMeas\nD01,\n").unwrap();

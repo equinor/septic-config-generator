@@ -1,5 +1,6 @@
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use minijinja::{Environment, context};
+use regex::Regex;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -137,13 +138,26 @@ pub struct ExtractionValue {
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct ExtractionFreetext {
+    /// Object name template using columns from the target CSV source
+    pub name: String,
+    /// Regular expression with exactly one capture group
+    pub regex: String,
+    /// CSV header to receive the captured text
+    pub header: String,
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct ExtractionSource {
     /// ID of the CSV source that receives the extracted values
     pub id: String,
     /// Filename within a multi-file CSV source to receive the extracted values
     pub filename: Option<String>,
     /// Values to extract into the remaining CSV columns
-    pub values: Vec<ExtractionValue>,
+    pub values: Option<Vec<ExtractionValue>>,
+    /// Free-text searches to extract from object member/value pairs
+    pub freetexts: Option<Vec<ExtractionFreetext>>,
 }
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
@@ -385,13 +399,19 @@ fn validate_extraction(config: &Config) -> Result<()> {
 }
 
 fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) -> Result<()> {
-    if extraction.values.is_empty() {
-        bail!("field 'extract.values' must contain at least one value");
+    if extraction.values.as_ref().is_none_or(Vec::is_empty)
+        && extraction.freetexts.as_ref().is_none_or(Vec::is_empty)
+    {
+        bail!(
+            "extract source '{}' must contain values or freetexts",
+            extraction.id
+        );
     }
 
     if extraction
         .values
         .iter()
+        .flatten()
         .any(|value| value.name.trim().is_empty())
     {
         bail!(
@@ -399,7 +419,7 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
             extraction.id
         );
     }
-    for value in &extraction.values {
+    for value in extraction.values.iter().flatten() {
         if value.headers.is_empty() {
             bail!(
                 "extract headers must not be empty for '{}':{}",
@@ -442,6 +462,27 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
                 extraction.id,
                 value.name
             );
+        }
+    }
+    if let Some(freetexts) = &extraction.freetexts {
+        for freetext in freetexts {
+            if freetext.name.trim().is_empty()
+                || freetext.regex.trim().is_empty()
+                || freetext.header.trim().is_empty()
+            {
+                bail!(
+                    "extract freetext name, regex, and header must not be empty for source '{}'",
+                    extraction.id
+                );
+            }
+            let regex = Regex::new(&freetext.regex)
+                .with_context(|| format!("invalid extract freetext regex '{}'", freetext.regex))?;
+            if regex.captures_len() != 2 {
+                bail!(
+                    "extract freetext regex '{}' must contain exactly one capture group",
+                    freetext.regex
+                );
+            }
         }
     }
 
@@ -563,7 +604,10 @@ layout:
         let extraction = config.extract.unwrap();
 
         assert_eq!(extraction.to[0].id, "extracted");
-        assert_eq!(extraction.to[0].values[0].headers[0], "QgMeas");
+        assert_eq!(
+            extraction.to[0].values.as_ref().unwrap()[0].headers[0],
+            "QgMeas"
+        );
     }
 
     #[test]
@@ -582,6 +626,68 @@ layout:
         let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
 
         assert!(error.to_string().contains(".csv file"));
+    }
+
+    #[test]
+    fn config_rejects_freetext_regex_without_capture_group() {
+        let content = r#"{
+"templatepath": "templates",
+"sources": [{"filename": "extracted.csv", "id": "extracted"}],
+"layout": [],
+"extract": {
+    "to": [{
+        "id": "extracted",
+        "values": [],
+        "freetexts": [{
+            "name": "{{ WellName }}Rate",
+            "regex": "Low(?:On|Off)",
+            "header": "RateLoLimActive"
+        }]
+    }]
+}}
+"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(error.to_string().contains("exactly one capture group"));
+    }
+
+    #[test]
+    fn config_accepts_freetext_without_values() {
+        let content = r#"{
+"templatepath": "templates",
+"sources": [{"filename": "extracted.csv", "id": "extracted"}],
+"layout": [],
+"extract": {
+    "to": [{
+        "id": "extracted",
+        "freetexts": [{
+            "name": "{{ WellName }}Rate",
+            "regex": "Low(On|Off)",
+            "header": "RateLoLimActive"
+        }]
+    }]
+}}
+"#;
+
+        assert!(Config::new(create_temp_yaml(content).path()).is_ok());
+    }
+
+    #[test]
+    fn config_rejects_extraction_without_values_or_freetexts() {
+        let content = r#"{
+"templatepath": "templates",
+"sources": [{"filename": "extracted.csv", "id": "extracted"}],
+"layout": [],
+"extract": {"to": [{"id": "extracted"}]}
+}
+"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(
+            error
+                .to_string()
+                .contains("must contain values or freetexts")
+        );
     }
 
     #[test]

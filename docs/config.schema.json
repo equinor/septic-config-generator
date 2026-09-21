@@ -331,16 +331,51 @@
         },
         "values": {
           "description": "Values to extract into the remaining CSV columns",
-          "type": "array",
+          "type": [
+            "array",
+            "null"
+          ],
           "items": {
             "$ref": "#/definitions/ExtractionValue"
+          }
+        },
+        "freetexts": {
+          "description": "Free-text searches to extract from object member/value pairs",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "$ref": "#/definitions/ExtractionFreetext"
           }
         }
       },
       "additionalProperties": false,
       "required": [
-        "id",
-        "values"
+        "id"
+      ]
+    },
+    "ExtractionFreetext": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "Object name template using columns from the target CSV source",
+          "type": "string"
+        },
+        "regex": {
+          "description": "Regular expression with exactly one capture group",
+          "type": "string"
+        },
+        "header": {
+          "description": "CSV header to receive the captured text",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "regex",
+        "header"
       ]
     },
     "ExtractionValue": {

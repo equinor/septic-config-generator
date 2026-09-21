@@ -628,6 +628,10 @@ extract:
           type: Cvr
           members: ["Low", "SetPnt"]
           headers: ["QgLoLim", "QgSP"]
+      freetexts:
+        - name: "{{ WellName }}Rate"
+          regex: "Low(On|Off)"
+          header: "RateLoLimActive"
 ```
 
 The target CSV file must already exist and contain at least one column. The first column header and its row values
@@ -636,6 +640,13 @@ the configuration above will search for `D01Rate`, `D02Rate`, and so on by repla
 `type` is optional; if omitted, any object type matches. `members` lists object members to extract, and `headers` lists
 the CSV columns to receive those values. If `members` is omitted, `Meas` is extracted and `headers` must contain exactly
 one value. If `members` is provided, `members` and `headers` must have the same length.
+
+Both `values` and `freetexts` are optional, but each `to` item must provide at least one of them.
+
+`freetexts` searches an object's `member=value` pairs. Each item renders `name` in the same way as `values`, then
+searches the matching object's pairs with `regex`; for example, `LowOn=2.0` is searched as `LowOn=2.0`. The regex must
+contain exactly one capture group; its captured text is stored under `header`. A freetext item must have at most one
+match per object name.
 
 There is a special case for member names `High`, `Low`, `SetPnt`, and `Iv`: Specifying one of these will match the
 corresponding `On` or `Off` variant. For instance: specifying `High` will match both `HighOn` and `HighOff` variants.
