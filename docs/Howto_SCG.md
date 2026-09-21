@@ -620,38 +620,38 @@ extract:
   to:
     - id: main
       filename: extracted.csv
-      values:
+      objects:
         - name: "{{ WellName }}Choke"
-          members: ["Low", "High"]
+          props: ["Low", "High"]
           headers: ["ZpcLoLim", "ZpcHiLim"]
         - name: "{{ WellName }}Rate"
           type: Cvr
-          members: ["Low", "SetPnt"]
+          props: ["Low", "SetPnt"]
           headers: ["QgLoLim", "QgSP"]
-      freetexts:
         - name: "{{ WellName }}Rate"
-          regex: "Low(On|Off)"
-          header: "RateLoLimActive"
+          regexps: ["Low(On|Off)", "SetPnt(On|Off)"]
+          headers: ["RateLoLimActive", "RateSpActive"]
 ```
 
 The target CSV file must already exist and contain at least one column. The first column header and its row values
 define the rows to update. If the csv file has a first column with header `WellName` and row labels `D01`, `D02` etc,
-the configuration above will search for `D01Rate`, `D02Rate`, and so on by replacing `WellName` with the row labels.
-`type` is optional; if omitted, any object type matches. `members` lists object members to extract, and `headers` lists
-the CSV columns to receive those values. If `members` is omitted, `Meas` is extracted and `headers` must contain exactly
-one value. If `members` is provided, `members` and `headers` must have the same length.
+the configuration above will search for `D01Rate`, `D02Rate`, and so on by replacing `WellName` with the row labels. In
+case the name is used in multiple locations, you can use the optional `type` to specify the object type.
 
-Both `values` and `freetexts` are optional, but each `to` item must provide at least one of them.
+Each object must provide exactly one of `props` or `regexps` to specify what to search for:
 
-`freetexts` searches an object's `member=value` pairs. Each item renders `name` in the same way as `values`, then
-searches the matching object's pairs with `regex`; for example, `LowOn=2.0` is searched as `LowOn=2.0`. The regex must
-contain exactly one capture group; its captured text is stored under `header`. A freetext item must have at most one
-match per object name.
+- `props` lists object properties to extract. There is a special case for property names `High`, `Low`, `SetPnt`, and
+  `Iv`: Specifying one of these will match the corresponding `On` or `Off` variant. For instance: specifying `High` will
+  match both `HighOn` and `HighOff` variants.
 
-There is a special case for member names `High`, `Low`, `SetPnt`, and `Iv`: Specifying one of these will match the
-corresponding `On` or `Off` variant. For instance: specifying `High` will match both `HighOn` and `HighOff` variants.
+- `regexps` lists one or more regexes to search an object's normalized `prop=value` pairs; for example, the prop-value
+  pair `LowOn= 2.0` is normalized to `LowOn=2.0` before the regex is applied. Every regex must contain exactly one
+  capture group, which is the value that is stored.
 
-The example aligns with a source file `extracted.csv` that would look like this:
+`headers` lists the CSV columns to receive the extracted values. `headers` must have the same length as `props` or
+`regexps`.
+
+The example above aligns with a source file `extracted.csv` that would look like this:
 
 ```csv
 WellName;ZpcLoLim;ZpcHiLim;QgLoLim;QgSP

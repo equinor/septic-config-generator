@@ -329,56 +329,21 @@
             "null"
           ]
         },
-        "values": {
-          "description": "Values to extract into the remaining CSV columns",
-          "type": [
-            "array",
-            "null"
-          ],
+        "objects": {
+          "description": "Object values or member/value-pair captures to extract",
+          "type": "array",
           "items": {
-            "$ref": "#/definitions/ExtractionValue"
-          }
-        },
-        "freetexts": {
-          "description": "Free-text searches to extract from object member/value pairs",
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "$ref": "#/definitions/ExtractionFreetext"
+            "$ref": "#/definitions/ExtractionObject"
           }
         }
       },
       "additionalProperties": false,
       "required": [
-        "id"
+        "id",
+        "objects"
       ]
     },
-    "ExtractionFreetext": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "description": "Object name template using columns from the target CSV source",
-          "type": "string"
-        },
-        "regex": {
-          "description": "Regular expression with exactly one capture group",
-          "type": "string"
-        },
-        "header": {
-          "description": "CSV header to receive the captured text",
-          "type": "string"
-        }
-      },
-      "additionalProperties": false,
-      "required": [
-        "name",
-        "regex",
-        "header"
-      ]
-    },
-    "ExtractionValue": {
+    "ExtractionObject": {
       "type": "object",
       "properties": {
         "type": {
@@ -392,8 +357,18 @@
           "description": "Object name template using columns from the target CSV source",
           "type": "string"
         },
-        "members": {
-          "description": "Object members to extract. Defaults to Meas when omitted.",
+        "props": {
+          "description": "Object properties to extract",
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "regexps": {
+          "description": "Regular expressions with exactly one capture group each",
           "type": [
             "array",
             "null"

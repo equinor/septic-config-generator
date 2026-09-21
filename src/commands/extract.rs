@@ -142,24 +142,12 @@ fn extract_to_csv(
         .enumerate()
         .map(|(index, header)| (header.clone(), index))
         .collect();
-    for value in extraction.values.iter().flatten() {
-        for header in &value.headers {
+    for object in &extraction.objects {
+        for header in &object.headers {
             if !header_indexes.contains_key(header) {
                 header_indexes.insert(header.clone(), headers.len());
                 headers.push(header.clone());
             }
-        }
-    }
-    let freetexts = extraction
-        .freetexts
-        .iter()
-        .flatten()
-        .map(|freetext| Ok((freetext, Regex::new(&freetext.regex)?)))
-        .collect::<Result<Vec<_>>>()?;
-    for (freetext, _) in &freetexts {
-        if !header_indexes.contains_key(&freetext.header) {
-            header_indexes.insert(freetext.header.clone(), headers.len());
-            headers.push(freetext.header.clone());
         }
     }
 
@@ -185,40 +173,34 @@ fn extract_to_csv(
             );
         }
 
-        for value in extraction.values.iter().flatten() {
-            let object_name = env.template_from_str(&value.name)?.render(&context)?;
-            let default_members;
-            let members = if let Some(members) = &value.members {
-                members.as_slice()
-            } else {
-                default_members = [String::from("Meas")];
-                &default_members
-            };
-            for (member, header) in members.iter().zip(&value.headers) {
-                let extracted =
-                    find_attribute(objects, value.r#type.as_deref(), &object_name, member)?;
-                let index = header_indexes[header];
-                if let Some(extracted) = extracted {
-                    record[index] = extracted;
-                } else {
-                    record[index].clear();
-                    missing_values
-                        .push(format!("Value '{}' not found for '{}'", header, row_label));
+        for object in &extraction.objects {
+            let object_name = env.template_from_str(&object.name)?.render(&context)?;
+            if let Some(props) = &object.props {
+                for (member, header) in props.iter().zip(&object.headers) {
+                    let extracted =
+                        find_attribute(objects, object.r#type.as_deref(), &object_name, member)?;
+                    let index = header_indexes[header];
+                    if let Some(extracted) = extracted {
+                        record[index] = extracted;
+                    } else {
+                        record[index].clear();
+                        missing_values
+                            .push(format!("Value '{}' not found for '{}'", header, row_label));
+                    }
                 }
-            }
-        }
-        for (freetext, regex) in &freetexts {
-            let object_name = env.template_from_str(&freetext.name)?.render(&context)?;
-            let extracted = find_freetext(objects, &object_name, regex)?;
-            let index = header_indexes[&freetext.header];
-            if let Some(extracted) = extracted {
-                record[index] = extracted;
-            } else {
-                record[index].clear();
-                missing_values.push(format!(
-                    "Value '{}' not found for '{}'",
-                    freetext.header, row_label
-                ));
+            } else if let Some(regexps) = &object.regexps {
+                for (regex_pattern, header) in regexps.iter().zip(&object.headers) {
+                    let regex = Regex::new(regex_pattern)?;
+                    let extracted = find_freetext(objects, &object_name, &regex)?;
+                    let index = header_indexes[header];
+                    if let Some(extracted) = extracted {
+                        record[index] = extracted;
+                    } else {
+                        record[index].clear();
+                        missing_values
+                            .push(format!("Value '{}' not found for '{}'", header, row_label));
+                    }
+                }
             }
         }
     }
@@ -318,7 +300,7 @@ fn member_matches(requested: &str, actual: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::{ExtractionSource, ExtractionValue, Source};
+    use crate::config::{ExtractionObject, ExtractionSource, Source};
     use tempfile::tempdir;
 
     fn config_and_extraction() -> (Config, ExtractionSource) {
@@ -336,21 +318,22 @@ mod tests {
         let extraction = ExtractionSource {
             id: "extracted".to_string(),
             filename: None,
-            values: Some(vec![
-                ExtractionValue {
+            objects: vec![
+                ExtractionObject {
                     r#type: Some("Cvr".to_string()),
                     name: "{{ WellName }}Qg".to_string(),
-                    members: Some(vec!["Meas".to_string()]),
+                    props: Some(vec!["Meas".to_string()]),
+                    regexps: None,
                     headers: vec!["QgMeas".to_string()],
                 },
-                ExtractionValue {
+                ExtractionObject {
                     r#type: Some("Mvr".to_string()),
                     name: "{{ WellName }}Zpc".to_string(),
-                    members: Some(vec!["Meas".to_string()]),
+                    props: Some(vec!["Meas".to_string()]),
+                    regexps: None,
                     headers: vec!["ZpcMeas".to_string()],
                 },
-            ]),
-            freetexts: None,
+            ],
         };
         (config, extraction)
     }
@@ -381,7 +364,7 @@ mod tests {
     #[test]
     fn appends_configured_headers_that_are_missing_from_csv() {
         let (config, mut extraction) = config_and_extraction();
-        extraction.values.as_mut().unwrap().truncate(1);
+        extraction.objects.truncate(1);
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName\nD01\n").unwrap();
@@ -396,33 +379,12 @@ mod tests {
     }
 
     #[test]
-    fn omitted_members_defaults_to_meas() {
+    fn extracts_multiple_props_from_one_rendered_object_name() {
         let (config, mut extraction) = config_and_extraction();
-        extraction.values.as_mut().unwrap().truncate(1);
-        extraction.values.as_mut().unwrap()[0].members = None;
-        extraction.values.as_mut().unwrap()[0].headers = vec!["QgMeas".to_string()];
-        let directory = tempdir().unwrap();
-        let target = directory.path().join("out.csv");
-        fs::write(&target, "WellName,QgMeas\nD01,\n").unwrap();
-        let objects = septic_cnfg::parse("Cvr: D01Qg\nMeas= 230000").unwrap();
-
-        let result = extract_to_csv(&extraction, &config, &target, &objects).unwrap();
-
-        assert_eq!(
-            String::from_utf8(result.output).unwrap(),
-            "WellName,QgMeas\nD01,230000\n"
-        );
-    }
-
-    #[test]
-    fn extracts_multiple_members_from_one_rendered_object_name() {
-        let (config, mut extraction) = config_and_extraction();
-        extraction.values.as_mut().unwrap().truncate(1);
-        extraction.values.as_mut().unwrap()[0].name = "{{ WellName }}Rate".to_string();
-        extraction.values.as_mut().unwrap()[0].members =
-            Some(vec!["Low".to_string(), "SetPnt".to_string()]);
-        extraction.values.as_mut().unwrap()[0].headers =
-            vec!["QgLoLim".to_string(), "QgSP".to_string()];
+        extraction.objects.truncate(1);
+        extraction.objects[0].name = "{{ WellName }}Rate".to_string();
+        extraction.objects[0].props = Some(vec!["Low".to_string(), "SetPnt".to_string()]);
+        extraction.objects[0].headers = vec!["QgLoLim".to_string(), "QgSP".to_string()];
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName,QgLoLim,QgSP\nW11,,\nW12,,\n").unwrap();
@@ -442,23 +404,29 @@ mod tests {
     #[test]
     fn extracts_freetext_capture_from_member_value_pair() {
         let (config, mut extraction) = config_and_extraction();
-        extraction.values = None;
-        extraction.freetexts = Some(vec![crate::config::ExtractionFreetext {
+        extraction.objects = vec![ExtractionObject {
+            r#type: None,
             name: "{{ WellName }}Rate".to_string(),
-            regex: "Low(On|Off)".to_string(),
-            header: "RateLoLimActive".to_string(),
-        }]);
+            props: None,
+            regexps: Some(vec![
+                "Low(On|Off)".to_string(),
+                "SetPnt(On|Off)".to_string(),
+            ]),
+            headers: vec!["RateLoLimActive".to_string(), "RateSpActive".to_string()],
+        }];
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName\nW11\nW12\n").unwrap();
-        let objects =
-            septic_cnfg::parse("Cvr: W11Rate\nLowOn= 2.0\nCvr: W12Rate\nLowOff= 2.1").unwrap();
+        let objects = septic_cnfg::parse(
+            "Cvr: W11Rate\nLowOn= 2.0\nSetPntOff= 3.4\nCvr: W12Rate\nLowOff= 2.1\nSetPntOn= 3.5",
+        )
+        .unwrap();
 
         let result = extract_to_csv(&extraction, &config, &target, &objects).unwrap();
 
         assert_eq!(
             String::from_utf8(result.output).unwrap(),
-            "WellName,RateLoLimActive\nW11,On\nW12,Off\n"
+            "WellName,RateLoLimActive,RateSpActive\nW11,On,Off\nW12,Off,On\n"
         );
     }
 
@@ -486,8 +454,8 @@ mod tests {
     #[test]
     fn duplicate_object_member_fails() {
         let (config, mut extraction) = config_and_extraction();
-        extraction.values.as_mut().unwrap().truncate(1);
-        extraction.values.as_mut().unwrap()[0].r#type = None;
+        extraction.objects.truncate(1);
+        extraction.objects[0].r#type = None;
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName,QgMeas\nD01,\n").unwrap();
@@ -561,12 +529,12 @@ mod tests {
         "to": [
             {
                 "id": "extracted",
-                "values": [{"type": "Cvr", "name": "{{ WellName }}Qg", "members": ["Meas"], "headers": ["QgMeas"]}]
+                "objects": [{"type": "Cvr", "name": "{{ WellName }}Qg", "props": ["Meas"], "headers": ["QgMeas"]}]
             },
             {
                 "id": "secondary",
                 "filename": "secondary.csv",
-                "values": [{"type": "Cvr", "name": "{{ WellName }}Qg", "members": ["Meas"], "headers": ["Measured"]}]
+                "objects": [{"type": "Cvr", "name": "{{ WellName }}Qg", "props": ["Meas"], "headers": ["Measured"]}]
             }
         ]
     }

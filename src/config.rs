@@ -125,26 +125,17 @@ pub struct Drawio {
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct ExtractionValue {
+pub struct ExtractionObject {
     /// Optional object type to match
     pub r#type: Option<String>,
     /// Object name template using columns from the target CSV source
     pub name: String,
-    /// Object members to extract. Defaults to Meas when omitted.
-    pub members: Option<Vec<String>>,
+    /// Object properties to extract
+    pub props: Option<Vec<String>>,
+    /// Regular expressions with exactly one capture group each
+    pub regexps: Option<Vec<String>>,
     /// CSV headers to receive the extracted member values
     pub headers: Vec<String>,
-}
-
-#[derive(Deserialize, Debug, Default, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct ExtractionFreetext {
-    /// Object name template using columns from the target CSV source
-    pub name: String,
-    /// Regular expression with exactly one capture group
-    pub regex: String,
-    /// CSV header to receive the captured text
-    pub header: String,
 }
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
@@ -154,10 +145,8 @@ pub struct ExtractionSource {
     pub id: String,
     /// Filename within a multi-file CSV source to receive the extracted values
     pub filename: Option<String>,
-    /// Values to extract into the remaining CSV columns
-    pub values: Option<Vec<ExtractionValue>>,
-    /// Free-text searches to extract from object member/value pairs
-    pub freetexts: Option<Vec<ExtractionFreetext>>,
+    /// Object values or member/value-pair captures to extract
+    pub objects: Vec<ExtractionObject>,
 }
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
@@ -399,90 +388,83 @@ fn validate_extraction(config: &Config) -> Result<()> {
 }
 
 fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) -> Result<()> {
-    if extraction.values.as_ref().is_none_or(Vec::is_empty)
-        && extraction.freetexts.as_ref().is_none_or(Vec::is_empty)
-    {
-        bail!(
-            "extract source '{}' must contain values or freetexts",
-            extraction.id
-        );
+    if extraction.objects.is_empty() {
+        bail!("extract source '{}' must contain objects", extraction.id);
     }
 
     if extraction
-        .values
+        .objects
         .iter()
-        .flatten()
-        .any(|value| value.name.trim().is_empty())
+        .any(|object| object.name.trim().is_empty())
     {
         bail!(
             "extract name must not be empty for source '{}'",
             extraction.id
         );
     }
-    for value in extraction.values.iter().flatten() {
-        if value.headers.is_empty() {
+    for object in &extraction.objects {
+        if object.headers.is_empty() {
             bail!(
                 "extract headers must not be empty for '{}':{}",
                 extraction.id,
-                value.name
+                object.name
             );
         }
-        if let Some(members) = &value.members {
-            if members.is_empty() {
-                bail!(
-                    "extract members must not be empty for '{}':{}",
-                    extraction.id,
-                    value.name
-                );
-            }
-            if members.len() != value.headers.len() {
-                bail!(
-                    "extract members and headers must have the same length for '{}':{}",
-                    extraction.id,
-                    value.name
-                );
-            }
-            if members.iter().any(|member| member.trim().is_empty()) {
-                bail!(
-                    "extract members must not contain empty values for '{}':{}",
-                    extraction.id,
-                    value.name
-                );
-            }
-        } else if value.headers.len() != 1 {
+        if object.props.is_some() == object.regexps.is_some() {
             bail!(
-                "extract headers must contain exactly one value when members is omitted for '{}':{}",
+                "extract object '{}:{}' must provide exactly one of props or regexps",
                 extraction.id,
-                value.name
+                object.name
             );
         }
-        if value.headers.iter().any(|header| header.trim().is_empty()) {
+        if let Some(props) = &object.props {
+            if props.is_empty() {
+                bail!(
+                    "extract props must not be empty for '{}':{}",
+                    extraction.id,
+                    object.name
+                );
+            }
+            if props.len() != object.headers.len() {
+                bail!(
+                    "extract props and headers must have the same length for '{}':{}",
+                    extraction.id,
+                    object.name
+                );
+            }
+            if props.iter().any(|prop| prop.trim().is_empty()) {
+                bail!(
+                    "extract props must not contain empty values for '{}':{}",
+                    extraction.id,
+                    object.name
+                );
+            }
+        }
+        if let Some(regexps) = &object.regexps {
+            if regexps.is_empty() || regexps.len() != object.headers.len() {
+                bail!(
+                    "extract regexps and headers must be non-empty and have the same length for '{}':{}",
+                    extraction.id,
+                    object.name
+                );
+            }
+            for regex_pattern in regexps {
+                let regex = Regex::new(regex_pattern)
+                    .with_context(|| format!("invalid extract regex '{regex_pattern}'"))?;
+                if regex.captures_len() != 2 {
+                    bail!(
+                        "extract regex '{}' must contain exactly one capture group",
+                        regex_pattern
+                    );
+                }
+            }
+        }
+        if object.headers.iter().any(|header| header.trim().is_empty()) {
             bail!(
                 "extract headers must not contain empty values for '{}':{}",
                 extraction.id,
-                value.name
+                object.name
             );
-        }
-    }
-    if let Some(freetexts) = &extraction.freetexts {
-        for freetext in freetexts {
-            if freetext.name.trim().is_empty()
-                || freetext.regex.trim().is_empty()
-                || freetext.header.trim().is_empty()
-            {
-                bail!(
-                    "extract freetext name, regex, and header must not be empty for source '{}'",
-                    extraction.id
-                );
-            }
-            let regex = Regex::new(&freetext.regex)
-                .with_context(|| format!("invalid extract freetext regex '{}'", freetext.regex))?;
-            if regex.captures_len() != 2 {
-                bail!(
-                    "extract freetext regex '{}' must contain exactly one capture group",
-                    freetext.regex
-                );
-            }
         }
     }
 
@@ -596,7 +578,7 @@ layout:
     "from": "current.cnfg",
     "to": [{
         "id": "extracted",
-        "values": [{"type": "Cvr", "name": "{{ Wellname }}Qg", "members": ["Meas"], "headers": ["QgMeas"]}]
+        "objects": [{"type": "Cvr", "name": "{{ Wellname }}Qg", "props": ["Meas"], "headers": ["QgMeas"]}]
     }]
 }}
 "#;
@@ -604,10 +586,7 @@ layout:
         let extraction = config.extract.unwrap();
 
         assert_eq!(extraction.to[0].id, "extracted");
-        assert_eq!(
-            extraction.to[0].values.as_ref().unwrap()[0].headers[0],
-            "QgMeas"
-        );
+        assert_eq!(extraction.to[0].objects[0].headers[0], "QgMeas");
     }
 
     #[test]
@@ -619,7 +598,7 @@ layout:
 "extract": {
     "to": [{
         "id": "extracted",
-        "values": [{"type": "Cvr", "name": "{{ Wellname }}Qg", "members": ["Meas"], "headers": ["QgMeas"]}]
+        "objects": [{"type": "Cvr", "name": "{{ Wellname }}Qg", "props": ["Meas"], "headers": ["QgMeas"]}]
     }]
 }}
 "#;
@@ -637,11 +616,10 @@ layout:
 "extract": {
     "to": [{
         "id": "extracted",
-        "values": [],
-        "freetexts": [{
+        "objects": [{
             "name": "{{ WellName }}Rate",
-            "regex": "Low(?:On|Off)",
-            "header": "RateLoLimActive"
+            "regexps": ["Low(?:On|Off)"],
+            "headers": ["RateLoLimActive"]
         }]
     }]
 }}
@@ -660,10 +638,10 @@ layout:
 "extract": {
     "to": [{
         "id": "extracted",
-        "freetexts": [{
+        "objects": [{
             "name": "{{ WellName }}Rate",
-            "regex": "Low(On|Off)",
-            "header": "RateLoLimActive"
+            "regexps": ["Low(On|Off)"],
+            "headers": ["RateLoLimActive"]
         }]
     }]
 }}
@@ -673,7 +651,7 @@ layout:
     }
 
     #[test]
-    fn config_rejects_extraction_without_values_or_freetexts() {
+    fn config_rejects_extraction_without_objects() {
         let content = r#"{
 "templatepath": "templates",
 "sources": [{"filename": "extracted.csv", "id": "extracted"}],
@@ -683,11 +661,7 @@ layout:
 "#;
         let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
 
-        assert!(
-            error
-                .to_string()
-                .contains("must contain values or freetexts")
-        );
+        assert!(error.to_string().contains("must contain objects"));
     }
 
     #[test]
