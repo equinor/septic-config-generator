@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.17.0](https://github.com/equinor/septic-config-generator/compare/v2.16.0...v2.17.0) (2026-09-22)
+
+
+### ✨ Features
+
+* handle array of numbers from csv ([#473](https://github.com/equinor/septic-config-generator/issues/473)) ([6762088](https://github.com/equinor/septic-config-generator/commit/67620884a9ea49819afaf3eee472eaed6cfa55d3))
+
+
+### 🐛 Bug Fixes
+
+* correctly parse bitmasks w/high bits set ([#475](https://github.com/equinor/septic-config-generator/issues/475)) ([c4ec2cf](https://github.com/equinor/septic-config-generator/commit/c4ec2cfa513dfdec4958b44e7aaef3c6e0c4b916))
+
 ## [2.16.0](https://github.com/equinor/septic-config-generator/compare/v2.15.3...v2.16.0) (2026-09-22)
 
 
