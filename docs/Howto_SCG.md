@@ -372,11 +372,16 @@ values in the following order:
 - Integer
 - Float
 - Boolean
+- JSON-style array of numbers, e.g. `[1, 2.5, 3]`
 
 String is the fallback type. When parsing floats, both ',' and '.' are valid decimal separators.
 
 All cell values are trimmed before parsing. This means that `a;1.0;2` and ` a ; 1.0 ; 2` are equivalent. Which again
 means that "proper-looking" tables can be created: Set delimiter to e.g. `|` and maintain constant column width.
+
+Numeric arrays are available as MiniJinja sequences. A single-item array is written `[20]`. For example, a cell
+containing `[2, 4, 6]` can be used in a template as `{{ ([1] + numbers + [5]) | bitmask }}`. When the CSV delimiter is a
+comma (not recommended), quote array cells.
 
 Specifying the delimiter is optional. The default value is `;`.
 
@@ -556,6 +561,21 @@ Examples:
 `{{ 2 | bitmask }}` -> `0000000000000000000000000000010`  
 `{{ [1, 3, 31] | bitmask }}` -> `1000000000000000000000000000101`  
 `{{ [1, 3] | bitmask(5) }}` -> `00101`
+
+Please note that you can provide integers or an array of integers in the csv source, e.g. `[1, 3]`. If that value is
+assigned to `grpmask`, then you can create the bitmask directly:
+
+`{{ grpmask | bitmask }}` -> `0000000000000000000000000000101`
+
+You can also combine it with other arrays, e.g. fixed values. Use `+` to contatenate arrays and combine them with `()`
+before passing the resulting sequence to `bitmask`:
+
+`{{ ([2] + grpmask + [30, 31])| bitmask }}` -> `1100000000000000000000000000111`
+
+If `grpmask` is a number, e.g. 3, it can be used similarly:
+
+`{{ grpmask | bitmask }}` -> `0000000000000000000000000000100` `{{ [grpmask, 1] | bitmask }}` ->
+`0000000000000000000000000000101` `{{ ([1, grpmask] + [31]) | bitmask }}` -> `1000000000000000000000000000101`
 
 #### `gitcommit`
 

@@ -36,11 +36,21 @@ pub enum CtxErrorType {
 pub enum CtxDataType {
     Int(i64),
     Float(f64),
+    Sequence(Vec<CtxDataType>),
     String(String),
     Bool(bool),
     DateTime(f64),
     Error(CtxErrorType),
     Empty,
+}
+
+impl From<serde_json::Number> for CtxDataType {
+    fn from(value: serde_json::Number) -> Self {
+        match value.as_i64() {
+            Some(value) => Self::Int(value),
+            None => Self::Float(value.as_f64().unwrap()),
+        }
+    }
 }
 
 impl Serialize for CtxDataType {
@@ -51,6 +61,7 @@ impl Serialize for CtxDataType {
         match self {
             Self::Int(value) => serializer.serialize_i64(*value),
             Self::Float(value) | Self::DateTime(value) => serializer.serialize_f64(*value),
+            Self::Sequence(values) => values.serialize(serializer),
             Self::String(value) => serializer.serialize_str(value),
             Self::Bool(value) => serializer.serialize_bool(*value),
             Self::Error(value) => {
@@ -179,6 +190,13 @@ impl DataSourceReader for CsvSourceReader {
                             CtxDataType::Float(v.replace(',', ".").parse().unwrap())
                         }
                         v if v.parse::<bool>().is_ok() => CtxDataType::Bool(v.parse().unwrap()),
+                        v if let Ok(values) =
+                            serde_json::from_str::<Vec<serde_json::Number>>(v) =>
+                        {
+                            CtxDataType::Sequence(
+                                values.into_iter().map(CtxDataType::from).collect(),
+                            )
+                        }
                         _ => CtxDataType::String(value.to_string()),
                     };
                     data.insert(header_field.to_string(), converted_value);
@@ -404,11 +422,11 @@ mod csvtests {
     use std::io::Write;
 
     #[test]
-    fn csv_parses_text_float_int_zeros() {
-        let csv_content = r#"keys;text;float;int;mix;zeros
-key1;value1;1.1;1;1.0;0
+    fn csv_parses_text_float_int_zeros_and_numeric_sequences() {
+        let csv_content = r#"keys;text;float;int;mix;zeros;numbers;single_number;empty_numbers;not_numbers
+key1;value1;1.1;1;1.0;0;[1, 2.5, 3];[20];[];[a, b]
 # Ignore this line
-key2;value2;2.2;2;2;00"#;
+key2;value2;2.2;2;2;00;[4, 5];[20];[];[x]"#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
         write!(tmp_file, "{csv_content}").unwrap();
 
@@ -434,6 +452,26 @@ key2;value2;2.2;2;2;00"#;
         assert_eq!(values.get("int"), Some(&CtxDataType::Int(1)));
         assert_eq!(values.get("mix"), Some(&CtxDataType::Float(1.0)));
         assert_eq!(values.get("zeros"), Some(&CtxDataType::Int(0)));
+        assert_eq!(
+            values.get("numbers"),
+            Some(&CtxDataType::Sequence(vec![
+                CtxDataType::Int(1),
+                CtxDataType::Float(2.5),
+                CtxDataType::Int(3),
+            ]))
+        );
+        assert_eq!(
+            values.get("single_number"),
+            Some(&CtxDataType::Sequence(vec![CtxDataType::Int(20)]))
+        );
+        assert_eq!(
+            values.get("empty_numbers"),
+            Some(&CtxDataType::Sequence(vec![]))
+        );
+        assert_eq!(
+            values.get("not_numbers"),
+            Some(&CtxDataType::String("[a, b]".to_string()))
+        );
 
         let values = &data["key2"];
         assert_eq!(
@@ -446,6 +484,17 @@ key2;value2;2.2;2;2;00"#;
         assert_eq!(
             values.get("zeros"),
             Some(&CtxDataType::String("00".to_string()))
+        );
+        assert_eq!(
+            values.get("numbers"),
+            Some(&CtxDataType::Sequence(vec![
+                CtxDataType::Int(4),
+                CtxDataType::Int(5),
+            ]))
+        );
+        assert_eq!(
+            values.get("single_number"),
+            Some(&CtxDataType::Sequence(vec![CtxDataType::Int(20)]))
         );
     }
 
