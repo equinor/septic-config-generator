@@ -120,7 +120,7 @@ fn filt_values(v: Value) -> Result<Value, Error> {
 fn filt_bitmask(value: Value, length: Option<usize>) -> Result<String, Error> {
     let value = match value.kind() {
         ValueKind::Number => Value::from(vec![value]),
-        ValueKind::Seq => value,
+        ValueKind::Seq | ValueKind::Iterable => value,
         _ => {
             return Err(Error::new(
                 ErrorKind::InvalidOperation,
@@ -545,6 +545,22 @@ mod tests {
         assert!(result == "1000000000000000000000000000101");
         let result = filt_bitmask(Value::from(vec![1, 3]), Some(5)).unwrap();
         assert!(result == "00101");
+    }
+
+    #[test]
+    fn customfunction_bitmask_on_concatenated_sequence() {
+        let renderer = MiniJinja::new(&[]).unwrap();
+        let template = renderer
+            .env
+            .template_from_str("{{ ([1] + numbers + [31]) | bitmask }}")
+            .unwrap();
+
+        let result = template.render(context!(numbers => vec![11, 6])).unwrap();
+
+        assert_eq!(
+            result,
+            filt_bitmask(Value::from(vec![1, 11, 6, 31]), None).unwrap()
+        );
     }
 
     #[test]
