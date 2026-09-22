@@ -638,7 +638,7 @@ define the rows to update. If the csv file has a first column with header `WellN
 the configuration above will search for `D01Rate`, `D02Rate`, and so on by replacing `WellName` with the row labels. In
 case the name is used in multiple locations, you can use the optional `type` to specify the object type.
 
-Each object must provide exactly one of `props` or `regexps` to specify what to search for:
+Each object normally provides exactly one of `props` or `regexps` to specify what to search for:
 
 - `props` lists object properties to extract. There is a special case for property names `High`, `Low`, `SetPnt`, and
   `Iv`: Specifying one of these will match the corresponding `On` or `Off` variant. For instance: specifying `High` will
@@ -650,6 +650,9 @@ Each object must provide exactly one of `props` or `regexps` to specify what to 
 
 `headers` lists the CSV columns to receive the extracted values. `headers` must have the same length as `props` or
 `regexps`.
+
+If both `props` and `regexps` are omitted and `headers` contains exactly one value, SCG falls back to extract the `Meas`
+property.
 
 The example above aligns with a source file `extracted.csv` that would look like this:
 

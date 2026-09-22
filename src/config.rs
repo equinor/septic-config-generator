@@ -410,9 +410,16 @@ fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) ->
                 object.name
             );
         }
-        if object.props.is_some() == object.regexps.is_some() {
+        if object.props.is_some() && object.regexps.is_some() {
             bail!(
-                "extract object '{}:{}' must provide exactly one of props or regexps",
+                "extract object '{}:{}' cannot provide both props and regexps",
+                extraction.id,
+                object.name
+            );
+        }
+        if object.props.is_none() && object.regexps.is_none() && object.headers.len() != 1 {
+            bail!(
+                "extract object '{}:{}' must provide props or regexps when headers has more than one value",
                 extraction.id,
                 object.name
             );

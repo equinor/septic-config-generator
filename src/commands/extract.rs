@@ -201,6 +201,18 @@ fn extract_to_csv(
                             .push(format!("Value '{}' not found for '{}'", header, row_label));
                     }
                 }
+            } else {
+                let header = &object.headers[0];
+                let extracted =
+                    find_attribute(objects, object.r#type.as_deref(), &object_name, "Meas")?;
+                let index = header_indexes[header];
+                if let Some(extracted) = extracted {
+                    record[index] = extracted;
+                } else {
+                    record[index].clear();
+                    missing_values
+                        .push(format!("Value '{}' not found for '{}'", header, row_label));
+                }
             }
         }
     }
@@ -368,6 +380,26 @@ mod tests {
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName\nD01\n").unwrap();
+        let objects = septic_cnfg::parse("Cvr: D01Qg\nMeas= 230000").unwrap();
+
+        let result = extract_to_csv(&extraction, &config, &target, &objects).unwrap();
+
+        assert_eq!(
+            String::from_utf8(result.output).unwrap(),
+            "WellName,QgMeas\nD01,230000\n"
+        );
+    }
+
+    #[test]
+    fn omitted_props_and_regexps_defaults_to_meas() {
+        let (config, mut extraction) = config_and_extraction();
+        extraction.objects.truncate(1);
+        extraction.objects[0].props = None;
+        extraction.objects[0].regexps = None;
+        extraction.objects[0].headers = vec!["QgMeas".to_string()];
+        let directory = tempdir().unwrap();
+        let target = directory.path().join("out.csv");
+        fs::write(&target, "WellName,QgMeas\nD01,\n").unwrap();
         let objects = septic_cnfg::parse("Cvr: D01Qg\nMeas= 230000").unwrap();
 
         let result = extract_to_csv(&extraction, &config, &target, &objects).unwrap();
