@@ -30,6 +30,7 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look in
     - [`gitcommitlong`](#gitcommitlong)
     - [`now()`](#now)
     - [`scgversion`](#scgversion)
+- [scg extract](#scg-extract)
 - [scg checklogs](#scg-checklogs)
 - [scg update](#scg-update)
 - [Howto/tutorial](#howtotutorial)
@@ -591,6 +592,80 @@ Example:
 Try for example to add the following line at the top of the first template file:  
 `// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
 
+## scg extract
+
+This command extracts values from an existing Septic configuration into a CSV source that can thereafter be used
+`scg make`:
+
+```text
+scg extract CONFIG.yaml [SOURCE.cnfg]
+```
+
+The optional `extract` section in the YAML configuration file defines one cnfg input and one or more CSV sources to
+update. The optional command-line source overrides `from`. The configured path is relative to the YAML file; a
+command-line source is relative to the current directory. Each extraction target is selected by its ID from `sources`.
+For a multi-file CSV source, add `filename` to specify the file to update. `filename` is required for multi-file sources
+and must be omitted for single-file sources.
+
+```yaml
+sources:
+  - filename:
+      - default.csv
+      - extracted.csv
+    id: main
+    delimiter: ";"
+
+extract:
+  from: example.cnfg
+  to:
+    - id: main
+      filename: extracted.csv
+      objects:
+        - name: "{{ WellName }}Choke"
+          props: ["Low", "High"]
+          headers: ["ZpcLoLim", "ZpcHiLim"]
+        - name: "{{ WellName }}Rate"
+          type: Cvr
+          props: ["Low", "SetPnt"]
+          headers: ["QgLoLim", "QgSP"]
+        - name: "{{ WellName }}Rate"
+          regexps: ["Low(On|Off)", "SetPnt(On|Off)"]
+          headers: ["RateLoLimActive", "RateSpActive"]
+```
+
+The target CSV file must already exist and contain at least one column. The first column header and its row values
+define the rows to update. If the csv file has a first column with header `WellName` and row labels `D01`, `D02` etc,
+the configuration above will search for `D01Rate`, `D02Rate`, and so on by replacing `WellName` with the row labels. In
+case the name is used in multiple locations, you can use the optional `type` to specify the object type.
+
+Each object normally provides exactly one of `props` or `regexps` to specify what to search for:
+
+- `props` lists object properties to extract. There is a special case for property names `High`, `Low`, `SetPnt`, and
+  `Iv`: Specifying one of these will match the corresponding `On` or `Off` variant. For instance: specifying `High` will
+  match both `HighOn` and `HighOff` variants. `Meas` matches either `Meas` or `MeasBad`.
+
+- `regexps` lists one or more regexes to search an object's normalized `prop=value` pairs; for example, the prop-value
+  pair `LowOn= 2.0` is normalized to `LowOn=2.0` before the regex is applied. Every regex must contain exactly one
+  capture group, which is the value that is stored.
+
+`headers` lists the CSV columns to receive the extracted values. `headers` must have the same length as `props` or
+`regexps`.
+
+If both `props` and `regexps` are omitted and `headers` contains exactly one value, SCG falls back to extract the `Meas`
+property.
+
+The example above aligns with a source file `extracted.csv` that would look like this:
+
+```csv
+WellName;ZpcLoLim;ZpcHiLim;QgLoLim;QgSP
+D01;10.0;101.0;1.8.0;3.4;4.0
+D02;10.0;101.0;1.8;3.4;4.5
+D03;10.0;101.0;1.8;3.5;4.5
+```
+
+Existing rows and columns are preserved. Missing configured headers are appended. Missing values produce empty cells and
+are reported.
+
 ## scg checklogs
 
 This command is used to inspect the `.out` file and the newest (by timestamp) `.cnc` file in the specified run directory
@@ -789,7 +864,6 @@ images and extracting coordinates and metadata for use in configuration files.
 To use these features, you must have the following installed:
 
 1. **draw.io Desktop Application**
-
    - Windows: Open PowerShell as Administrator and run:
 
      ```sh
@@ -807,7 +881,6 @@ To use these features, you must have the following installed:
 2. **VSCode Extensions**
 
    Two extensions are required for the best experience:
-
    - **draw.io Integration**: Provides draw.io diagram editing capabilities directly in VSCode
    - **Septic Extension**: Adds specialized diagram components for SCG
 
@@ -878,13 +951,11 @@ By default, draw.io will automatically crop images when exporting to PNG, which 
 ensure consistent sizing:
 
 1. **Create a dedicated background layer**:
-
    - Open the layers panel (usually in the bottom-right)
    - Add a new layer and name it "Background"
    - Move it to the bottom of the layer stack
 
 2. **Add a fixed-size background rectangle**:
-
    - Insert a rectangle on the background layer
    - Set its dimensions to match your desired output size (e.g., 1920×1082)
      - **Note**: For 1920×1080 resolution, add 2 pixels to the width (use 1922) to compensate for draw.io's sizing

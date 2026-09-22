@@ -1,5 +1,6 @@
-use anyhow::{Result, bail};
+use anyhow::{Context, Result, bail};
 use minijinja::{Environment, context};
+use regex::Regex;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::collections::HashSet;
@@ -124,6 +125,41 @@ pub struct Drawio {
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct ExtractionObject {
+    /// Optional object type to match
+    pub r#type: Option<String>,
+    /// Object name template using columns from the target CSV source
+    pub name: String,
+    /// Object properties to extract
+    pub props: Option<Vec<String>>,
+    /// Regular expressions with exactly one capture group each
+    pub regexps: Option<Vec<String>>,
+    /// CSV headers to receive the extracted member values
+    pub headers: Vec<String>,
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ExtractionSource {
+    /// ID of the CSV source that receives the extracted values
+    pub id: String,
+    /// Filename within a multi-file CSV source to receive the extracted values
+    pub filename: Option<String>,
+    /// Object values or member/value-pair captures to extract
+    pub objects: Vec<ExtractionObject>,
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct Extraction {
+    /// Default Septic config file to extract values from
+    pub from: Option<String>,
+    /// CSV sources to generate from the extracted values
+    pub to: Vec<ExtractionSource>,
+}
+
+#[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
 #[schemars(title = "Septic Config Generator Configuration")]
 pub struct Config {
     /// The file that will be generated. Writes to stdout if not specified.
@@ -147,6 +183,8 @@ pub struct Config {
     pub layout: Vec<Template>,
     /// List of .drawio files to process
     pub drawio: Option<Vec<Drawio>>,
+    /// Configuration for extracting values from an existing Septic config
+    pub extract: Option<Extraction>,
 }
 
 pub trait RowFiltering {
@@ -233,6 +271,8 @@ impl Config {
                 validate_source(source)?;
             }
         }
+
+        validate_extraction(&cfg)?;
 
         validate_encoding(&cfg.encoding)?;
 
@@ -327,6 +367,149 @@ fn validate_source(source: &Source) -> Result<()> {
     Ok(())
 }
 
+fn validate_extraction(config: &Config) -> Result<()> {
+    let Some(extraction) = &config.extract else {
+        return Ok(());
+    };
+
+    if extraction.to.is_empty() {
+        bail!("field 'extract.to' must contain at least one source");
+    }
+
+    for source in &extraction.to {
+        validate_extraction_source(config, source)?;
+    }
+
+    Ok(())
+}
+
+fn validate_extraction_source(config: &Config, extraction: &ExtractionSource) -> Result<()> {
+    if extraction.objects.is_empty() {
+        bail!("extract source '{}' must contain objects", extraction.id);
+    }
+
+    if extraction
+        .objects
+        .iter()
+        .any(|object| object.name.trim().is_empty())
+    {
+        bail!(
+            "extract name must not be empty for source '{}'",
+            extraction.id
+        );
+    }
+    for object in &extraction.objects {
+        if object.headers.is_empty() {
+            bail!(
+                "extract headers must not be empty for '{}':{}",
+                extraction.id,
+                object.name
+            );
+        }
+        if object.props.is_some() && object.regexps.is_some() {
+            bail!(
+                "extract object '{}:{}' cannot provide both props and regexps",
+                extraction.id,
+                object.name
+            );
+        }
+        if object.props.is_none() && object.regexps.is_none() && object.headers.len() != 1 {
+            bail!(
+                "extract object '{}:{}' must provide props or regexps when headers has more than one value",
+                extraction.id,
+                object.name
+            );
+        }
+        if let Some(props) = &object.props {
+            if props.is_empty() {
+                bail!(
+                    "extract props must not be empty for '{}':{}",
+                    extraction.id,
+                    object.name
+                );
+            }
+            if props.len() != object.headers.len() {
+                bail!(
+                    "extract props and headers must have the same length for '{}':{}",
+                    extraction.id,
+                    object.name
+                );
+            }
+            if props.iter().any(|prop| prop.trim().is_empty()) {
+                bail!(
+                    "extract props must not contain empty values for '{}':{}",
+                    extraction.id,
+                    object.name
+                );
+            }
+        }
+        if let Some(regexps) = &object.regexps {
+            if regexps.is_empty() || regexps.len() != object.headers.len() {
+                bail!(
+                    "extract regexps and headers must be non-empty and have the same length for '{}':{}",
+                    extraction.id,
+                    object.name
+                );
+            }
+            for regex_pattern in regexps {
+                let regex = Regex::new(regex_pattern)
+                    .with_context(|| format!("invalid extract regex '{regex_pattern}'"))?;
+                if regex.captures_len() != 2 {
+                    bail!(
+                        "extract regex '{}' must contain exactly one capture group",
+                        regex_pattern
+                    );
+                }
+            }
+        }
+        if object.headers.iter().any(|header| header.trim().is_empty()) {
+            bail!(
+                "extract headers must not contain empty values for '{}':{}",
+                extraction.id,
+                object.name
+            );
+        }
+    }
+
+    let matching_sources: Vec<_> = config
+        .sources
+        .iter()
+        .flatten()
+        .filter(|source| source.id == extraction.id)
+        .collect();
+    let [source] = matching_sources.as_slice() else {
+        bail!(
+            "extract source '{}' must reference exactly one configured source",
+            extraction.id
+        );
+    };
+
+    match (&source.filename, &extraction.filename) {
+        (Filename::Single(filename), None)
+            if Path::new(filename).extension().and_then(|ext| ext.to_str()) == Some("csv") => {}
+        (Filename::Single(_), Some(_)) => bail!(
+            "extract filename is invalid for single-file source '{}'",
+            extraction.id
+        ),
+        (Filename::Multiple(filenames), Some(filename)) if filenames.contains(filename) => {}
+        (Filename::Multiple(_), None) => bail!(
+            "extract filename is required for multi-file source '{}'",
+            extraction.id
+        ),
+        (Filename::Multiple(_), Some(filename)) => bail!(
+            "extract filename '{}' is not part of source '{}'",
+            filename,
+            extraction.id
+        ),
+        _ => bail!(
+            "extract source '{}' must reference a .csv file",
+            extraction.id
+        ),
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -386,6 +569,102 @@ layout:
         assert!(config.adjustspacing);
         assert!(config.verifycontent);
         assert_eq!(config.encoding, "Windows-1252");
+    }
+
+    #[test]
+    fn config_reads_valid_extraction() {
+        let content = r#"{
+"templatepath": "templates",
+"sources": [{"filename": "extracted.csv", "id": "extracted"}],
+"layout": [],
+"extract": {
+    "from": "current.cnfg",
+    "to": [{
+        "id": "extracted",
+        "objects": [{"type": "Cvr", "name": "{{ Wellname }}Qg", "props": ["Meas"], "headers": ["QgMeas"]}]
+    }]
+}}
+"#;
+        let config = Config::new(create_temp_yaml(content).path()).unwrap();
+        let extraction = config.extract.unwrap();
+
+        assert_eq!(extraction.to[0].id, "extracted");
+        assert_eq!(extraction.to[0].objects[0].headers[0], "QgMeas");
+    }
+
+    #[test]
+    fn config_rejects_non_csv_extraction_source() {
+        let content = r#"{
+"templatepath": "templates",
+"sources": [{"filename": "extracted.xlsx", "id": "extracted", "sheet": "Sheet1"}],
+"layout": [],
+"extract": {
+    "to": [{
+        "id": "extracted",
+        "objects": [{"type": "Cvr", "name": "{{ Wellname }}Qg", "props": ["Meas"], "headers": ["QgMeas"]}]
+    }]
+}}
+"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(error.to_string().contains(".csv file"));
+    }
+
+    #[test]
+    fn config_rejects_freetext_regex_without_capture_group() {
+        let content = r#"{
+"templatepath": "templates",
+"sources": [{"filename": "extracted.csv", "id": "extracted"}],
+"layout": [],
+"extract": {
+    "to": [{
+        "id": "extracted",
+        "objects": [{
+            "name": "{{ WellName }}Rate",
+            "regexps": ["Low(?:On|Off)"],
+            "headers": ["RateLoLimActive"]
+        }]
+    }]
+}}
+"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(error.to_string().contains("exactly one capture group"));
+    }
+
+    #[test]
+    fn config_accepts_freetext_without_values() {
+        let content = r#"{
+"templatepath": "templates",
+"sources": [{"filename": "extracted.csv", "id": "extracted"}],
+"layout": [],
+"extract": {
+    "to": [{
+        "id": "extracted",
+        "objects": [{
+            "name": "{{ WellName }}Rate",
+            "regexps": ["Low(On|Off)"],
+            "headers": ["RateLoLimActive"]
+        }]
+    }]
+}}
+"#;
+
+        assert!(Config::new(create_temp_yaml(content).path()).is_ok());
+    }
+
+    #[test]
+    fn config_rejects_extraction_without_objects() {
+        let content = r#"{
+"templatepath": "templates",
+"sources": [{"filename": "extracted.csv", "id": "extracted"}],
+"layout": [],
+"extract": {"to": [{"id": "extracted"}]}
+}
+"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(error.to_string().contains("missing field `objects`"));
     }
 
     #[test]
