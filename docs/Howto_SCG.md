@@ -372,16 +372,16 @@ values in the following order:
 - Integer
 - Float
 - Boolean
-- JSON-style array of numbers, e.g. `[1, 2.5, 3]`
+- JSON-style array of numbers, e.g. `[1, 2.5, 3]` _(Added in v2.17)_
 
 String is the fallback type. When parsing floats, both ',' and '.' are valid decimal separators.
 
 All cell values are trimmed before parsing. This means that `a;1.0;2` and ` a ; 1.0 ; 2` are equivalent. Which again
 means that "proper-looking" tables can be created: Set delimiter to e.g. `|` and maintain constant column width.
 
-Numeric arrays are available as MiniJinja sequences. A single-item array is written `[20]`. For example, a cell
-containing `[2, 4, 6]` can be used in a template as `{{ ([1] + numbers + [5]) | bitmask }}`. When the CSV delimiter is a
-comma (not recommended), quote array cells.
+Numeric arrays are available as MiniJinja sequences since _v2.17_. A single-item array is written `[20]`. For example, a
+cell containing `[2, 4, 6]` can be used in a template as `{{ ([1] + numbers + [5]) | bitmask }}`. When the CSV delimiter
+is a comma (not recommended), quote array cells.
 
 Specifying the delimiter is optional. The default value is `;`.
 
@@ -562,20 +562,21 @@ Examples:
 `{{ [1, 3, 31] | bitmask }}` -> `1000000000000000000000000000101`  
 `{{ [1, 3] | bitmask(5) }}` -> `00101`
 
-Please note that you can provide integers or an array of integers in the csv source, e.g. `[1, 3]`. If that value is
-assigned to `grpmask`, then you can create the bitmask directly:
+Please note that you can provide integers, e.g. `3`, or an array of integers in the csv source, e.g. `[1, 3]`. If that
+value is assigned to `grpmask`, then you can create the bitmask like this:
 
 `{{ grpmask | bitmask }}` -> `0000000000000000000000000000101`
 
-You can also combine it with other arrays, e.g. fixed values. Use `+` to contatenate arrays and combine them with `()`
-before passing the resulting sequence to `bitmask`:
+You can also combine the variable with other arrays, e.g. fixed values. Use `+` to contatenate arrays and pass the
+result to `bitmask`. Remember parentheses to force the entire concatenated list to become the filter input:
 
-`{{ ([2] + grpmask + [30, 31])| bitmask }}` -> `1100000000000000000000000000111`
+`{{ ([2] + grpmask + [30, 31]) | bitmask }}` -> `1100000000000000000000000000111`
 
-If `grpmask` is a number, e.g. 3, it can be used similarly:
+If `grpmask` is a number, e.g. `3`, it can be used similarly:
 
-`{{ grpmask | bitmask }}` -> `0000000000000000000000000000100` `{{ [grpmask, 1] | bitmask }}` ->
-`0000000000000000000000000000101` `{{ ([1, grpmask] + [31]) | bitmask }}` -> `1000000000000000000000000000101`
+`{{ grpmask | bitmask }}` -> `0000000000000000000000000000100`  
+`{{ [grpmask, 1] | bitmask }}` -> `0000000000000000000000000000101`  
+`{{ ([1, grpmask] + [31]) | bitmask }}` -> `1000000000000000000000000000101`
 
 #### `gitcommit`
 
@@ -613,6 +614,8 @@ Try for example to add the following line at the top of the first template file:
 `// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
 
 ## scg extract
+
+_(Added in v2.16)_
 
 This command extracts values from an existing Septic configuration into a CSV source that can thereafter be used
 `scg make`:
