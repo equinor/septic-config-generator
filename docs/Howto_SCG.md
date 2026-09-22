@@ -368,7 +368,7 @@ As opposed to Excel files, cell values in CSV files are always text. However, SC
 values in the following order:
 
 - Empty value
-- Integer that starts with 0 but is not 0, e.g. `00110`, becomes string
+- Digits that start with 0 but are not `0`, e.g. `00110`, become string
 - Integer
 - Float
 - Boolean
