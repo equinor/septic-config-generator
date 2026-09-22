@@ -303,6 +303,9 @@ fn find_freetext(
 }
 
 fn member_matches(requested: &str, actual: &str) -> bool {
+    if requested == "Meas" {
+        return matches!(actual, "Meas" | "MeasBad");
+    }
     if matches!(requested, "High" | "Low" | "SetPnt" | "Iv") {
         return actual == format!("{requested}On") || actual == format!("{requested}Off");
     }
@@ -531,6 +534,25 @@ mod tests {
             find_attribute(&objects, Some("Cvr"), "W11Rate", "LowPenalty").unwrap(),
             Some("99.0".to_string())
         );
+    }
+
+    #[test]
+    fn meas_matches_measbad() {
+        let objects = septic_cnfg::parse("Cvr: D01Qg\nMeasBad= 230000").unwrap();
+
+        assert_eq!(
+            find_attribute(&objects, Some("Cvr"), "D01Qg", "Meas").unwrap(),
+            Some("230000".to_string())
+        );
+    }
+
+    #[test]
+    fn meas_fails_if_meas_and_measbad_both_exist() {
+        let objects = septic_cnfg::parse("Cvr: D01Qg\nMeas= 1\nMeasBad= 2").unwrap();
+
+        let error = find_attribute(&objects, Some("Cvr"), "D01Qg", "Meas").unwrap_err();
+
+        assert!(error.to_string().contains("multiple values"));
     }
 
     #[test]

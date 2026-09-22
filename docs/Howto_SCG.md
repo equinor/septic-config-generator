@@ -642,7 +642,7 @@ Each object normally provides exactly one of `props` or `regexps` to specify wha
 
 - `props` lists object properties to extract. There is a special case for property names `High`, `Low`, `SetPnt`, and
   `Iv`: Specifying one of these will match the corresponding `On` or `Off` variant. For instance: specifying `High` will
-  match both `HighOn` and `HighOff` variants.
+  match both `HighOn` and `HighOff` variants. `Meas` matches either `Meas` or `MeasBad`.
 
 - `regexps` lists one or more regexes to search an object's normalized `prop=value` pairs; for example, the prop-value
   pair `LowOn= 2.0` is normalized to `LowOn=2.0` before the regex is applied. Every regex must contain exactly one
