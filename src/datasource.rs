@@ -178,13 +178,13 @@ impl DataSourceReader for CsvSourceReader {
                 if let Some(header_field) = headers.get(i) {
                     let converted_value = match value {
                         "" => CtxDataType::Empty,
-                        v if v.parse::<i64>().is_ok() => {
-                            if v.starts_with('0') && v != "0" {
-                                CtxDataType::String(value.to_string())
-                            } else {
-                                CtxDataType::Int(v.parse().unwrap())
-                            }
+                        v if v.starts_with('0')
+                            && v.len() > 1
+                            && v.bytes().all(|b| b.is_ascii_digit()) =>
+                        {
+                            CtxDataType::String(value.to_string())
                         }
+                        v if v.parse::<i64>().is_ok() => CtxDataType::Int(v.parse().unwrap()),
                         v if v.parse::<f64>().is_ok() => CtxDataType::Float(v.parse().unwrap()),
                         v if v.replace(',', ".").parse::<f64>().is_ok() => {
                             CtxDataType::Float(v.replace(',', ".").parse().unwrap())
@@ -423,10 +423,10 @@ mod csvtests {
 
     #[test]
     fn csv_parses_text_float_int_zeros_and_numeric_sequences() {
-        let csv_content = r#"keys;text;float;int;mix;zeros;numbers;single_number;empty_numbers;not_numbers
-key1;value1;1.1;1;1.0;0;[1, 2.5, 3];[20];[];[a, b]
+        let csv_content = r#"keys;text;float;int;mix;zeros;long_zeros;numbers;single_number;empty_numbers;not_numbers
+    key1;value1;1.1;1;1.0;0;0000000000011000000000000000001;[1, 2.5, 3];[20];[];[a, b]
 # Ignore this line
-key2;value2;2.2;2;2;00;[4, 5];[20];[];[x]"#;
+    key2;value2;2.2;2;2;00;001;[4, 5];[20];[];[x]"#;
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
         write!(tmp_file, "{csv_content}").unwrap();
 
@@ -452,6 +452,12 @@ key2;value2;2.2;2;2;00;[4, 5];[20];[];[x]"#;
         assert_eq!(values.get("int"), Some(&CtxDataType::Int(1)));
         assert_eq!(values.get("mix"), Some(&CtxDataType::Float(1.0)));
         assert_eq!(values.get("zeros"), Some(&CtxDataType::Int(0)));
+        assert_eq!(
+            values.get("long_zeros"),
+            Some(&CtxDataType::String(
+                "0000000000011000000000000000001".to_string()
+            ))
+        );
         assert_eq!(
             values.get("numbers"),
             Some(&CtxDataType::Sequence(vec![
@@ -484,6 +490,10 @@ key2;value2;2.2;2;2;00;[4, 5];[20];[];[x]"#;
         assert_eq!(
             values.get("zeros"),
             Some(&CtxDataType::String("00".to_string()))
+        );
+        assert_eq!(
+            values.get("long_zeros"),
+            Some(&CtxDataType::String("001".to_string()))
         );
         assert_eq!(
             values.get("numbers"),
