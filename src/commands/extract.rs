@@ -191,7 +191,8 @@ fn extract_to_csv(
             } else if let Some(regexps) = &object.regexps {
                 for (regex_pattern, header) in regexps.iter().zip(&object.headers) {
                     let regex = Regex::new(regex_pattern)?;
-                    let extracted = find_freetext(objects, &object_name, &regex)?;
+                    let extracted =
+                        find_freetext(objects, object.r#type.as_deref(), &object_name, &regex)?;
                     let index = header_indexes[header];
                     if let Some(extracted) = extracted {
                         record[index] = extracted;
@@ -280,11 +281,15 @@ fn find_attribute(
 
 fn find_freetext(
     objects: &[septic_cnfg::Object],
+    object_type: Option<&str>,
     object_name: &str,
     regex: &Regex,
 ) -> Result<Option<String>> {
     let mut matches = Vec::new();
-    for object in objects.iter().filter(|object| object.name == object_name) {
+    for object in objects.iter().filter(|object| {
+        object_type.is_none_or(|object_type| object.object_type == object_type)
+            && object.name == object_name
+    }) {
         for (member, value) in &object.attributes {
             let text = format!("{member}={value}");
             for captures in regex.captures_iter(&text) {
@@ -452,8 +457,9 @@ mod tests {
         let directory = tempdir().unwrap();
         let target = directory.path().join("out.csv");
         fs::write(&target, "WellName\nW11\nW12\n").unwrap();
+        extraction.objects[0].r#type = Some("Cvr".to_string());
         let objects = septic_cnfg::parse(
-            "Cvr: W11Rate\nLowOn= 2.0\nSetPntOff= 3.4\nCvr: W12Rate\nLowOff= 2.1\nSetPntOn= 3.5",
+            "SopcCvr: W11Rate\nLowOff= 9.9\nCvr: W11Rate\nLowOn= 2.0\nSetPntOff= 3.4\nCvr: W12Rate\nLowOff= 2.1\nSetPntOn= 3.5",
         )
         .unwrap();
 
@@ -470,7 +476,7 @@ mod tests {
         let objects = septic_cnfg::parse("Cvr: W11Rate\nLowOn= 2.0\nLowOff= 2.1").unwrap();
         let regex = Regex::new("Low(On|Off)").unwrap();
 
-        let error = find_freetext(&objects, "W11Rate", &regex).unwrap_err();
+        let error = find_freetext(&objects, None, "W11Rate", &regex).unwrap_err();
 
         assert!(error.to_string().contains("multiple freetext matches"));
     }
