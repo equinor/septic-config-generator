@@ -661,7 +661,7 @@ layout:
 "#;
         let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
 
-        assert!(error.to_string().contains("must contain objects"));
+        assert!(error.to_string().contains("missing field `objects`"));
     }
 
     #[test]
