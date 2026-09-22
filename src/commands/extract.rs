@@ -595,6 +595,11 @@ mod tests {
                 "id": "secondary",
                 "filename": "secondary.csv",
                 "objects": [{"type": "Cvr", "name": "{{ WellName }}Qg", "props": ["Meas"], "headers": ["Measured"]}]
+            },
+            {
+                "id": "secondary",
+                "filename": "first.csv",
+                "objects": [{"type": "Cvr", "name": "{{ WellName }}Qg", "props": ["Meas"], "headers": ["PrimaryMeasured"]}]
             }
         ]
     }
@@ -612,6 +617,11 @@ mod tests {
             "WellName;Measured\nD01;\n",
         )
         .unwrap();
+        fs::write(
+            directory.path().join("first.csv"),
+            "WellName;PrimaryMeasured\nD01;\n",
+        )
+        .unwrap();
         fs::write(&override_file, "Cvr: D01Qg\nMeas= 115.5").unwrap();
 
         cmd_extract(&config_file, Some(&override_file)).unwrap();
@@ -623,6 +633,10 @@ mod tests {
         assert_eq!(
             fs::read_to_string(directory.path().join("secondary.csv")).unwrap(),
             "WellName;Measured\nD01;115.5\n"
+        );
+        assert_eq!(
+            fs::read_to_string(directory.path().join("first.csv")).unwrap(),
+            "WellName;PrimaryMeasured\nD01;115.5\n"
         );
     }
 

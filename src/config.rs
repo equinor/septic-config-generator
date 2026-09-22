@@ -376,11 +376,7 @@ fn validate_extraction(config: &Config) -> Result<()> {
         bail!("field 'extract.to' must contain at least one source");
     }
 
-    let mut extraction_sources = HashSet::new();
     for source in &extraction.to {
-        if !extraction_sources.insert(&source.id) {
-            bail!("duplicate extract source '{}'", source.id);
-        }
         validate_extraction_source(config, source)?;
     }
 
