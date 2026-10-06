@@ -272,12 +272,25 @@ impl Config {
             }
         }
 
+        validate_template_filters(&cfg)?;
         validate_extraction(&cfg)?;
 
         validate_encoding(&cfg.encoding)?;
 
         Ok(cfg)
     }
+}
+
+fn validate_template_filters(config: &Config) -> Result<()> {
+    for template in &config.layout {
+        if template.source.is_none() && (template.include.is_some() || template.exclude.is_some()) {
+            bail!(
+                "template '{}' uses 'include' or 'exclude' but has no 'source'; row filters require a source",
+                template.name
+            );
+        }
+    }
+    Ok(())
 }
 
 pub fn include_exclude_set(
@@ -548,6 +561,19 @@ layout:
         let temp_file = create_temp_yaml(content);
         let config = Config::new(temp_file.path());
         assert!(config.is_ok())
+    }
+
+    #[test]
+    fn config_rejects_template_filters_without_source() {
+        for filter in ["include", "exclude"] {
+            let content = format!(
+                "templatepath: templates\nlayout:\n  - name: template1.cnfg\n    {filter}: [one]\n"
+            );
+            let error = Config::new(create_temp_yaml(&content).path()).unwrap_err();
+
+            assert!(error.to_string().contains("template 'template1.cnfg'"));
+            assert!(error.to_string().contains("no 'source'"));
+        }
     }
 
     #[test]
