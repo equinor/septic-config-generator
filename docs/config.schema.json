@@ -125,7 +125,8 @@
           ],
           "items": {
             "$ref": "#/definitions/Include"
-          }
+          },
+          "minItems": 1
         },
         "exclude": {
           "description": "Optional list of rows from source to exclude globally",
@@ -135,7 +136,8 @@
           ],
           "items": {
             "$ref": "#/definitions/Include"
-          }
+          },
+          "minItems": 1
         },
         "id": {
           "description": "The unique identifier for this source",
@@ -248,7 +250,8 @@
           ],
           "items": {
             "$ref": "#/definitions/Include"
-          }
+          },
+          "minItems": 1
         },
         "exclude": {
           "description": "Optional list of fields from source to exclude in iteration",
@@ -258,7 +261,8 @@
           ],
           "items": {
             "$ref": "#/definitions/Include"
-          }
+          },
+          "minItems": 1
         }
       },
       "additionalProperties": false,

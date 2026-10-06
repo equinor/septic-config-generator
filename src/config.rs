@@ -83,14 +83,30 @@ pub enum Include {
     Conditional(IncludeConditional),
 }
 
+fn deserialize_nonempty_filter<'de, D>(deserializer: D) -> Result<Option<Vec<Include>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Option::<Vec<Include>>::deserialize(deserializer)? {
+        Some(items) if !items.is_empty() => Ok(Some(items)),
+        _ => Err(<D::Error as serde::de::Error>::custom(
+            "filter list must not be empty",
+        )),
+    }
+}
+
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Source {
     /// The filename(s) of the source data
     pub filename: Filename,
     /// Optional list of rows from source to include globally
+    #[serde(default, deserialize_with = "deserialize_nonempty_filter")]
+    #[schemars(length(min = 1))]
     pub include: Option<Vec<Include>>,
     /// Optional list of rows from source to exclude globally
+    #[serde(default, deserialize_with = "deserialize_nonempty_filter")]
+    #[schemars(length(min = 1))]
     pub exclude: Option<Vec<Include>>,
     /// The unique identifier for this source
     pub id: String,
@@ -108,8 +124,12 @@ pub struct Template {
     /// Optional source id to iterate over for this template
     pub source: Option<String>,
     /// Optional list of fields from source to include in iteration
+    #[serde(default, deserialize_with = "deserialize_nonempty_filter")]
+    #[schemars(length(min = 1))]
     pub include: Option<Vec<Include>>,
     /// Optional list of fields from source to exclude in iteration
+    #[serde(default, deserialize_with = "deserialize_nonempty_filter")]
+    #[schemars(length(min = 1))]
     pub exclude: Option<Vec<Include>>,
 }
 
@@ -602,6 +622,36 @@ layout:
                 "unexpected config error: {error:#}"
             );
             assert!(error.to_string().contains("no 'source'"));
+        }
+    }
+
+    #[test]
+    fn config_rejects_empty_source_filters() {
+        for filter in ["include: []", "exclude: []", "include:", "exclude:"] {
+            let content = format!(
+                "templatepath: templates\nsources:\n  - filename: test.csv\n    id: main\n    {filter}\nlayout: []\n"
+            );
+            let error = Config::new(create_temp_yaml(&content).path()).unwrap_err();
+
+            assert!(
+                error.to_string().contains("filter list must not be empty"),
+                "unexpected config error: {error:#}"
+            );
+        }
+    }
+
+    #[test]
+    fn config_rejects_empty_template_filters() {
+        for filter in ["include: []", "exclude: []", "include:", "exclude:"] {
+            let content = format!(
+                "templatepath: templates\nsources:\n  - filename: test.csv\n    id: main\nlayout:\n  - name: template1.cnfg\n    source: main\n    {filter}\n"
+            );
+            let error = Config::new(create_temp_yaml(&content).path()).unwrap_err();
+
+            assert!(
+                error.to_string().contains("filter list must not be empty"),
+                "unexpected config error: {error:#}"
+            );
         }
     }
 
