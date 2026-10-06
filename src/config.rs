@@ -83,14 +83,30 @@ pub enum Include {
     Conditional(IncludeConditional),
 }
 
+fn deserialize_nonempty_filter<'de, D>(deserializer: D) -> Result<Option<Vec<Include>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Option::<Vec<Include>>::deserialize(deserializer)? {
+        Some(items) if !items.is_empty() => Ok(Some(items)),
+        _ => Err(<D::Error as serde::de::Error>::custom(
+            "filter list must not be empty",
+        )),
+    }
+}
+
 #[derive(Deserialize, Debug, Default, JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Source {
     /// The filename(s) of the source data
     pub filename: Filename,
     /// Optional list of rows from source to include globally
+    #[serde(default, deserialize_with = "deserialize_nonempty_filter")]
+    #[schemars(length(min = 1))]
     pub include: Option<Vec<Include>>,
     /// Optional list of rows from source to exclude globally
+    #[serde(default, deserialize_with = "deserialize_nonempty_filter")]
+    #[schemars(length(min = 1))]
     pub exclude: Option<Vec<Include>>,
     /// The unique identifier for this source
     pub id: String,
@@ -108,12 +124,17 @@ pub struct Template {
     /// Optional source id to iterate over for this template
     pub source: Option<String>,
     /// Optional list of fields from source to include in iteration
+    #[serde(default, deserialize_with = "deserialize_nonempty_filter")]
+    #[schemars(length(min = 1))]
     pub include: Option<Vec<Include>>,
     /// Optional list of fields from source to exclude in iteration
+    #[serde(default, deserialize_with = "deserialize_nonempty_filter")]
+    #[schemars(length(min = 1))]
     pub exclude: Option<Vec<Include>>,
 }
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct Drawio {
     /// The draw.io file to process
     pub input: String,
@@ -272,12 +293,51 @@ impl Config {
             }
         }
 
+        validate_source_references(&cfg)?;
+        validate_template_filters(&cfg)?;
         validate_extraction(&cfg)?;
 
         validate_encoding(&cfg.encoding)?;
 
         Ok(cfg)
     }
+}
+
+fn validate_source_references(config: &Config) -> Result<()> {
+    let mut source_ids = HashSet::new();
+    if let Some(sources) = &config.sources {
+        for source in sources {
+            if !source_ids.insert(source.id.as_str()) {
+                bail!("duplicate source id '{}'", source.id);
+            }
+        }
+    }
+
+    for template in &config.layout {
+        if let Some(source) = &template.source
+            && !source_ids.contains(source.as_str())
+        {
+            bail!(
+                "template '{}' references unknown source '{}'",
+                template.name,
+                source
+            );
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_template_filters(config: &Config) -> Result<()> {
+    for template in &config.layout {
+        if template.source.is_none() && (template.include.is_some() || template.exclude.is_some()) {
+            bail!(
+                "template '{}' uses 'include' or 'exclude' but has no 'source'; row filters require a source",
+                template.name
+            );
+        }
+    }
+    Ok(())
 }
 
 pub fn include_exclude_set(
@@ -548,6 +608,87 @@ layout:
         let temp_file = create_temp_yaml(content);
         let config = Config::new(temp_file.path());
         assert!(config.is_ok())
+    }
+
+    #[test]
+    fn config_rejects_unknown_drawio_fields() {
+        let content = r#"
+templatepath: templates
+drawio:
+  - input: diagram.drawio
+    pngouput: diagram.png
+layout: []
+"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(error.to_string().contains("unknown field"));
+        assert!(error.to_string().contains("pngouput"));
+    }
+
+    #[test]
+    fn config_rejects_template_filters_without_source() {
+        for filter in ["include", "exclude"] {
+            let content = format!(
+                "templatepath: templates\nlayout:\n  - name: template1.cnfg\n    {filter}: [one]\n"
+            );
+            let error = Config::new(create_temp_yaml(&content).path()).unwrap_err();
+
+            assert!(
+                error.to_string().contains("template 'template1.cnfg'"),
+                "unexpected config error: {error:#}"
+            );
+            assert!(error.to_string().contains("no 'source'"));
+        }
+    }
+
+    #[test]
+    fn config_rejects_empty_source_filters() {
+        for filter in ["include: []", "exclude: []", "include:", "exclude:"] {
+            let content = format!(
+                "templatepath: templates\nsources:\n  - filename: test.csv\n    id: main\n    {filter}\nlayout: []\n"
+            );
+            let error = Config::new(create_temp_yaml(&content).path()).unwrap_err();
+
+            assert!(
+                error.to_string().contains("filter list must not be empty"),
+                "unexpected config error: {error:#}"
+            );
+        }
+    }
+
+    #[test]
+    fn config_rejects_empty_template_filters() {
+        for filter in ["include: []", "exclude: []", "include:", "exclude:"] {
+            let content = format!(
+                "templatepath: templates\nsources:\n  - filename: test.csv\n    id: main\nlayout:\n  - name: template1.cnfg\n    source: main\n    {filter}\n"
+            );
+            let error = Config::new(create_temp_yaml(&content).path()).unwrap_err();
+
+            assert!(
+                error.to_string().contains("filter list must not be empty"),
+                "unexpected config error: {error:#}"
+            );
+        }
+    }
+
+    #[test]
+    fn config_rejects_unknown_template_source() {
+        let content = r#"{"templatepath":"templates","sources":[{"filename":"test.csv","id":"main"}],"layout":[{"name":"template1.cnfg","source":"missing"}]}"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(
+            error.to_string().contains("template 'template1.cnfg'"),
+            "unexpected config error: {error:#}"
+        );
+        assert!(error.to_string().contains("unknown source 'missing'"));
+    }
+
+    #[test]
+    fn config_rejects_duplicate_source_ids() {
+        let content = r#"{"templatepath":"templates","sources":[{"filename":"first.csv","id":"main"},{"filename":"second.csv","id":"main"}],"layout":[]}"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(error.to_string().contains("duplicate source id 'main'"));
     }
 
     #[test]
