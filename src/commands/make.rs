@@ -79,11 +79,14 @@ pub struct Make {
     // #[arg(short, long)]
     // pub silent: bool,
     /// Global variable to use for all templates, also those without specified source. Can be repeated. Global variables overwrite other variables with same name
-    #[arg(short, long, value_names = ["name", "value"])]
+    #[arg(long, value_names = ["name", "value"])]
     pub var: Option<Vec<String>>,
     /// Only make if layout or source files have changed since last make
     #[arg(long)]
     pub ifchanged: bool,
+    /// Increase verbosity, e.g. MiniJinja debug information
+    #[arg(short, long)]
+    pub verbose: bool,
 }
 
 impl Make {
@@ -92,6 +95,7 @@ impl Make {
             &self.config_file,
             self.ifchanged,
             &self.var.clone().unwrap_or_default(),
+            self.verbose,
         );
 
         match result {
@@ -104,7 +108,12 @@ impl Make {
     }
 }
 
-fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Result<(), MakeError> {
+fn cmd_make(
+    cfg_file: &Path,
+    only_if_changed: bool,
+    globals: &[String],
+    verbose: bool,
+) -> Result<(), MakeError> {
     let mut cfg_file = cfg_file.to_path_buf();
     cfg_file
         .extension()
@@ -142,6 +151,7 @@ fn cmd_make(cfg_file: &Path, only_if_changed: bool, globals: &[String]) -> Resul
 
     // drawio needs to be done before the templates are rendered, so that the .csv files are available
     let mut renderer = MiniJinja::new(globals).map_err(MakeError::MiniJinjaError)?;
+    renderer.env.set_debug(verbose);
 
     let template_path = relative_root.join(&cfg.templatepath);
     renderer

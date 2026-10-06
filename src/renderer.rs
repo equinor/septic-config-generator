@@ -243,7 +243,6 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_filter("values", filt_values);
         renderer.env.add_filter("unpack", filt_unpack);
         renderer.env.set_formatter(erroring_formatter);
-        // renderer.env.set_debug(false);  // TODO: enable via cmdline flag?
 
         Ok(renderer)
     }
