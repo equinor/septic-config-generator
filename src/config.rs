@@ -272,6 +272,7 @@ impl Config {
             }
         }
 
+        validate_source_references(&cfg)?;
         validate_template_filters(&cfg)?;
         validate_extraction(&cfg)?;
 
@@ -279,6 +280,31 @@ impl Config {
 
         Ok(cfg)
     }
+}
+
+fn validate_source_references(config: &Config) -> Result<()> {
+    let mut source_ids = HashSet::new();
+    if let Some(sources) = &config.sources {
+        for source in sources {
+            if !source_ids.insert(source.id.as_str()) {
+                bail!("duplicate source id '{}'", source.id);
+            }
+        }
+    }
+
+    for template in &config.layout {
+        if let Some(source) = &template.source
+            && !source_ids.contains(source.as_str())
+        {
+            bail!(
+                "template '{}' references unknown source '{}'",
+                template.name,
+                source
+            );
+        }
+    }
+
+    Ok(())
 }
 
 fn validate_template_filters(config: &Config) -> Result<()> {
@@ -571,9 +597,32 @@ layout:
             );
             let error = Config::new(create_temp_yaml(&content).path()).unwrap_err();
 
-            assert!(error.to_string().contains("template 'template1.cnfg'"));
+            assert!(
+                error.to_string().contains("template 'template1.cnfg'"),
+                "unexpected config error: {error:#}"
+            );
             assert!(error.to_string().contains("no 'source'"));
         }
+    }
+
+    #[test]
+    fn config_rejects_unknown_template_source() {
+        let content = r#"{"templatepath":"templates","sources":[{"filename":"test.csv","id":"main"}],"layout":[{"name":"template1.cnfg","source":"missing"}]}"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(
+            error.to_string().contains("template 'template1.cnfg'"),
+            "unexpected config error: {error:#}"
+        );
+        assert!(error.to_string().contains("unknown source 'missing'"));
+    }
+
+    #[test]
+    fn config_rejects_duplicate_source_ids() {
+        let content = r#"{"templatepath":"templates","sources":[{"filename":"first.csv","id":"main"},{"filename":"second.csv","id":"main"}],"layout":[]}"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(error.to_string().contains("duplicate source id 'main'"));
     }
 
     #[test]
