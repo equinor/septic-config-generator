@@ -6,6 +6,10 @@ pub mod to_png;
 
 #[derive(Args, Debug)]
 pub struct Drawio {
+    /// Print successful draw.io operation messages
+    #[arg(short, long, global = true)]
+    pub verbose: bool,
+
     #[clap(subcommand)]
     pub command: DrawioCommands,
 }
@@ -44,22 +48,28 @@ pub struct ComponentsArgs {
 impl Drawio {
     pub fn execute(&self) {
         match &self.command {
-            DrawioCommands::ToPng(args) => self.cmd_to_png(&args.input, args.output.as_deref()),
+            DrawioCommands::ToPng(args) => {
+                self.cmd_to_png(&args.input, args.output.as_deref(), self.verbose)
+            }
             DrawioCommands::Components(args) => {
-                self.cmd_components(&args.input, args.output.as_deref())
+                self.cmd_components(&args.input, args.output.as_deref(), self.verbose)
             }
         }
     }
 
-    fn cmd_to_png(&self, input: &Path, output: Option<&Path>) {
+    fn cmd_to_png(&self, input: &Path, output: Option<&Path>, verbose: bool) {
         let result = to_png::drawio_to_png(input, output);
         match result {
-            Ok((width, height, output)) => println!(
-                "Converted to '{}' with dimensions {}x{}",
-                output.display(),
-                width,
-                height
-            ),
+            Ok((width, height, output)) => {
+                if verbose {
+                    println!(
+                        "Converted to '{}' with dimensions {}x{}",
+                        output.display(),
+                        width,
+                        height
+                    )
+                }
+            }
             Err(err) => {
                 eprintln!("Failed to convert: {err}");
                 std::process::exit(1);
@@ -67,10 +77,12 @@ impl Drawio {
         }
     }
 
-    fn cmd_components(&self, input: &Path, output: Option<&Path>) {
+    fn cmd_components(&self, input: &Path, output: Option<&Path>, verbose: bool) {
         match components::extract_components(input, output) {
             Ok((count, output)) => {
-                println!("Extracted {} components to '{}'", count, output.display())
+                if verbose {
+                    println!("Extracted {} components to '{}'", count, output.display())
+                }
             }
             Err(e) => {
                 eprintln!("Failed to extract components: {e}");
