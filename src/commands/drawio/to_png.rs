@@ -77,7 +77,7 @@ pub fn drawio_to_png(input: &Path, output: Option<&Path>) -> Result<(u32, u32, P
     match check_png_dimensions(&output, width as usize, height as usize) {
         Ok((size_ok, actual_width, actual_height)) => {
             if !size_ok {
-                println!(
+                eprintln!(
                     "Warning: Resulting dimensions ({actual_width}x{actual_height}) differ from requested size ({width}x{height})"
                 );
             }
@@ -108,7 +108,7 @@ fn extract_page_dimensions(input: &Path) -> Result<(u32, u32)> {
         }
     }
 
-    println!("Could not find page dimensions, using defaults");
+    eprintln!("Could not find page dimensions, using defaults");
     Ok((1024, 768))
 }
 
