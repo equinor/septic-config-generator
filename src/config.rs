@@ -134,6 +134,7 @@ pub struct Template {
 }
 
 #[derive(Deserialize, Debug, Default, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct Drawio {
     /// The draw.io file to process
     pub input: String,
@@ -607,6 +608,21 @@ layout:
         let temp_file = create_temp_yaml(content);
         let config = Config::new(temp_file.path());
         assert!(config.is_ok())
+    }
+
+    #[test]
+    fn config_rejects_unknown_drawio_fields() {
+        let content = r#"
+templatepath: templates
+drawio:
+  - input: diagram.drawio
+    pngouput: diagram.png
+layout: []
+"#;
+        let error = Config::new(create_temp_yaml(content).path()).unwrap_err();
+
+        assert!(error.to_string().contains("unknown field"));
+        assert!(error.to_string().contains("pngouput"));
     }
 
     #[test]
