@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.18.0](https://github.com/equinor/septic-config-generator/compare/v2.17.0...v2.18.0) (2026-10-06)
+
+
+### ✨ Features
+
+* add --verbose argument + minijinja debug ([#477](https://github.com/equinor/septic-config-generator/issues/477)) ([2081fcd](https://github.com/equinor/septic-config-generator/commit/2081fcdf11dd6971ab15f86ae2f4860006f05a2d))
+
+
+### 🔨 Refactor
+
+* improve yaml validation and error messages ([#480](https://github.com/equinor/septic-config-generator/issues/480)) ([76c7a2a](https://github.com/equinor/septic-config-generator/commit/76c7a2a8e6c49779eb4f0af6ef42486d4ea24def))
+
 ## [2.17.0](https://github.com/equinor/septic-config-generator/compare/v2.16.0...v2.17.0) (2026-09-22)
 
 
