@@ -30,6 +30,7 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look in
     - [`gitcommitlong`](#gitcommitlong)
     - [`now()`](#now)
     - [`scgversion`](#scgversion)
+- [scg drawio](#scg-drawio)
 - [scg extract](#scg-extract)
 - [scg checklogs](#scg-checklogs)
 - [scg update](#scg-update)
@@ -40,8 +41,7 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look in
   - [Generate a config](#generate-a-config)
 - [draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg)
   - [Prerequisites](#prerequisites)
-  - [Using draw.io with SCG](#using-drawio-with-scg)
-- [Coordinate and Property Extraction](#coordinate-and-property-extraction)
+  - [Coordinate and Property Extraction](#coordinate-and-property-extraction)
   - [Creating Diagrams for SCG](#creating-diagrams-for-scg)
     - [Element Types](#element-types)
     - [Properties](#properties)
@@ -49,7 +49,6 @@ removed. If you are looking for what was changed from 1.0 to 2.x, take a look in
   - [Setting Diagram Size and Background](#setting-diagram-size-and-background)
     - [Setting Paper Size](#setting-paper-size)
     - [Creating a Fixed Size Background](#creating-a-fixed-size-background)
-  - [Command Line Usage](#command-line-usage)
 
 ## About
 
@@ -170,7 +169,7 @@ All file names and paths are relative to the location of the configuration file.
 
 _(Added in v2.13)_
 
-OBS: for prerequisites and .drawio info, See [draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg)
+Note: For prerequisites and .drawio info, See [draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg)
 section
 
 The `drawio` struct allows you to automate processing of `.drawio` diagram files as part of your configuration workflow.
@@ -469,6 +468,20 @@ scg make --ifchanged MyApplication.yaml && taskkill /IM QtSeptic.exe /FI "WINDOW
 Here the taskkill command will only be executed if the exit status from scg is 0, which means that the config file was
 updated.
 
+#### `--verbose`, `-v` <!-- omit in toc -->
+
+_(Added in v2.18)_
+
+Enables MiniJinja debug information for template rendering errors. When enabled, an error can include context from the
+template source. Error locations identify the template name and line number. This information is not included by
+default.
+
+Example:
+
+```bat
+scg.exe make -v example.yaml
+```
+
 ### The template engine
 
 To fully make use of all the possibilities offered by `scg make`, it is important to understand a bit about the
@@ -612,6 +625,28 @@ Example:
 
 Try for example to add the following line at the top of the first template file:  
 `// Generated with SCG v{{ scgversion }} on {{ now() }} from git commit {{ gitcommit }}`
+
+## scg drawio
+
+Use `scg drawio` to convert a draw.io diagram to PNG or extract its components to CSV:
+
+```text
+scg drawio to-png --input <file.drawio> [--output <file.png>]
+scg drawio components --input <file.drawio> [--output <file.csv>]
+```
+
+If `--output` is omitted, the output uses the input file's basename with a `.png` extension for `to-png`, or
+`_components.csv` for `components`.
+
+Success messages are suppressed by default. Add `-v` or `--verbose` to print them; errors are reported either way. The
+verbosity flag can appear before or after the draw.io subcommand:
+
+```text
+scg drawio -v to-png --input drawing.drawio
+scg drawio components --input drawing.drawio --verbose
+```
+
+See [Draw.io Diagram Integration for SCG](#drawio-diagram-integration-for-scg) for setup and diagram guidance.
 
 ## scg extract
 
@@ -880,7 +915,8 @@ Type `scg.exe make --help` for more options to the `make` command.
 ## draw.io Diagram Integration for SCG
 
 The `scg drawio` command provides utilities for processing draw.io diagram files, including converting diagrams to PNG
-images and extracting coordinates and metadata for use in configuration files.
+images and extracting coordinates and metadata for use in configuration files. For draw.io commands and options, see
+[scg drawio](#scg-drawio).
 
 ### Prerequisites
 
@@ -909,23 +945,11 @@ To use these features, you must have the following installed:
 
    These can be installed from the VSCode marketplace.
 
-### Using draw.io with SCG
-
-The Septic Extension enhances draw.io Integration by adding a specialized septic library with pre-configured components
-designed for SCG:
-
-- **ImageStatusLabel**: For status indicators
-- **ImageXvr**: For standard XVR displays
-- **ImageXvrPlot**: For plotting XVR data
-- **ImageMultiXvrPlot**: For multi-series plots
-
-Each component comes with default properties already configured for use with SCG.
-
-## Coordinate and Property Extraction
+### Coordinate and Property Extraction
 
 When using the SCG tools to extract information from your diagrams:
 
-- All components with `septic_` properties are detected and their coordinates are saved to a CSV file
+- All components with `septic_` properties are detected, and their coordinates are saved to a CSV file
 - The CSV includes position data (x1, y1, x2, y2) for each component
 - All properties with the `septic_` prefix are included in the CSV with the prefix removed
   - Example: `septic_name` becomes `name` in the CSV output
@@ -934,6 +958,16 @@ When using the SCG tools to extract information from your diagrams:
   count of items
 
 ### Creating Diagrams for SCG
+
+The Septic Extension enhances draw.io integration by adding a specialized Septic library with pre-configured components
+designed for SCG:
+
+- **ImageStatusLabel**: For status indicators
+- **ImageXvr**: For standard XVR displays
+- **ImageXvrPlot**: For plotting XVR data
+- **ImageMultiXvrPlot**: For multi-series plots
+
+Each component comes with default properties already configured for use with SCG.
 
 When creating diagrams for use with SCG, follow these guidelines:
 
@@ -948,7 +982,7 @@ When creating diagrams for use with SCG, follow these guidelines:
 - The Septic library components already include these recommended standard properties:
   - `septic_type`: Defines the component type (e.g., "ImageXvr")
   - `septic_name`: Defines the component name (e.g., "18PT0056")
-- Common special properties for component types: `colors`, `texts`, `backgroundcolors` etc
+- Common special properties for component types: `colors`, `texts`, `backgroundcolors`, etc.
 
 #### Adding or Editing Properties
 
@@ -990,15 +1024,3 @@ ensure consistent sizing:
    - This prevents accidental edits to your background
 
 This approach ensures that exported images will maintain consistent dimensions regardless of the content layout.
-
-### Command Line Usage
-
-The SCG tool provides the following commands for working with draw.io files:
-
-```sh
-scg drawio components  --input <file.drawio> [--output <coords.csv>]
-scg drawio 2png --ipnut <file.drawio> [--output <file.png>]
-```
-
-This command extracts component coordinates and properties from a draw.io file and saves them to a CSV file. If no
-output file is specified, it will create one with the same base name as the input file.
