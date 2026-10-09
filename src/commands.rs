@@ -6,7 +6,7 @@ pub enum Commands {
     Make(Make),
     /// Show difference between two text files
     Diff(Diff),
-    /// Check septic .out and .cnc files for error messages
+    /// Check Septic .log (or legacy .out) and .cnc files for messages
     Checklogs(Checklogs),
     /// Check for new versions of this tool and auto-update
     Update(Update),

@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use glob::glob;
 use regex::RegexSet;
@@ -31,18 +31,35 @@ impl std::fmt::Display for CheckLogsError {
 }
 impl Error for CheckLogsError {}
 
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, ValueEnum)]
+pub enum LogLevel {
+    Trace,
+    Debug,
+    Info,
+    Warning,
+    Error,
+    Critical,
+}
+
 #[derive(Parser, Debug)]
 pub struct Checklogs {
     #[arg(
         value_name = "RUNDIR",
-        help = "The Septic rundir to search for outfiles"
+        help = "The Septic rundir to search for .log, .out and .cnc files"
     )]
     pub rundir: PathBuf,
+    #[arg(
+        long,
+        value_enum,
+        default_value = "warning",
+        help = "Minimum level to report in .log files (does not affect .out or .cnc files)"
+    )]
+    pub level: LogLevel,
 }
 
 impl Checklogs {
     pub fn execute(&self) {
-        let result = cmd_check_logs(&self.rundir);
+        let result = cmd_check_logs(&self.rundir, self.level);
         match result {
             Ok(_) => (),
             Err(err) => match err.downcast_ref() {
@@ -59,13 +76,13 @@ impl Checklogs {
     }
 }
 
-fn cmd_check_logs(rundir: &Path) -> Result<()> {
-    let check_functions = [check_outfile, check_cncfile];
+fn cmd_check_logs(rundir: &Path, level: LogLevel) -> Result<()> {
+    let checks = std::iter::once_with(|| check_logfile_or_outfile(rundir, level))
+        .chain(std::iter::once_with(|| check_cncfile(rundir)));
 
     let mut found_warnings = false;
 
-    for check_fn in &check_functions {
-        let check_result = check_fn(rundir);
+    for check_result in checks {
         match check_result {
             Ok((file, lines)) => {
                 let file_name = file.file_name().unwrap().to_str().unwrap();
@@ -105,6 +122,51 @@ fn get_newest_file(files: &[PathBuf]) -> Option<&PathBuf> {
         })
         .max_by_key(|&(_, time)| time)
         .map(|(file, _)| file)
+}
+
+fn check_logfile_or_outfile(rundir: &Path, level: LogLevel) -> Result<(PathBuf, Vec<ErrorLine>)> {
+    if rundir.join("logs").is_dir() {
+        check_logfile(rundir, level)
+    } else {
+        check_outfile(rundir)
+    }
+}
+
+fn check_logfile(rundir: &Path, level: LogLevel) -> Result<(PathBuf, Vec<ErrorLine>)> {
+    let logs_dir = rundir.join("logs");
+    let entries = glob(logs_dir.join("*.log").to_str().unwrap())?;
+    let mut paths = Vec::new();
+    for entry in entries {
+        let path = entry?;
+        let rotated = path
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .and_then(|stem| stem.rsplit_once('.'))
+            .is_some_and(|(_, suffix)| {
+                !suffix.is_empty() && suffix.bytes().all(|digit| digit.is_ascii_digit())
+            });
+        if path.is_file() && !rotated {
+            paths.push(path);
+        }
+    }
+    let path = match paths.len() {
+        0 => return Err(anyhow!("No active .log file found in {logs_dir:?}")),
+        1 => paths[0].clone(),
+        _ => get_newest_file(&paths)
+            .ok_or_else(|| anyhow!("Failed to identify the newest .log file in {logs_dir:?}"))?
+            .clone(),
+    };
+    let regex_set = RegexSet::new(
+        LogLevel::value_variants()
+            .iter()
+            .filter(|&&candidate| candidate >= level)
+            .map(|candidate| {
+                let value = candidate.to_possible_value().unwrap();
+                format!(r"\[{}\]", value.get_name())
+            }),
+    )?;
+    let lines = process_single_startlog(&path, &regex_set)?;
+    Ok((path, lines))
 }
 
 fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>)> {
@@ -266,5 +328,160 @@ mod tests {
         let (file, lines) = check_cncfile(Path::new(rundir)).unwrap();
         assert_eq!(file, PathBuf::from(rundir.to_owned() + "septic.cnc"));
         assert_eq!(lines.len(), 2);
+    }
+
+    #[test]
+    fn check_logfile_filters_each_threshold() {
+        let dir = tempdir().unwrap();
+        let logs = dir.path().join("logs");
+        fs::create_dir(&logs).unwrap();
+        let path = logs.join("myapp.log");
+        let content = "[trace] trace\n[debug] debug\n[info] info\n[warning] warning\n[error] error\n[critical] critical\nERROR plain\n[ERROR] uppercase\n[unknown] unknown\nerror unbracketed\n";
+        fs::write(&path, content).unwrap();
+        let expected: Vec<_> = content.lines().take(6).collect();
+
+        for (index, &level) in LogLevel::value_variants().iter().enumerate() {
+            let (selected, lines) = check_logfile(dir.path(), level).unwrap();
+            assert_eq!(selected, path);
+            assert_eq!(lines.len(), 6 - index, "{level:?}");
+            for (offset, line) in lines.iter().enumerate() {
+                assert_eq!(line.line_num, index + offset + 1);
+                assert_eq!(line.content, expected[index + offset]);
+            }
+        }
+        fs::write(&path, "[info] below threshold\n").unwrap();
+        assert!(
+            check_logfile(dir.path(), LogLevel::Warning)
+                .unwrap()
+                .1
+                .is_empty()
+        );
+        fs::write(&path, "[error] [critical] report once\n").unwrap();
+        assert_eq!(
+            check_logfile(dir.path(), LogLevel::Warning)
+                .unwrap()
+                .1
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn check_logfile_selects_newest_active_file_not_rotation() {
+        let dir = tempdir().unwrap();
+        let logs = dir.path().join("logs");
+        fs::create_dir(&logs).unwrap();
+        create_timestamped_file(&logs, "my.app.log", 100);
+        let newest = create_timestamped_file(&logs, "app2.log", 200);
+        for name in ["app2.1.log", "app2.2.log", "app2.10.log"] {
+            create_timestamped_file(&logs, name, 300);
+        }
+        fs::create_dir(logs.join("directory.log")).unwrap();
+        assert_eq!(
+            check_logfile(dir.path(), LogLevel::Warning).unwrap().0,
+            newest
+        );
+        fs::remove_file(&newest).unwrap();
+        assert_eq!(
+            check_logfile(dir.path(), LogLevel::Warning).unwrap().0,
+            logs.join("my.app.log")
+        );
+    }
+
+    #[test]
+    fn check_logfile_or_outfile_preserves_fallback_and_new_layout_precedence() {
+        let dir = tempdir().unwrap();
+        let outfile = dir.path().join("myapp.out");
+        fs::write(&outfile, "WARNING legacy\nINFO: legacy\n").unwrap();
+        let (path, lines) = check_logfile_or_outfile(dir.path(), LogLevel::Critical).unwrap();
+        assert_eq!(path, outfile);
+        assert_eq!(lines.len(), 2);
+
+        let logs = dir.path().join("logs");
+        fs::write(&logs, "not a directory").unwrap();
+        assert_eq!(
+            check_logfile_or_outfile(dir.path(), LogLevel::Critical)
+                .unwrap()
+                .0,
+            outfile
+        );
+        fs::remove_file(&logs).unwrap();
+        fs::create_dir(&logs).unwrap();
+        assert!(
+            check_logfile_or_outfile(dir.path(), LogLevel::Warning)
+                .unwrap_err()
+                .to_string()
+                .contains("No active .log file")
+        );
+        fs::write(logs.join("myapp.1.log"), "[error] rotation\n").unwrap();
+        assert!(check_logfile_or_outfile(dir.path(), LogLevel::Warning).is_err());
+        fs::create_dir(logs.join("directory.log")).unwrap();
+        assert!(check_logfile_or_outfile(dir.path(), LogLevel::Warning).is_err());
+
+        let logfile = logs.join("myapp.log");
+        fs::write(&logfile, "[info] clean\n").unwrap();
+        let (path, lines) = check_logfile_or_outfile(dir.path(), LogLevel::Warning).unwrap();
+        assert_eq!(path, logfile);
+        assert!(lines.is_empty());
+        fs::write(&logfile, [0xff]).unwrap();
+        assert!(check_logfile_or_outfile(dir.path(), LogLevel::Warning).is_err());
+    }
+
+    #[test]
+    fn checklogs_parses_level_argument() {
+        let args = Checklogs::try_parse_from(["checklogs", "rundir"]).unwrap();
+        assert_eq!(args.level, LogLevel::Warning);
+        for &level in LogLevel::value_variants() {
+            let value = level.to_possible_value().unwrap();
+            for args in [
+                ["checklogs", "rundir", "--level", value.get_name()],
+                ["checklogs", "--level", value.get_name(), "rundir"],
+            ] {
+                assert_eq!(Checklogs::try_parse_from(args).unwrap().level, level);
+            }
+        }
+        assert!(Checklogs::try_parse_from(["checklogs", "rundir", "--level", "invalid"]).is_err());
+        assert!(Checklogs::try_parse_from(["checklogs", "rundir", "--level"]).is_err());
+    }
+
+    #[test]
+    fn checklogs_preserves_results_and_connect_checks() {
+        let dir = tempdir().unwrap();
+        let logs = dir.path().join("logs");
+        let startlogs = dir.path().join("startlogs");
+        fs::create_dir(&logs).unwrap();
+        fs::create_dir(&startlogs).unwrap();
+        let logfile = logs.join("myapp.log");
+        let cncfile = startlogs.join("myapp.cnc");
+        fs::write(&logfile, "[warning] warning\n").unwrap();
+        fs::write(&cncfile, "connected\n").unwrap();
+        assert!(cmd_check_logs(dir.path(), LogLevel::Error).is_ok());
+        let error = cmd_check_logs(dir.path(), LogLevel::Warning).unwrap_err();
+        assert!(matches!(
+            error.downcast_ref(),
+            Some(CheckLogsError::WarningsFound)
+        ));
+
+        fs::write(&cncfile, "UNABLE to connect\n").unwrap();
+        let error = cmd_check_logs(dir.path(), LogLevel::Critical).unwrap_err();
+        assert!(matches!(
+            error.downcast_ref(),
+            Some(CheckLogsError::WarningsFound)
+        ));
+        fs::remove_file(&logfile).unwrap();
+        let error = cmd_check_logs(dir.path(), LogLevel::Warning).unwrap_err();
+        assert!(matches!(
+            error.downcast_ref(),
+            Some(CheckLogsError::CheckError(_))
+        ));
+
+        let legacy = Path::new("tests/testdata/rundir/");
+        let (_, lines) = check_logfile_or_outfile(legacy, LogLevel::Critical).unwrap();
+        assert_eq!(lines.len(), 27);
+        let error = cmd_check_logs(legacy, LogLevel::Critical).unwrap_err();
+        assert!(matches!(
+            error.downcast_ref(),
+            Some(CheckLogsError::WarningsFound)
+        ));
     }
 }
