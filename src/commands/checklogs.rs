@@ -145,7 +145,10 @@ fn check_logfile(rundir: &Path, level: LogLevel) -> Result<(PathBuf, Vec<ErrorLi
             .is_some_and(|(_, suffix)| {
                 !suffix.is_empty() && suffix.bytes().all(|digit| digit.is_ascii_digit())
             });
-        if path.is_file() && !rotated {
+        let is_labupdates = path
+            .file_name()
+            .is_some_and(|name| name == "labupdates.log");
+        if path.is_file() && !rotated && !is_labupdates {
             paths.push(path);
         }
     }
@@ -373,6 +376,7 @@ mod tests {
         fs::create_dir(&logs).unwrap();
         create_timestamped_file(&logs, "my.app.log", 100);
         let newest = create_timestamped_file(&logs, "app2.log", 200);
+        create_timestamped_file(&logs, "labupdates.log", 400);
         for name in ["app2.1.log", "app2.2.log", "app2.10.log"] {
             create_timestamped_file(&logs, name, 300);
         }
