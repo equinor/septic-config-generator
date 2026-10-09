@@ -726,18 +726,42 @@ are reported.
 
 ## scg checklogs
 
-This command is used to inspect the `.out` file and the newest (by timestamp) `.cnc` file in the specified run directory
-and report any errors or warnings found. If the run directory contains a `startlogs` directory (in use since Septic
-v2.85), `scg checklogs` will look there for `.cnc` files.
+This command inspects application logs and the newest (by modification timestamp) `.cnc` file in the specified run
+directory.
 
-The exit status is 0 if everything went fine, 1 if one or more errors or warnings were found, and 2 if the check
-encountered an error (e.g. unable to find or read a .cnc or .out file).
+If the run directory contains a `logs` directory (since Septic v3.12), it checks the active `.log` file there, ignoring
+numbered rotated logs as well as `labupdates.log`. If multiple active logs exist, the newest by modification timestamp
+is checked. If `logs` exists but no active log can be found or read, the command reports a check error rather than
+falling back to an `.out` file.
 
-Example:
+Without a `logs` directory, the legacy `.out` file in the run directory is checked. If nether the `.log` file nor the
+`.out` file is found, a warning is issued.
+
+For `.log` files, `--level` sets the minimum severity to report and defaults to `warning`. The available levels, in
+ascending severity, are `trace`, `debug`, `info`, `warning`, `error`, and `critical`. The threshold is inclusive:
+`--level error` reports `[error]` and `[critical]` lines, while `--level info` also reports `[info]` and `[warning]`
+lines. Tags are case-sensitive and must include brackets. This option does not change legacy `.out` or `.cnc` checks.
+
+If the run directory contains a `startlogs` directory (in use since Septic v2.85), `scg checklogs` looks there for
+`.cnc` files. Otherwise, it looks in the run directory.
+
+The exit status is 0 if no matching messages were found, 1 if one or more matching messages were found, and 2 if the
+check encountered an error (e.g. unable to find or read a `.cnc`, `.log`, or `.out` file).
+
+Legacy example:
 
 ```text
 scg checklogs ..\run_main
 MYAPP.out[21]: No Xvr match for Pvr TestPvr
+MYAPP_20230601_1415.cnc[51]: ERROR adding Item: SomeTag
+```
+
+New log format (Septic v3.12 and above) example:
+
+```text
+scg checklogs ..\run_main --level error
+MYAPP.log[21]: [error] No Xvr match for Pvr TestPvr
+MYAPP.log[35]: [critical] Application stopped
 MYAPP_20230601_1415.cnc[51]: ERROR adding Item: SomeTag
 ```
 
