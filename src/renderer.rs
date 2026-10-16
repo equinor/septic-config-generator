@@ -4,7 +4,7 @@ use crate::datasource::DataSourceRows;
 use anyhow::Context;
 use chrono::Local;
 use minijinja::value::{Rest, Value, ValueKind};
-use minijinja::{Environment, Error, ErrorKind};
+use minijinja::{Environment, Error, ErrorKind, UndefinedBehavior};
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -170,18 +170,6 @@ fn global_gitcommit(long: bool) -> String {
         )
 }
 
-fn erroring_formatter(
-    out: &mut minijinja::Output,
-    state: &mut minijinja::State,
-    value: &minijinja::value::Value,
-) -> Result<(), Error> {
-    // A crude way to stop execution when a variable is undefined.
-    if value.is_undefined() {
-        return Err(Error::from(ErrorKind::UndefinedError));
-    }
-    minijinja::escape_formatter(out, state, value)
-}
-
 #[allow(clippy::unnecessary_wraps)]
 fn load_template(
     template_path: &Path,
@@ -240,7 +228,9 @@ impl<'a> MiniJinja<'a> {
         renderer.env.add_filter("bitmask", filt_bitmask);
         renderer.env.add_filter("values", filt_values);
         renderer.env.add_filter("unpack", filt_unpack);
-        renderer.env.set_formatter(erroring_formatter);
+        renderer
+            .env
+            .set_undefined_behavior(UndefinedBehavior::SemiStrict);
 
         Ok(renderer)
     }
@@ -580,5 +570,35 @@ mod tests {
                 .to_string()
                 .contains("value is larger than")
         );
+    }
+
+    fn render_str(source: &str) -> Result<String, Error> {
+        let renderer = MiniJinja::new(&[]).unwrap();
+        renderer.env.render_str(source, context!())
+    }
+
+    #[test]
+    fn undefined_variable_errors_when_printed() {
+        let err = render_str("{{ missing }}").unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::UndefinedError);
+    }
+
+    #[test]
+    fn undefined_variable_errors_when_iterated() {
+        let err = render_str("{% for x in missing %}{{ x }}{% endfor %}").unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::UndefinedError);
+    }
+
+    #[test]
+    fn undefined_variable_allowed_in_conditions_and_default() {
+        assert_eq!(
+            render_str("{% if missing %}yes{% else %}no{% endif %}").unwrap(),
+            "no"
+        );
+        assert_eq!(
+            render_str("{% if missing is defined %}yes{% else %}no{% endif %}").unwrap(),
+            "no"
+        );
+        assert_eq!(render_str("{{ missing | default('d') }}").unwrap(), "d");
     }
 }
