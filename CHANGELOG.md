@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.18.1](https://github.com/equinor/septic-config-generator/compare/v2.18.0...v2.18.1) (2026-10-16)
+
+
+### 🧹 Chores
+
+* update schema ([#497](https://github.com/equinor/septic-config-generator/issues/497)) ([f327b41](https://github.com/equinor/septic-config-generator/commit/f327b41308def714a9099ccf8eef6ae8e8c7d77d))
+
+
+### 🏎️ Performance
+
+* convert source to minijinja value on load ([#491](https://github.com/equinor/septic-config-generator/issues/491)) ([326498d](https://github.com/equinor/septic-config-generator/commit/326498d89c0119962acd4978f76f648deb25ecf7))
+
+
+### 🔨 Refactor
+
+* bump minijinja from 2.24.0 to 3.0.1 ([#490](https://github.com/equinor/septic-config-generator/issues/490)) ([8c8ed6e](https://github.com/equinor/septic-config-generator/commit/8c8ed6ec6b77e44569d5594a1049bfbfc5ec2dd3))
+* handle errors better in filt_unpack() ([#495](https://github.com/equinor/septic-config-generator/issues/495)) ([15f6e2c](https://github.com/equinor/septic-config-generator/commit/15f6e2c500347abd3bc532cdcf4a2d21e4c17918))
+* remove unneeded CtxDataType ([#493](https://github.com/equinor/septic-config-generator/issues/493)) ([03eaf37](https://github.com/equinor/septic-config-generator/commit/03eaf3741f663ca64ad091790f5d91618fdb5769))
+* use SemiStrict instead of erroring_formatter ([#494](https://github.com/equinor/septic-config-generator/issues/494)) ([81a15cc](https://github.com/equinor/septic-config-generator/commit/81a15cc5db69669b91f6208ff8645ef3651cc4ca))
+
 ## [2.18.0](https://github.com/equinor/septic-config-generator/compare/v2.17.0...v2.18.0) (2026-10-16)
 
 
