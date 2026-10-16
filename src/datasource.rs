@@ -2,7 +2,7 @@ use anyhow::{Context, Result, bail};
 use calamine::{CellErrorType, Data, DataType, Reader, Xlsx, open_workbook};
 use csv::{self, Trim};
 use indexmap::IndexMap;
-use serde::Serialize;
+use minijinja::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -53,31 +53,25 @@ impl From<serde_json::Number> for CtxDataType {
     }
 }
 
-impl Serialize for CtxDataType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        match self {
-            Self::Int(value) => serializer.serialize_i64(*value),
-            Self::Float(value) | Self::DateTime(value) => serializer.serialize_f64(*value),
-            Self::Sequence(values) => values.serialize(serializer),
-            Self::String(value) => serializer.serialize_str(value),
-            Self::Bool(value) => serializer.serialize_bool(*value),
-            Self::Error(value) => {
-                let s = match value {
-                    CtxErrorType::Div0 => "#DIV/0!",
-                    CtxErrorType::NA => "#N/A",
-                    CtxErrorType::Name => "#NAME?",
-                    CtxErrorType::Null => "#NULL!",
-                    CtxErrorType::Num => "#NUM!",
-                    CtxErrorType::Ref => "#REF!",
-                    CtxErrorType::Value => "#VALUE!",
-                    CtxErrorType::GettingData => "#UNKNOWN!",
-                };
-                serializer.serialize_str(s)
-            }
-            Self::Empty => serializer.serialize_unit(),
+impl From<CtxDataType> for Value {
+    fn from(value: CtxDataType) -> Self {
+        match value {
+            CtxDataType::Int(value) => Value::from(value),
+            CtxDataType::Float(value) | CtxDataType::DateTime(value) => Value::from(value),
+            CtxDataType::Sequence(values) => Value::from(values),
+            CtxDataType::String(value) => Value::from(value),
+            CtxDataType::Bool(value) => Value::from(value),
+            CtxDataType::Error(value) => Value::from(match value {
+                CtxErrorType::Div0 => "#DIV/0!",
+                CtxErrorType::NA => "#N/A",
+                CtxErrorType::Name => "#NAME?",
+                CtxErrorType::Null => "#NULL!",
+                CtxErrorType::Num => "#NUM!",
+                CtxErrorType::Ref => "#REF!",
+                CtxErrorType::Value => "#VALUE!",
+                CtxErrorType::GettingData => "#UNKNOWN!",
+            }),
+            CtxDataType::Empty => Value::from(()),
         }
     }
 }

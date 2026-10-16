@@ -3,9 +3,8 @@ use crate::config::{self, RowFiltering};
 use crate::datasource::DataSourceRows;
 use anyhow::Context;
 use chrono::Local;
-use minijinja::value::{Rest, Serde, Value, ValueKind};
+use minijinja::value::{Rest, Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
-use serde::Serialize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -278,9 +277,9 @@ impl<'a> MiniJinja<'a> {
     }
 
     #[allow(clippy::missing_errors_doc)]
-    pub fn render<S: Serialize>(&self, template_name: &str, ctx: S) -> anyhow::Result<String> {
+    pub fn render<V: Into<Value>>(&self, template_name: &str, ctx: V) -> anyhow::Result<String> {
         let tmpl = self.env.get_template(template_name)?;
-        Ok(tmpl.render(Serde(&ctx))?)
+        Ok(tmpl.render(ctx)?)
     }
 
     pub fn render_template(

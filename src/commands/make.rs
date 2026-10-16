@@ -10,7 +10,7 @@ use clap::Parser;
 use diffy::{PatchFormatter, create_patch};
 use glob::glob;
 use minijinja::Environment;
-use minijinja::value::{Serde, Value};
+use minijinja::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::prelude::*;
@@ -169,7 +169,7 @@ fn cmd_make(
     for (key, source_data) in all_source_data.iter() {
         renderer.env.add_global(
             key,
-            Value::from(Serde(source_data.values().collect::<Vec<_>>())),
+            Value::from(source_data.values().cloned().collect::<Vec<_>>()),
         );
     }
 
@@ -625,7 +625,7 @@ mod tests {
         for (key, source_data) in all_source_data.iter() {
             renderer.env.add_global(
                 key,
-                Value::from(Serde(source_data.values().collect::<Vec<_>>())),
+                Value::from(source_data.values().cloned().collect::<Vec<_>>()),
             );
         }
         let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)?
@@ -653,7 +653,7 @@ mod tests {
         for (key, source_data) in all_source_data.iter() {
             renderer.env.add_global(
                 key,
-                Value::from(Serde(source_data.values().collect::<Vec<_>>())),
+                Value::from(source_data.values().cloned().collect::<Vec<_>>()),
             );
         }
         let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)?
