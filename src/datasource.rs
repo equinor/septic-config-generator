@@ -5,83 +5,72 @@ use indexmap::IndexMap;
 use minijinja::Value;
 use std::path::{Path, PathBuf};
 
-/// Typed cell data as read from a source, keyed by row label and then column header.
-pub type RawSourceRows = IndexMap<String, IndexMap<String, CtxDataType>>;
-
-/// Source rows keyed by row label, each row converted once into a minijinja map.
+/// Source rows keyed by row label, each row a minijinja map of column header to cell value.
 pub type DataSourceRows = IndexMap<String, Value>;
 
+/// Rows with their columns still separate, so that columns from several files can be merged.
+type ColumnRows = IndexMap<String, IndexMap<String, Value>>;
+
 pub trait DataSourceReader {
-    fn read(&self) -> Result<RawSourceRows>;
+    fn read(&self) -> Result<DataSourceRows>;
 }
 
-pub fn into_value_rows(rows: RawSourceRows) -> DataSourceRows {
+fn into_value_rows(rows: ColumnRows) -> DataSourceRows {
     rows.into_iter()
         .map(|(key, row)| (key, Value::from_pairs(row)))
         .collect()
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum CtxErrorType {
-    /// Division by 0 error
-    Div0,
-    /// Unavailable value error
-    NA,
-    /// Invalid name error
-    Name,
-    /// Null value error
-    Null,
-    /// Number error
-    Num,
-    /// Invalid cell reference error
-    Ref,
-    /// Value error
-    Value,
-    /// Getting data
-    GettingData,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum CtxDataType {
-    Int(i64),
-    Float(f64),
-    Sequence(Vec<CtxDataType>),
-    String(String),
-    Bool(bool),
-    DateTime(f64),
-    Error(CtxErrorType),
-    Empty,
-}
-
-impl From<serde_json::Number> for CtxDataType {
-    fn from(value: serde_json::Number) -> Self {
-        match value.as_i64() {
-            Some(value) => Self::Int(value),
-            None => Self::Float(value.as_f64().unwrap()),
-        }
+fn json_number_to_value(number: &serde_json::Number) -> Value {
+    match number.as_i64() {
+        Some(value) => Value::from(value),
+        None => Value::from(number.as_f64().unwrap()),
     }
 }
 
-impl From<CtxDataType> for Value {
-    fn from(value: CtxDataType) -> Self {
-        match value {
-            CtxDataType::Int(value) => Value::from(value),
-            CtxDataType::Float(value) | CtxDataType::DateTime(value) => Value::from(value),
-            CtxDataType::Sequence(values) => Value::from(values),
-            CtxDataType::String(value) => Value::from(value),
-            CtxDataType::Bool(value) => Value::from(value),
-            CtxDataType::Error(value) => Value::from(match value {
-                CtxErrorType::Div0 => "#DIV/0!",
-                CtxErrorType::NA => "#N/A",
-                CtxErrorType::Name => "#NAME?",
-                CtxErrorType::Null => "#NULL!",
-                CtxErrorType::Num => "#NUM!",
-                CtxErrorType::Ref => "#REF!",
-                CtxErrorType::Value => "#VALUE!",
-                CtxErrorType::GettingData => "#UNKNOWN!",
-            }),
-            CtxDataType::Empty => Value::from(()),
+fn csv_cell_to_value(value: &str) -> Value {
+    match value {
+        "" => Value::from(()),
+        v if v.starts_with('0') && v.len() > 1 && v.bytes().all(|b| b.is_ascii_digit()) => {
+            Value::from(v)
         }
+        v if let Ok(i) = v.parse::<i64>() => Value::from(i),
+        v if let Ok(f) = v.parse::<f64>() => Value::from(f),
+        v if let Ok(f) = v.replace(',', ".").parse::<f64>() => Value::from(f),
+        v if let Ok(b) = v.parse::<bool>() => Value::from(b),
+        v if let Ok(values) = serde_json::from_str::<Vec<serde_json::Number>>(v) => {
+            Value::from(values.iter().map(json_number_to_value).collect::<Vec<_>>())
+        }
+        v => Value::from(v),
+    }
+}
+
+#[allow(clippy::cast_possible_truncation)]
+fn excel_cell_to_value(cell: &Data) -> Value {
+    match cell {
+        Data::Int(i) => Value::from(*i),
+        Data::Float(f) => {
+            if (f - f.floor()).abs() < f64::EPSILON {
+                Value::from(*f as i64)
+            } else {
+                Value::from(*f)
+            }
+        }
+        Data::String(s) => Value::from(s.as_str()),
+        Data::Bool(b) => Value::from(*b),
+        Data::DateTime(d) => Value::from(d.as_f64()),
+        Data::Empty => Value::from(()),
+        Data::Error(e) => Value::from(match e {
+            CellErrorType::Div0 => "#DIV/0!",
+            CellErrorType::NA => "#N/A",
+            CellErrorType::Name => "#NAME?",
+            CellErrorType::Null => "#NULL!",
+            CellErrorType::Num => "#NUM!",
+            CellErrorType::Ref => "#REF!",
+            CellErrorType::Value => "#VALUE!",
+            CellErrorType::GettingData => "#UNKNOWN!",
+        }),
+        _ => panic!("Unhandled datatype for {cell})"), // Should never happen
     }
 }
 
@@ -101,7 +90,7 @@ impl MultiSourceReader {
 }
 
 impl DataSourceReader for MultiSourceReader {
-    fn read(&self) -> Result<RawSourceRows> {
+    fn read(&self) -> Result<DataSourceRows> {
         let mut rows = IndexMap::new();
         if let Some((first, rest)) = self.file_paths.split_first() {
             let first_reader = CsvSourceReader {
@@ -109,7 +98,7 @@ impl DataSourceReader for MultiSourceReader {
                 delimiter: self.delimiter,
             };
             rows = first_reader
-                .read()
+                .read_columns()
                 .with_context(|| format!("Problem reading source file '{}'", first.display()))?;
 
             for file_path in rest {
@@ -117,7 +106,7 @@ impl DataSourceReader for MultiSourceReader {
                     file_path: file_path.to_owned(),
                     delimiter: self.delimiter,
                 };
-                let new_rows = reader.read().with_context(|| {
+                let new_rows = reader.read_columns().with_context(|| {
                     format!("Problem reading source file '{}'", file_path.display())
                 })?;
 
@@ -141,7 +130,7 @@ impl DataSourceReader for MultiSourceReader {
                 }
             }
         }
-        Ok(rows)
+        Ok(into_value_rows(rows))
     }
 }
 
@@ -158,10 +147,8 @@ impl CsvSourceReader {
             delimiter: delimiter.unwrap_or(';'),
         }
     }
-}
 
-impl DataSourceReader for CsvSourceReader {
-    fn read(&self) -> Result<RawSourceRows> {
+    fn read_columns(&self) -> Result<ColumnRows> {
         let mut reader = csv::ReaderBuilder::new()
             .delimiter(self.delimiter as u8)
             .flexible(false)
@@ -176,35 +163,11 @@ impl DataSourceReader for CsvSourceReader {
         for record_result in reader.records() {
             let record = record_result.with_context(|| "Error reading CSV record")?;
 
-            let mut data = IndexMap::new();
-            for (i, value) in record.iter().enumerate() {
-                if let Some(header_field) = headers.get(i) {
-                    let converted_value = match value {
-                        "" => CtxDataType::Empty,
-                        v if v.starts_with('0')
-                            && v.len() > 1
-                            && v.bytes().all(|b| b.is_ascii_digit()) =>
-                        {
-                            CtxDataType::String(value.to_string())
-                        }
-                        v if v.parse::<i64>().is_ok() => CtxDataType::Int(v.parse().unwrap()),
-                        v if v.parse::<f64>().is_ok() => CtxDataType::Float(v.parse().unwrap()),
-                        v if v.replace(',', ".").parse::<f64>().is_ok() => {
-                            CtxDataType::Float(v.replace(',', ".").parse().unwrap())
-                        }
-                        v if v.parse::<bool>().is_ok() => CtxDataType::Bool(v.parse().unwrap()),
-                        v if let Ok(values) =
-                            serde_json::from_str::<Vec<serde_json::Number>>(v) =>
-                        {
-                            CtxDataType::Sequence(
-                                values.into_iter().map(CtxDataType::from).collect(),
-                            )
-                        }
-                        _ => CtxDataType::String(value.to_string()),
-                    };
-                    data.insert(header_field.to_string(), converted_value);
-                }
-            }
+            let data: IndexMap<String, Value> = headers
+                .iter()
+                .zip(record.iter())
+                .map(|(header, value)| (header.to_string(), csv_cell_to_value(value)))
+                .collect();
             let key = record[0].to_string();
             rows.insert(key, data);
         }
@@ -212,14 +175,20 @@ impl DataSourceReader for CsvSourceReader {
 
         if rows.iter().any(|(column_name, data)| {
             column_name != &first_column_name
-                && match data.get(&first_column_name) {
-                    Some(CtxDataType::String(val)) => val.trim().is_empty(),
-                    _ => true,
-                }
+                && data
+                    .get(&first_column_name)
+                    .and_then(Value::as_str)
+                    .is_none_or(|val| val.trim().is_empty())
         }) {
             bail!("First column must contain strings only");
         }
         Ok(rows)
+    }
+}
+
+impl DataSourceReader for CsvSourceReader {
+    fn read(&self) -> Result<DataSourceRows> {
+        self.read_columns().map(into_value_rows)
     }
 }
 
@@ -241,8 +210,7 @@ impl ExcelSourceReader {
 impl DataSourceReader for ExcelSourceReader {
     #[allow(clippy::missing_errors_doc)]
     #[allow(clippy::missing_panics_doc)]
-    #[allow(clippy::cast_possible_truncation)]
-    fn read(&self) -> Result<RawSourceRows> {
+    fn read(&self) -> Result<DataSourceRows> {
         let mut workbook: Xlsx<_> = open_workbook(&self.file_path)?;
         let sheet = self.sheet.as_ref().unwrap();
 
@@ -262,48 +230,20 @@ impl DataSourceReader for ExcelSourceReader {
             .skip(1)
             .map(|row| {
                 let key = row[0].get_string().unwrap().to_string();
-                let values = row_headers
-                    .iter()
-                    .zip(row.iter())
-                    .map(|(header, cell)| {
-                        let header_str = header.get_string().unwrap().to_string();
-                        let value = match cell.clone() {
-                            Data::Int(i) => CtxDataType::Int(i),
-                            Data::Float(f) => {
-                                if (f - f.floor()).abs() < f64::EPSILON {
-                                    CtxDataType::Int(f as i64)
-                                } else {
-                                    CtxDataType::Float(f)
-                                }
-                            }
-                            Data::String(s) => CtxDataType::String(s),
-                            Data::Bool(b) => CtxDataType::Bool(b),
-                            Data::DateTime(d) => CtxDataType::DateTime(d.as_f64()),
-                            Data::Empty => CtxDataType::Empty,
-                            Data::Error(e) => match e {
-                                CellErrorType::Div0 => CtxDataType::Error(CtxErrorType::Div0),
-                                CellErrorType::NA => CtxDataType::Error(CtxErrorType::NA),
-                                CellErrorType::Name => CtxDataType::Error(CtxErrorType::Name),
-                                CellErrorType::Null => CtxDataType::Error(CtxErrorType::Null),
-                                CellErrorType::Num => CtxDataType::Error(CtxErrorType::Num),
-                                CellErrorType::Ref => CtxDataType::Error(CtxErrorType::Ref),
-                                CellErrorType::Value => CtxDataType::Error(CtxErrorType::Value),
-                                CellErrorType::GettingData => {
-                                    CtxDataType::Error(CtxErrorType::GettingData)
-                                }
-                            },
-                            _ => {
-                                panic!("Unhandled datatype for {cell})"); // Should never happen
-                            }
-                        };
-                        (header_str, value)
-                    })
-                    .collect::<IndexMap<String, CtxDataType>>();
-                (key, values)
+                let values = row_headers.iter().zip(row.iter()).map(|(header, cell)| {
+                    let header_str = header.get_string().unwrap().to_string();
+                    (header_str, excel_cell_to_value(cell))
+                });
+                (key, Value::from_pairs(values))
             })
-            .collect::<RawSourceRows>();
+            .collect::<DataSourceRows>();
         Ok(data)
     }
+}
+
+#[cfg(test)]
+fn cell(rows: &DataSourceRows, key: &str, column: &str) -> String {
+    format!("{:?}", rows[key].get_attr(column).unwrap())
 }
 
 #[cfg(test)]
@@ -338,20 +278,12 @@ mod multisourcetests {
         println!("{data:?}");
         assert_eq!(data.len(), 2);
 
-        let vals_key1 = &data["key1"];
-        assert_eq!(
-            vals_key1.get("text"),
-            Some(&CtxDataType::String("value1".to_string()))
-        );
-        assert_eq!(vals_key1.get("float"), Some(&CtxDataType::Float(1.1)));
-        assert_eq!(vals_key1.get("int"), Some(&CtxDataType::Int(1)));
-        let vals_key2 = &data["key2"];
-        assert_eq!(
-            vals_key2.get("text"),
-            Some(&CtxDataType::String("value2".to_string()))
-        );
-        assert_eq!(vals_key2.get("float"), Some(&CtxDataType::Float(2.2)));
-        assert_eq!(vals_key2.get("int"), Some(&CtxDataType::Int(2)));
+        assert_eq!(cell(&data, "key1", "text"), "'value1'");
+        assert_eq!(cell(&data, "key1", "float"), "1.1");
+        assert_eq!(cell(&data, "key1", "int"), "1");
+        assert_eq!(cell(&data, "key2", "text"), "'value2'");
+        assert_eq!(cell(&data, "key2", "float"), "2.2");
+        assert_eq!(cell(&data, "key2", "int"), "2");
     }
 
     #[test]
@@ -425,7 +357,7 @@ mod csvtests {
     use std::io::Write;
 
     #[test]
-    fn into_value_rows_preserves_column_order_and_converts_values() {
+    fn csv_rows_preserve_column_order() {
         let csv_content = "keys;zeta;alpha;empty;list\nkey1;1;text;;[1, 2.5]";
         let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
         write!(tmp_file, "{csv_content}").unwrap();
@@ -435,18 +367,14 @@ mod csvtests {
             Some(';'),
         );
 
-        let rows = into_value_rows(reader.read().unwrap());
-        let row = &rows["key1"];
+        let rows = reader.read().unwrap();
 
-        let columns: Vec<String> = row.try_iter().unwrap().map(|k| k.to_string()).collect();
+        let columns: Vec<String> = rows["key1"]
+            .try_iter()
+            .unwrap()
+            .map(|k| k.to_string())
+            .collect();
         assert_eq!(columns, ["keys", "zeta", "alpha", "empty", "list"]);
-        assert_eq!(row.get_attr("zeta").unwrap(), Value::from(1));
-        assert_eq!(row.get_attr("alpha").unwrap(), Value::from("text"));
-        assert!(row.get_attr("empty").unwrap().is_none());
-        assert_eq!(
-            row.get_attr("list").unwrap(),
-            Value::from(vec![Value::from(1), Value::from(2.5)])
-        );
     }
 
     #[test]
@@ -471,69 +399,28 @@ mod csvtests {
         let data = result.unwrap();
         assert_eq!(data.len(), 2);
 
-        let values = &data["key1"];
+        assert_eq!(cell(&data, "key1", "text"), "'value1'");
+        assert_eq!(cell(&data, "key1", "float"), "1.1");
+        assert_eq!(cell(&data, "key1", "int"), "1");
+        assert_eq!(cell(&data, "key1", "mix"), "1.0");
+        assert_eq!(cell(&data, "key1", "zeros"), "0");
         assert_eq!(
-            values.get("text"),
-            Some(&CtxDataType::String("value1".to_string()))
+            cell(&data, "key1", "long_zeros"),
+            "'0000000000011000000000000000001'"
         );
-        assert_eq!(values.get("float"), Some(&CtxDataType::Float(1.1)));
-        assert_eq!(values.get("int"), Some(&CtxDataType::Int(1)));
-        assert_eq!(values.get("mix"), Some(&CtxDataType::Float(1.0)));
-        assert_eq!(values.get("zeros"), Some(&CtxDataType::Int(0)));
-        assert_eq!(
-            values.get("long_zeros"),
-            Some(&CtxDataType::String(
-                "0000000000011000000000000000001".to_string()
-            ))
-        );
-        assert_eq!(
-            values.get("numbers"),
-            Some(&CtxDataType::Sequence(vec![
-                CtxDataType::Int(1),
-                CtxDataType::Float(2.5),
-                CtxDataType::Int(3),
-            ]))
-        );
-        assert_eq!(
-            values.get("single_number"),
-            Some(&CtxDataType::Sequence(vec![CtxDataType::Int(20)]))
-        );
-        assert_eq!(
-            values.get("empty_numbers"),
-            Some(&CtxDataType::Sequence(vec![]))
-        );
-        assert_eq!(
-            values.get("not_numbers"),
-            Some(&CtxDataType::String("[a, b]".to_string()))
-        );
+        assert_eq!(cell(&data, "key1", "numbers"), "[1, 2.5, 3]");
+        assert_eq!(cell(&data, "key1", "single_number"), "[20]");
+        assert_eq!(cell(&data, "key1", "empty_numbers"), "[]");
+        assert_eq!(cell(&data, "key1", "not_numbers"), "'[a, b]'");
 
-        let values = &data["key2"];
-        assert_eq!(
-            values.get("text"),
-            Some(&CtxDataType::String("value2".to_string()))
-        );
-        assert_eq!(values.get("float"), Some(&CtxDataType::Float(2.2)));
-        assert_eq!(values.get("int"), Some(&CtxDataType::Int(2)));
-        assert_eq!(values.get("mix"), Some(&CtxDataType::Int(2)));
-        assert_eq!(
-            values.get("zeros"),
-            Some(&CtxDataType::String("00".to_string()))
-        );
-        assert_eq!(
-            values.get("long_zeros"),
-            Some(&CtxDataType::String("001".to_string()))
-        );
-        assert_eq!(
-            values.get("numbers"),
-            Some(&CtxDataType::Sequence(vec![
-                CtxDataType::Int(4),
-                CtxDataType::Int(5),
-            ]))
-        );
-        assert_eq!(
-            values.get("single_number"),
-            Some(&CtxDataType::Sequence(vec![CtxDataType::Int(20)]))
-        );
+        assert_eq!(cell(&data, "key2", "text"), "'value2'");
+        assert_eq!(cell(&data, "key2", "float"), "2.2");
+        assert_eq!(cell(&data, "key2", "int"), "2");
+        assert_eq!(cell(&data, "key2", "mix"), "2");
+        assert_eq!(cell(&data, "key2", "zeros"), "'00'");
+        assert_eq!(cell(&data, "key2", "long_zeros"), "'001'");
+        assert_eq!(cell(&data, "key2", "numbers"), "[4, 5]");
+        assert_eq!(cell(&data, "key2", "single_number"), "[20]");
     }
 
     #[test]
@@ -556,13 +443,9 @@ key1  ;   value1  ;    1.1 ; 1  "#;
         let data = result.unwrap();
         assert_eq!(data.len(), 1);
 
-        let values = &data["key1"];
-        assert_eq!(
-            values.get("text"),
-            Some(&CtxDataType::String("value1".to_string()))
-        );
-        assert_eq!(values.get("float"), Some(&CtxDataType::Float(1.1)));
-        assert_eq!(values.get("int"), Some(&CtxDataType::Int(1)));
+        assert_eq!(cell(&data, "key1", "text"), "'value1'");
+        assert_eq!(cell(&data, "key1", "float"), "1.1");
+        assert_eq!(cell(&data, "key1", "int"), "1");
     }
 
     // Currently doesn't distinguish between 1.234 and "1.234" and turn both into float,
@@ -588,15 +471,8 @@ key1  ;   value1  ;    1.1 ; 1  "#;
         let data = result.unwrap();
         assert_eq!(data.len(), 1);
 
-        let values = &data["key1"];
-        assert_eq!(
-            values.get("textfloat"),
-            Some(&CtxDataType::String("1.234".to_string()))
-        );
-        assert_eq!(
-            values.get("textint"),
-            Some(&CtxDataType::String("1".to_string()))
-        );
+        assert_eq!(cell(&data, "key1", "textfloat"), "'1.234'");
+        assert_eq!(cell(&data, "key1", "textint"), "'1'");
     }
 
     #[test]
@@ -619,16 +495,9 @@ key1  ;   value1  ;    1.1 ; 1  "#;
         let data = result.unwrap();
         assert_eq!(data.len(), 1);
 
-        let values = &data["key1"];
-        assert_eq!(
-            values.get("header1"),
-            Some(&CtxDataType::String("value1".to_string()))
-        );
-        assert_eq!(values.get("header2"), Some(&CtxDataType::Empty));
-        assert_eq!(
-            values.get("header3"),
-            Some(&CtxDataType::String("value3".to_string()))
-        );
+        assert_eq!(cell(&data, "key1", "header1"), "'value1'");
+        assert_eq!(cell(&data, "key1", "header2"), "None");
+        assert_eq!(cell(&data, "key1", "header3"), "'value3'");
     }
 
     #[test]
