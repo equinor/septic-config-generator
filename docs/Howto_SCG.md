@@ -726,8 +726,8 @@ are reported.
 
 ## scg checklogs
 
-This command inspects Septic application logs and the newest (by modification timestamp) `.cnc` file in the specified
-run directory.
+This command inspects Septic application logs and the newest (by modification timestamp) `.cnc` file for each OPC
+connection in the specified run directory.
 
 If the run directory contains a `logs` directory (since Septic v3.12), it checks the active `.log` file there. Numbered
 rotated logs as well as `labupdates.log` are ignored. If multiple active logs exist, the newest by modification
@@ -745,6 +745,11 @@ lines. Tags are case-sensitive and must include brackets. This option does not a
 
 If the run directory contains a `startlogs` directory (in use since Septic v2.85), `scg checklogs` looks there for
 `.cnc` files. Otherwise, it looks in the run directory.
+
+An application with several OPC connections gets one date-stamped `.cnc` file per connection where the first part of the
+file name is the name of the OPC connection. The newest file (by modification timestamp) of each connection is checked.
+To avoid checking leftovers from removed connections, a connection is skipped if its newest file is more than one hour
+older than the newest `.cnc` file overall.
 
 The exit status is 0 if no matching messages were found, 1 if one or more matching messages were found, and 2 if the
 check encountered an error (e.g. unable to find or read a `.cnc`, `.log`, or `.out` file).
