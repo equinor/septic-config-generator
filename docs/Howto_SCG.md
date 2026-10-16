@@ -726,13 +726,13 @@ are reported.
 
 ## scg checklogs
 
-This command inspects application logs and the newest (by modification timestamp) `.cnc` file in the specified run
-directory.
+This command inspects Septic application logs and the newest (by modification timestamp) `.cnc` file in the specified
+run directory.
 
-If the run directory contains a `logs` directory (since Septic v3.12), it checks the active `.log` file there, ignoring
-numbered rotated logs as well as `labupdates.log`. If multiple active logs exist, the newest by modification timestamp
-is checked. If `logs` exists but no active log can be found or read, the command reports a check error rather than
-falling back to an `.out` file.
+If the run directory contains a `logs` directory (since Septic v3.12), it checks the active `.log` file there. Numbered
+rotated logs as well as `labupdates.log` are ignored. If multiple active logs exist, the newest by modification
+timestamp is checked. If `logs` exists but no active log can be found or read, the command reports a check error rather
+than falling back to an `.out` file.
 
 Without a `logs` directory, the legacy `.out` file in the run directory is checked. If nether the `.log` file nor the
 `.out` file is found, a warning is issued.
@@ -740,7 +740,8 @@ Without a `logs` directory, the legacy `.out` file in the run directory is check
 For `.log` files, `--level` sets the minimum severity to report and defaults to `warning`. The available levels, in
 ascending severity, are `trace`, `debug`, `info`, `warning`, `error`, and `critical`. The threshold is inclusive:
 `--level error` reports `[error]` and `[critical]` lines, while `--level info` also reports `[info]` and `[warning]`
-lines. Tags are case-sensitive and must include brackets. This option does not change legacy `.out` or `.cnc` checks.
+lines. Tags are case-sensitive and must include brackets. This option does not affect neither `.cnc` checks nor legacy
+`.out` checks.
 
 If the run directory contains a `startlogs` directory (in use since Septic v2.85), `scg checklogs` looks there for
 `.cnc` files. Otherwise, it looks in the run directory.
