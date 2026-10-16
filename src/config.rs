@@ -1,4 +1,5 @@
 use anyhow::{Context, Result, bail};
+use minijinja::value::Serde;
 use minijinja::{Environment, context};
 use regex::Regex;
 use schemars::JsonSchema;
@@ -363,7 +364,7 @@ pub fn include_exclude_set(
                     }
                 } else {
                     for (key, row) in source_data {
-                        let eval = expr.eval(row)?;
+                        let eval = expr.eval(Serde(row))?;
                         if eval.is_true() {
                             matched = true;
                             result.insert(key.clone());
