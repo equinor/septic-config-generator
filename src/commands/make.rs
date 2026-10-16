@@ -169,7 +169,7 @@ fn cmd_make(
     for (key, source_data) in all_source_data.iter() {
         renderer.env.add_global(
             key,
-            Value::from_serialize(source_data.values().collect::<Vec<_>>()),
+            Value::from(source_data.values().cloned().collect::<Vec<_>>()),
         );
     }
 
@@ -531,7 +531,7 @@ mod tests {
     fn global_row_filter_works_with_global_variables() -> Result<()> {
         let env = {
             let mut env = Environment::new();
-            env.add_global("min_value", Value::from_serialize(2));
+            env.add_global("min_value", Value::from(2));
             env
         };
 
@@ -625,7 +625,7 @@ mod tests {
         for (key, source_data) in all_source_data.iter() {
             renderer.env.add_global(
                 key,
-                Value::from_serialize(source_data.values().collect::<Vec<_>>()),
+                Value::from(source_data.values().cloned().collect::<Vec<_>>()),
             );
         }
         let result = MiniJinja::render_template(&renderer, &template, &HashMap::new(), true)?
@@ -653,7 +653,7 @@ mod tests {
         for (key, source_data) in all_source_data.iter() {
             renderer.env.add_global(
                 key,
-                Value::from_serialize(source_data.values().collect::<Vec<_>>()),
+                Value::from(source_data.values().cloned().collect::<Vec<_>>()),
             );
         }
         let result = MiniJinja::render_template(&renderer, &template, &all_source_data, true)?

@@ -3,9 +3,8 @@ use crate::config::{self, RowFiltering};
 use crate::datasource::DataSourceRows;
 use anyhow::Context;
 use chrono::Local;
-use minijinja::value::{Kwargs, Rest, Value, ValueKind, from_args};
+use minijinja::value::{Rest, Value, ValueKind};
 use minijinja::{Environment, Error, ErrorKind};
-use serde::Serialize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Read;
@@ -50,8 +49,7 @@ impl CounterMap {
     }
 }
 
-fn filt_unpack(v: Value, unpack_keys: Rest<Value>) -> Result<Value, Error> {
-    let (item_keys, _): (&[Value], Kwargs) = from_args(&unpack_keys)?;
+fn filt_unpack(v: Value, item_keys: Rest<Value>) -> Result<Value, Error> {
     match v.kind() {
         ValueKind::Map => {
             let items_are_maps = v
@@ -174,7 +172,7 @@ fn global_gitcommit(long: bool) -> String {
 
 fn erroring_formatter(
     out: &mut minijinja::Output,
-    state: &minijinja::State,
+    state: &mut minijinja::State,
     value: &minijinja::value::Value,
 ) -> Result<(), Error> {
     // A crude way to stop execution when a variable is undefined.
@@ -279,9 +277,9 @@ impl<'a> MiniJinja<'a> {
     }
 
     #[allow(clippy::missing_errors_doc)]
-    pub fn render<S: Serialize>(&self, template_name: &str, ctx: S) -> anyhow::Result<String> {
+    pub fn render<V: Into<Value>>(&self, template_name: &str, ctx: V) -> anyhow::Result<String> {
         let tmpl = self.env.get_template(template_name)?;
-        Ok(tmpl.render(&ctx)?)
+        Ok(tmpl.render(ctx)?)
     }
 
     pub fn render_template(
@@ -359,7 +357,7 @@ mod tests {
                 context!(a => "cc", b => "dd"),
             ]
         };
-        assert_eq!(result, "[[\"aa\", \"bb\"], [\"cc\", \"dd\"]]")
+        assert_eq!(result, "[['aa', 'bb'], ['cc', 'dd']]")
     }
 
     #[test]
@@ -372,7 +370,7 @@ mod tests {
                 context!(a => "cc", b => "dd"),
             ]
         };
-        assert_eq!(result, "[\"bb\", \"dd\"]")
+        assert_eq!(result, "['bb', 'dd']")
     }
 
     #[test]
@@ -385,7 +383,7 @@ mod tests {
                 context!(a => "cc", b => "dd"),
             ]
         };
-        assert_eq!(result, "[[\"aa\", undefined], [\"cc\", undefined]]")
+        assert_eq!(result, "[['aa', undefined], ['cc', undefined]]")
     }
 
     #[test]
@@ -395,7 +393,7 @@ mod tests {
         let result = render! {in env, "{{ AA | unpack('a', 'b') }}",
             AA => context!(a => "aa", b => "bb")
         };
-        assert_eq!(result, "[\"aa\", \"bb\"]")
+        assert_eq!(result, "['aa', 'bb']")
     }
 
     #[test]
@@ -415,7 +413,7 @@ mod tests {
         let result = render! {in env, "{{ AA | unpack('a', 'c') }}",
             AA => context!(a => "aa", b => "bb")
         };
-        assert_eq!(result, "[\"aa\", undefined]")
+        assert_eq!(result, "['aa', undefined]")
     }
 
     #[test]
