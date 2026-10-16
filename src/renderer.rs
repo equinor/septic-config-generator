@@ -50,61 +50,48 @@ impl CounterMap {
 }
 
 fn filt_unpack(v: Value, item_keys: Rest<Value>) -> Result<Value, Error> {
-    match v.kind() {
-        ValueKind::Map => {
-            let items_are_maps = v
-                .try_iter()
-                .unwrap()
-                .all(|key| v.get_item(&key).unwrap().kind() == ValueKind::Map);
-            if !items_are_maps {
-                let rv = match item_keys.len() {
-                    1 => v.get_item(&item_keys[0]).unwrap(),
-                    _ => item_keys
-                        .iter()
-                        .map(|key| v.get_item(key).unwrap())
-                        .collect(),
-                };
-                Ok(rv)
-            } else {
-                Err(Error::new(
-                    ErrorKind::CannotUnpack,
-                    "input is not a list of maps (source) or map (source row)",
-                ))
-            }
-        }
-        ValueKind::Seq => {
-            let items_are_maps = v
-                .try_iter()
-                .unwrap()
-                .all(|val| val.kind() == ValueKind::Map);
-            if items_are_maps {
-                let rv = v
-                    .try_iter()
-                    .unwrap()
-                    .map(|value| {
-                        let inner_vec: Vec<Value> = item_keys
-                            .iter()
-                            .map(|key| value.get_item(key).unwrap())
-                            .collect();
-                        if item_keys.len() == 1 {
-                            inner_vec.into_iter().next().unwrap()
-                        } else {
-                            Value::from(inner_vec)
-                        }
-                    })
-                    .collect();
-                Ok(rv)
-            } else {
-                Err(Error::new(
-                    ErrorKind::CannotUnpack,
-                    "input is not a list of maps (source) or map (source row)",
-                ))
-            }
-        }
-        _ => Err(Error::new(
+    let not_unpackable = || {
+        Error::new(
             ErrorKind::CannotUnpack,
             "input is not a list of maps (source) or map (source row)",
-        )),
+        )
+    };
+    let pick = |row: &Value| -> Result<Value, Error> {
+        if let [key] = item_keys.as_slice() {
+            row.get_item(key)
+        } else {
+            item_keys
+                .iter()
+                .map(|key| row.get_item(key))
+                .collect::<Result<Vec<_>, _>>()
+                .map(Value::from)
+        }
+    };
+
+    match v.kind() {
+        ValueKind::Map => {
+            // A map whose values are all maps is a source keyed by row, not a single row.
+            let values = v
+                .try_iter()?
+                .checked()
+                .map(|key| v.get_item(&key?))
+                .collect::<Result<Vec<_>, _>>()?;
+            if values.iter().all(|value| value.kind() == ValueKind::Map) {
+                return Err(not_unpackable());
+            }
+            pick(&v)
+        }
+        ValueKind::Seq => {
+            let rows = v.try_iter()?.checked().collect::<Result<Vec<_>, _>>()?;
+            if rows.iter().any(|row| row.kind() != ValueKind::Map) {
+                return Err(not_unpackable());
+            }
+            rows.iter()
+                .map(pick)
+                .collect::<Result<Vec<_>, _>>()
+                .map(Value::from)
+        }
+        _ => Err(not_unpackable()),
     }
 }
 
