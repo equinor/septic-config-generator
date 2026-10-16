@@ -285,7 +285,7 @@ impl Config {
     #[allow(clippy::missing_errors_doc)]
     pub fn new(filename: &Path) -> Result<Self> {
         let content = fs::read_to_string(filename)?;
-        let cfg: Self = serde_yaml::from_str(&content)?;
+        let cfg: Self = serde_saphyr::from_str(&content)?;
 
         if let Some(sources) = &cfg.sources {
             for source in sources {
