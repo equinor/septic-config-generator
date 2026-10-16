@@ -3,11 +3,17 @@ use clap::{Parser, ValueEnum};
 use colored::Colorize;
 use glob::glob;
 use regex::RegexSet;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime};
+
+/// .cnc files of other OPC connections are only checked if they are at most this much
+/// older than the newest .cnc file.
+const CNC_MAX_AGE_DIFFERENCE: Duration = Duration::from_secs(5 * 60);
 
 #[derive(Debug)]
 struct ErrorLine {
@@ -77,26 +83,30 @@ impl Checklogs {
 }
 
 fn cmd_check_logs(rundir: &Path, level: LogLevel) -> Result<()> {
-    let checks = std::iter::once_with(|| check_logfile_or_outfile(rundir, level))
-        .chain(std::iter::once_with(|| check_cncfile(rundir)));
+    let checks = [
+        check_logfile_or_outfile(rundir, level).map(|result| vec![result]),
+        check_cncfiles(rundir),
+    ];
 
     let mut found_warnings = false;
 
     for check_result in checks {
         match check_result {
-            Ok((file, lines)) => {
-                let file_name = file.file_name().unwrap().to_str().unwrap();
-                if !lines.is_empty() {
-                    found_warnings = true;
-                }
-                for line in &lines {
-                    let line_num = format!("[{}]", line.line_num);
-                    println!(
-                        "{}{}: {}",
-                        file_name.bright_green(),
-                        line_num.bright_green(),
-                        line.content.red()
-                    );
+            Ok(results) => {
+                for (file, lines) in results {
+                    let file_name = file.file_name().unwrap().to_str().unwrap();
+                    if !lines.is_empty() {
+                        found_warnings = true;
+                    }
+                    for line in &lines {
+                        let line_num = format!("[{}]", line.line_num);
+                        println!(
+                            "{}{}: {}",
+                            file_name.bright_green(),
+                            line_num.bright_green(),
+                            line.content.red()
+                        );
+                    }
                 }
             }
             Err(err) => {
@@ -194,7 +204,53 @@ fn check_outfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>)> {
     Ok((path, lines))
 }
 
-fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>)> {
+/// Name of the OPC connection a .cnc file belongs to, i.e. the file stem without
+/// the trailing `_<date>_<time>` stamp
+fn cnc_connection_name(path: &Path) -> String {
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or_default();
+    let is_digits = |s: &str| !s.is_empty() && s.bytes().all(|b| b.is_ascii_digit());
+    let mut parts = stem.rsplitn(3, '_');
+    match (parts.next(), parts.next(), parts.next()) {
+        (Some(time), Some(date), Some(name)) if is_digits(time) && is_digits(date) => {
+            name.to_owned()
+        }
+        _ => stem.to_owned(),
+    }
+}
+
+/// Selects the newest .cnc file for each OPC connection. Connections whose newest file is
+/// more than `max_age` older than the newest file overall are considered stale and are skipped.
+fn select_cnc_files(files: &[PathBuf], max_age: Duration) -> Vec<PathBuf> {
+    let mut newest_per_connection: HashMap<String, (&PathBuf, SystemTime)> = HashMap::new();
+    for file in files {
+        let Some(time) = fs::metadata(file).ok().and_then(|m| m.modified().ok()) else {
+            continue;
+        };
+        newest_per_connection
+            .entry(cnc_connection_name(file))
+            .and_modify(|entry| {
+                if time > entry.1 {
+                    *entry = (file, time);
+                }
+            })
+            .or_insert((file, time));
+    }
+    let Some(overall_newest) = newest_per_connection.values().map(|&(_, time)| time).max() else {
+        return Vec::new();
+    };
+    let mut selected: Vec<PathBuf> = newest_per_connection
+        .into_values()
+        .filter(|&(_, time)| overall_newest.duration_since(time).unwrap_or_default() <= max_age)
+        .map(|(file, _)| file.clone())
+        .collect();
+    selected.sort();
+    selected
+}
+
+fn check_cncfiles(rundir: &Path) -> Result<Vec<(PathBuf, Vec<ErrorLine>)>> {
     let startlogs_dir = rundir.join("startlogs");
     let rundir = if startlogs_dir.exists() && startlogs_dir.is_dir() {
         startlogs_dir
@@ -204,22 +260,22 @@ fn check_cncfile(rundir: &Path) -> Result<(PathBuf, Vec<ErrorLine>)> {
     let regex_set = RegexSet::new([r"ERROR", r"UNABLE to connect"])?;
     let entries = glob(rundir.join("*.cnc").to_str().unwrap())?;
     let pathvec: Vec<PathBuf> = entries.filter_map(Result::ok).collect();
-    let path = match pathvec.len() {
-        0 => return Err(anyhow!("No .cnc file found in {:?}", rundir)),
-        1 => pathvec[0].clone(),
-        _ => {
-            if let Some(newest_file) = get_newest_file(&pathvec) {
-                newest_file.clone()
-            } else {
-                return Err(anyhow!(
-                    "Failed to identify the newest .cnc file in {rundir:?}"
-                ));
-            }
-        }
-    };
-
-    let lines = process_single_startlog(&path, &regex_set)?;
-    Ok((path, lines))
+    if pathvec.is_empty() {
+        return Err(anyhow!("No .cnc file found in {:?}", rundir));
+    }
+    let selected = select_cnc_files(&pathvec, CNC_MAX_AGE_DIFFERENCE);
+    if selected.is_empty() {
+        return Err(anyhow!(
+            "Failed to identify the newest .cnc file in {rundir:?}"
+        ));
+    }
+    selected
+        .into_iter()
+        .map(|path| {
+            let lines = process_single_startlog(&path, &regex_set)?;
+            Ok((path, lines))
+        })
+        .collect()
 }
 
 fn process_single_startlog(file_name: &Path, regex_set: &RegexSet) -> Result<Vec<ErrorLine>> {
@@ -328,9 +384,64 @@ mod tests {
     #[test]
     fn check_cncfile_detects_all_known_warnings() {
         let rundir = r"tests/testdata/rundir/";
-        let (file, lines) = check_cncfile(Path::new(rundir)).unwrap();
-        assert_eq!(file, PathBuf::from(rundir.to_owned() + "septic.cnc"));
-        assert_eq!(lines.len(), 2);
+        let results = check_cncfiles(Path::new(rundir)).unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(
+            results[0].0,
+            PathBuf::from(rundir.to_owned() + "septic.cnc")
+        );
+        assert_eq!(results[0].1.len(), 2);
+    }
+
+    #[test]
+    fn cnc_connection_name_strips_datestamp() {
+        assert_eq!(
+            cnc_connection_name(Path::new("THISOPC_20261013_0819.cnc")),
+            "THISOPC"
+        );
+        assert_eq!(
+            cnc_connection_name(Path::new("MY_OPC_20261013_0819.cnc")),
+            "MY_OPC"
+        );
+        assert_eq!(cnc_connection_name(Path::new("septic.cnc")), "septic");
+        assert_eq!(cnc_connection_name(Path::new("a_b.cnc")), "a_b");
+    }
+
+    #[test]
+    fn select_cnc_files_picks_newest_per_connection_and_skips_stale() {
+        let dir = tempdir().unwrap();
+        let hour = 3600;
+        let base = 1_000_000_000;
+        let this_old = create_timestamped_file(dir.path(), "THISOPC_20261012_0819.cnc", base - 100);
+        let this = create_timestamped_file(dir.path(), "THISOPC_20261013_0819.cnc", base);
+        let that = create_timestamped_file(dir.path(), "THATOPC_20261013_0819.cnc", base - 60);
+        let removed =
+            create_timestamped_file(dir.path(), "OLDOPC_20261001_0819.cnc", base - 24 * hour);
+        let files = vec![this_old, this.clone(), that.clone(), removed];
+        assert_eq!(
+            select_cnc_files(&files, Duration::from_secs(hour as u64)),
+            vec![that, this]
+        );
+        assert!(select_cnc_files(&[], Duration::from_secs(hour as u64)).is_empty());
+    }
+
+    #[test]
+    fn check_cncfiles_checks_all_active_connections() {
+        let dir = tempdir().unwrap();
+        let startlogs = dir.path().join("startlogs");
+        fs::create_dir(&startlogs).unwrap();
+        fs::write(startlogs.join("THISOPC_20261013_0819.cnc"), "ERROR a\n").unwrap();
+        fs::write(
+            startlogs.join("THATOPC_20261013_0819.cnc"),
+            "ok\nUNABLE to connect\n",
+        )
+        .unwrap();
+        let results = check_cncfiles(dir.path()).unwrap();
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].0, startlogs.join("THATOPC_20261013_0819.cnc"));
+        assert_eq!(results[0].1[0].line_num, 2);
+        assert_eq!(results[1].0, startlogs.join("THISOPC_20261013_0819.cnc"));
+        assert_eq!(results[1].1.len(), 1);
     }
 
     #[test]
