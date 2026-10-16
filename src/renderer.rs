@@ -303,7 +303,7 @@ impl<'a> MiniJinja<'a> {
                 .with_context(|| format!("template {:?}", template.name))?;
 
             for (_key, row) in filtered_data {
-                let mut tmpl_rend = self.render(&template.name, Some(row))?;
+                let mut tmpl_rend = self.render(&template.name, row)?;
 
                 if adjust_spacing {
                     tmpl_rend = tmpl_rend.trim_end().to_string();

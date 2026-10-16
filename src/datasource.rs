@@ -3,13 +3,22 @@ use calamine::{CellErrorType, Data, DataType, Reader, Xlsx, open_workbook};
 use csv::{self, Trim};
 use indexmap::IndexMap;
 use minijinja::Value;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-pub type DataSourceRows = IndexMap<String, HashMap<String, CtxDataType>>;
+/// Typed cell data as read from a source, keyed by row label and then column header.
+pub type RawSourceRows = IndexMap<String, IndexMap<String, CtxDataType>>;
+
+/// Source rows keyed by row label, each row converted once into a minijinja map.
+pub type DataSourceRows = IndexMap<String, Value>;
 
 pub trait DataSourceReader {
-    fn read(&self) -> Result<DataSourceRows>;
+    fn read(&self) -> Result<RawSourceRows>;
+}
+
+pub fn into_value_rows(rows: RawSourceRows) -> DataSourceRows {
+    rows.into_iter()
+        .map(|(key, row)| (key, Value::from_pairs(row)))
+        .collect()
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -92,7 +101,7 @@ impl MultiSourceReader {
 }
 
 impl DataSourceReader for MultiSourceReader {
-    fn read(&self) -> Result<DataSourceRows> {
+    fn read(&self) -> Result<RawSourceRows> {
         let mut rows = IndexMap::new();
         if let Some((first, rest)) = self.file_paths.split_first() {
             let first_reader = CsvSourceReader {
@@ -152,7 +161,7 @@ impl CsvSourceReader {
 }
 
 impl DataSourceReader for CsvSourceReader {
-    fn read(&self) -> Result<DataSourceRows> {
+    fn read(&self) -> Result<RawSourceRows> {
         let mut reader = csv::ReaderBuilder::new()
             .delimiter(self.delimiter as u8)
             .flexible(false)
@@ -167,7 +176,7 @@ impl DataSourceReader for CsvSourceReader {
         for record_result in reader.records() {
             let record = record_result.with_context(|| "Error reading CSV record")?;
 
-            let mut data = HashMap::new();
+            let mut data = IndexMap::new();
             for (i, value) in record.iter().enumerate() {
                 if let Some(header_field) = headers.get(i) {
                     let converted_value = match value {
@@ -233,7 +242,7 @@ impl DataSourceReader for ExcelSourceReader {
     #[allow(clippy::missing_errors_doc)]
     #[allow(clippy::missing_panics_doc)]
     #[allow(clippy::cast_possible_truncation)]
-    fn read(&self) -> Result<DataSourceRows> {
+    fn read(&self) -> Result<RawSourceRows> {
         let mut workbook: Xlsx<_> = open_workbook(&self.file_path)?;
         let sheet = self.sheet.as_ref().unwrap();
 
@@ -289,10 +298,10 @@ impl DataSourceReader for ExcelSourceReader {
                         };
                         (header_str, value)
                     })
-                    .collect::<HashMap<String, CtxDataType>>();
+                    .collect::<IndexMap<String, CtxDataType>>();
                 (key, values)
             })
-            .collect::<DataSourceRows>();
+            .collect::<RawSourceRows>();
         Ok(data)
     }
 }
@@ -414,6 +423,31 @@ mod multisourcetests {
 mod csvtests {
     use super::*;
     use std::io::Write;
+
+    #[test]
+    fn into_value_rows_preserves_column_order_and_converts_values() {
+        let csv_content = "keys;zeta;alpha;empty;list\nkey1;1;text;;[1, 2.5]";
+        let mut tmp_file = tempfile::NamedTempFile::new().unwrap();
+        write!(tmp_file, "{csv_content}").unwrap();
+        let reader = CsvSourceReader::new(
+            tmp_file.path().to_str().unwrap(),
+            std::path::Path::new(""),
+            Some(';'),
+        );
+
+        let rows = into_value_rows(reader.read().unwrap());
+        let row = &rows["key1"];
+
+        let columns: Vec<String> = row.try_iter().unwrap().map(|k| k.to_string()).collect();
+        assert_eq!(columns, ["keys", "zeta", "alpha", "empty", "list"]);
+        assert_eq!(row.get_attr("zeta").unwrap(), Value::from(1));
+        assert_eq!(row.get_attr("alpha").unwrap(), Value::from("text"));
+        assert!(row.get_attr("empty").unwrap().is_none());
+        assert_eq!(
+            row.get_attr("list").unwrap(),
+            Value::from(vec![Value::from(1), Value::from(2.5)])
+        );
+    }
 
     #[test]
     fn csv_parses_text_float_int_zeros_and_numeric_sequences() {

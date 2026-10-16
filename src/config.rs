@@ -363,7 +363,7 @@ pub fn include_exclude_set(
                     }
                 } else {
                     for (key, row) in source_data {
-                        let eval = expr.eval(row)?;
+                        let eval = expr.eval(row.clone())?;
                         if eval.is_true() {
                             matched = true;
                             result.insert(key.clone());
