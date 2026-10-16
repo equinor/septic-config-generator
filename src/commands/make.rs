@@ -3,7 +3,6 @@ use crate::commands::drawio::to_png::drawio_to_png;
 use crate::config::{Config, Drawio, Filename, RowFiltering, Source};
 use crate::datasource::{
     CsvSourceReader, DataSourceReader, DataSourceRows, ExcelSourceReader, MultiSourceReader,
-    into_value_rows,
 };
 use crate::renderer::MiniJinja;
 use anyhow::{Context, Result, bail};
@@ -345,7 +344,6 @@ fn load_source_data(source: &Source, relative_root: &Path) -> Result<DataSourceR
     };
     reader
         .read()
-        .map(into_value_rows)
         .with_context(|| format!("Problem reading source '{}'", source.id))
 }
 
@@ -456,7 +454,7 @@ mod tests {
                 source.sheet.as_deref(),
             );
 
-            let source_data = into_value_rows(reader.read()?);
+            let source_data = reader.read()?;
             all_source_data.insert(source.id.to_string(), source_data);
         }
         Ok(all_source_data)
