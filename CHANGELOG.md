@@ -1,5 +1,32 @@
 # Changelog
 
+## [2.18.0](https://github.com/equinor/septic-config-generator/compare/v2.17.0...v2.18.0) (2026-10-16)
+
+
+### ✨ Features
+
+* add --verbose argument + minijinja debug ([#477](https://github.com/equinor/septic-config-generator/issues/477)) ([2081fcd](https://github.com/equinor/septic-config-generator/commit/2081fcdf11dd6971ab15f86ae2f4860006f05a2d))
+* make checklogs compatible with Septic spdlog ([#483](https://github.com/equinor/septic-config-generator/issues/483)) ([29f0fc9](https://github.com/equinor/septic-config-generator/commit/29f0fc9440da550c07b6e465347e853ab728dabe))
+
+
+### 🐛 Bug Fixes
+
+* check all sopcprocs' .cnc logs ([#489](https://github.com/equinor/septic-config-generator/issues/489)) ([4f28a40](https://github.com/equinor/septic-config-generator/commit/4f28a40f85ea0414e25029ffcb7e80b0ac79350b))
+
+
+### 🧹 Chores
+
+* **deps:** bump rustls from 0.23.45 to 0.23.46 ([#487](https://github.com/equinor/septic-config-generator/issues/487)) ([1990f23](https://github.com/equinor/septic-config-generator/commit/1990f234c22c7a0add9dd5cf61c31db8124bcbb5))
+* **deps:** bump schemars from 1.2.2 to 1.2.3 ([#486](https://github.com/equinor/septic-config-generator/issues/486)) ([14bf6db](https://github.com/equinor/septic-config-generator/commit/14bf6db3005b9c261ada3d59bc60ab00d3ca8f2f))
+* **deps:** bump serde_json from 1.0.151 to 1.0.154 ([#485](https://github.com/equinor/septic-config-generator/issues/485)) ([430a669](https://github.com/equinor/septic-config-generator/commit/430a669a3f03d06c2db8b4ebde86258a256ad19e))
+* **deps:** bump winresource from 0.1.31 to 0.1.34 ([#484](https://github.com/equinor/septic-config-generator/issues/484)) ([a368818](https://github.com/equinor/septic-config-generator/commit/a368818f9ce5c8ee00bd67354f1a9065d96665ab))
+
+
+### 🔨 Refactor
+
+* improve yaml validation and error messages ([#480](https://github.com/equinor/septic-config-generator/issues/480)) ([76c7a2a](https://github.com/equinor/septic-config-generator/commit/76c7a2a8e6c49779eb4f0af6ef42486d4ea24def))
+* replace unmaintained serde-yaml with serde-saphyr ([#488](https://github.com/equinor/septic-config-generator/issues/488)) ([aa9f1a0](https://github.com/equinor/septic-config-generator/commit/aa9f1a05bc2d81632bf1f552dd465590bead6fa8))
+
 ## [2.17.0](https://github.com/equinor/septic-config-generator/compare/v2.16.0...v2.17.0) (2026-09-22)
 
 
